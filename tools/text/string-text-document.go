@@ -29,7 +29,7 @@ func (std *stringTextDocumentImpl) Apply(textDocumentChange TextDocumentChange) 
 	var sb strings.Builder
 	textEditCount := textDocumentChange.GetTextEditCount()
 
-	for i := 0; i < textEditCount; i++ {
+	for i := range textEditCount {
 		textEdit := textDocumentChange.GetTextEdit(i)
 		textRange := textEdit.Range()
 		sb.WriteString(std.text[startOffset:textRange.StartOffset()])
@@ -61,17 +61,17 @@ func (std *stringTextDocumentImpl) String() string {
 }
 
 // Line returns the text line at the given line number.
-func (std *stringTextDocumentImpl) Line(line int) TextLine {
+func (std *stringTextDocumentImpl) Line(line int) (TextLine, error) {
 	return std.Lines().TextLine(line)
 }
 
 // LinePositionFrom converts a text position to a line position.
-func (std *stringTextDocumentImpl) LinePositionFrom(textPosition int) LinePosition {
+func (std *stringTextDocumentImpl) LinePositionFrom(textPosition int) (LinePosition, error) {
 	return std.Lines().LinePositionFrom(textPosition)
 }
 
 // TextPositionFrom converts a line position to a text position.
-func (std *stringTextDocumentImpl) TextPositionFrom(linePosition LinePosition) int {
+func (std *stringTextDocumentImpl) TextPositionFrom(linePosition LinePosition) (int, error) {
 	return std.Lines().TextPositionFrom(linePosition)
 }
 

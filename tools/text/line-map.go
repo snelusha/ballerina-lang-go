@@ -7,9 +7,9 @@ import (
 
 // LineMap represents a collection of text lines in the TextDocument.
 type LineMap interface {
-	TextLine(line int) TextLine
-	LinePositionFrom(position int) LinePosition
-	TextPositionFrom(linePosition LinePosition) int
+	TextLine(line int) (TextLine, error)
+	LinePositionFrom(position int) (LinePosition, error)
+	TextPositionFrom(linePosition LinePosition) (int, error)
 	TextLines() []string
 }
 
@@ -41,7 +41,7 @@ func (lm lineMapImpl) LinePositionFrom(position int) (LinePosition, error) {
 		return nil, err
 	}
 	textLine := lm.findLineFrom(position)
-	return FromLineAndOffset(textLine.LineNo(), position-textLine.StartOffset()), nil
+	return LinePositionFromLineAndOffset(textLine.LineNo(), position-textLine.StartOffset()), nil
 }
 
 // TextPositionFrom converts a line position to a text position.

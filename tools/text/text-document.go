@@ -4,9 +4,9 @@ package text
 type TextDocument interface {
 	Apply(textDocumentChange TextDocumentChange) TextDocument
 	ToCharArray() []rune
-	Line(line int) TextLine
-	LinePositionFrom(textPosition int) LinePosition
-	TextPositionFrom(linePosition LinePosition) int
+	Line(line int) (TextLine, error)
+	LinePositionFrom(textPosition int) (LinePosition, error)
+	TextPositionFrom(linePosition LinePosition) (int, error)
 	TextLines() []string
 	Lines() LineMap
 	PopulateTextLineMap() LineMap
