@@ -1,6 +1,9 @@
 package text
 
-import "fmt"
+import (
+	"ballerina-lang-go/tools/utils"
+	"fmt"
+)
 
 // LineMap represents a collection of text lines in the TextDocument.
 type LineMap interface {
@@ -48,7 +51,7 @@ func (lm lineMapImpl) TextPositionFrom(linePosition LinePosition) (int, error) {
 	}
 	textLine := lm.textLines[linePosition.Line()]
 	if textLine.Length() < linePosition.Offset() {
-		return 0, fmt.Errorf("Cannot find a line with the character offset '%d'", linePosition.Offset())
+		return 0, utils.NewIllegalArgumentError(fmt.Sprintf("Cannot find a line with the character offset '%d'", linePosition.Offset()))
 	}
 	return textLine.StartOffset() + linePosition.Offset(), nil
 }
@@ -65,7 +68,7 @@ func (lm lineMapImpl) TextLines() []string {
 // positionRangeCheck validates that the position is within bounds.
 func (lm lineMapImpl) positionRangeCheck(position int) error {
 	if position < 0 || position > lm.textLines[lm.length-1].EndOffset() {
-		return fmt.Errorf("Index: '%d', Size: '%d'", position, lm.textLines[lm.length-1].EndOffset())
+		return utils.NewIndexOutOfBoundsError(fmt.Sprintf("Index: '%d', Size: '%d'", position, lm.textLines[lm.length-1].EndOffset()))
 	}
 	return nil
 }
@@ -73,7 +76,7 @@ func (lm lineMapImpl) positionRangeCheck(position int) error {
 // lineRangeCheck validates that the line number is within bounds.
 func (lm lineMapImpl) lineRangeCheck(lineNo int) error {
 	if lineNo < 0 || lineNo > lm.length {
-		return fmt.Errorf("Line number: '%d', Size: '%d'", lineNo, lm.length)
+		return utils.NewIndexOutOfBoundsError(fmt.Sprintf("Line number: '%d', Size: '%d'", lineNo, lm.length))
 	}
 	return nil
 }
