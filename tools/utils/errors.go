@@ -49,3 +49,21 @@ func NewIllegalArgumentError(message string) *IllegalArgumentError {
 		message: message,
 	}
 }
+
+// UnsupportedOperationError represents an error when an operation is not supported.
+// This corresponds to Java's UnsupportedOperationException.
+type UnsupportedOperationError struct {
+	message string
+}
+
+// Error implements the error interface.
+func (e UnsupportedOperationError) Error() string {
+	return e.message
+}
+
+// NewUnsupportedOperationError creates a new UnsupportedOperationError with the given message.
+func NewUnsupportedOperationError(message string) *UnsupportedOperationError {
+	return &UnsupportedOperationError{
+		message: message,
+	}
+}

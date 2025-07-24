@@ -7,11 +7,11 @@ type IRDiagnostic interface {
 }
 
 // irDiagnosticImpl is the concrete implementation of IRDiagnostic.
-type irDiagnosticImpl struct {
+type IRDiagnosticImpl struct {
 	// Fields will be added here as the Java class evolves
 }
 
 // NewIRDiagnostic constructs a new IRDiagnostic.
 func NewIRDiagnostic() IRDiagnostic {
-	return &irDiagnosticImpl{}
+	return &IRDiagnosticImpl{}
 }
