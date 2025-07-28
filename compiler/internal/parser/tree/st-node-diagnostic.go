@@ -1,16 +1,10 @@
 package tree
 
 import (
+	common "ballerina-lang-go/compiler"
 	"ballerina-lang-go/compiler/internal/diagnostics"
 	diagnosticsTools "ballerina-lang-go/tools/diagnostics"
 )
-
-// STNodeDiagnostic represents the internal representation of diagnostic that is related to an internal syntax node.
-type STNodeDiagnostic interface {
-	diagnostics.IRDiagnostic
-	DiagnosticCode() diagnosticsTools.DiagnosticCode
-	Args() []interface{}
-}
 
 // stNodeDiagnosticImpl is the concrete implementation of STNodeDiagnostic.
 type stNodeDiagnosticImpl struct {
@@ -20,7 +14,7 @@ type stNodeDiagnosticImpl struct {
 }
 
 // NewSTNodeDiagnostic constructs an STNodeDiagnostic with the given diagnostic code and arguments.
-func NewSTNodeDiagnostic(diagnosticCode diagnosticsTools.DiagnosticCode, args ...interface{}) STNodeDiagnostic {
+func NewSTNodeDiagnostic(diagnosticCode diagnosticsTools.DiagnosticCode, args ...interface{}) common.STNodeDiagnostic {
 	return &stNodeDiagnosticImpl{
 		diagnosticCode: diagnosticCode,
 		args:           args,
@@ -28,7 +22,7 @@ func NewSTNodeDiagnostic(diagnosticCode diagnosticsTools.DiagnosticCode, args ..
 }
 
 // FromDiagnosticCode creates an STNodeDiagnostic from the given diagnostic code and arguments.
-func FromDiagnosticCode(diagnosticCode diagnosticsTools.DiagnosticCode, args ...interface{}) STNodeDiagnostic {
+func FromDiagnosticCode(diagnosticCode diagnosticsTools.DiagnosticCode, args ...interface{}) common.STNodeDiagnostic {
 	return NewSTNodeDiagnostic(diagnosticCode, args...)
 }
 
