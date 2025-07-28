@@ -1,695 +1,549 @@
 package tree
 
-// SyntaxKind defines various kinds of syntax tree nodes, tokens and minutiae.
-type SyntaxKind uint16
-
-const (
-	// Special values (in the order from Java enum end)
-	None       SyntaxKind = 0
-	List       SyntaxKind = 1
-	EofToken   SyntaxKind = 2
-	ModulePart SyntaxKind = 3
-	Invalid    SyntaxKind = 4
-
-	// Keywords (50-399)
-	PublicKeyword     SyntaxKind = 50
-	PrivateKeyword    SyntaxKind = 51
-	RemoteKeyword     SyntaxKind = 52
-	AbstractKeyword   SyntaxKind = 53
-	ClientKeyword     SyntaxKind = 54
-	ImportKeyword     SyntaxKind = 100
-	FunctionKeyword   SyntaxKind = 101
-	ConstKeyword      SyntaxKind = 102
-	ListenerKeyword   SyntaxKind = 103
-	ServiceKeyword    SyntaxKind = 104
-	XmlnsKeyword      SyntaxKind = 105
-	AnnotationKeyword SyntaxKind = 106
-	TypeKeyword       SyntaxKind = 107
-	RecordKeyword     SyntaxKind = 108
-	ObjectKeyword     SyntaxKind = 109
-	AsKeyword         SyntaxKind = 111
-	OnKeyword         SyntaxKind = 112
-	ResourceKeyword   SyntaxKind = 113
-	FinalKeyword      SyntaxKind = 114
-	SourceKeyword     SyntaxKind = 115
-	WorkerKeyword     SyntaxKind = 117
-	ParameterKeyword  SyntaxKind = 118
-	FieldKeyword      SyntaxKind = 119
-	IsolatedKeyword   SyntaxKind = 120
-
-	ReturnsKeyword       SyntaxKind = 200
-	ReturnKeyword        SyntaxKind = 201
-	ExternalKeyword      SyntaxKind = 202
-	TrueKeyword          SyntaxKind = 203
-	FalseKeyword         SyntaxKind = 204
-	IfKeyword            SyntaxKind = 205
-	ElseKeyword          SyntaxKind = 206
-	WhileKeyword         SyntaxKind = 207
-	CheckKeyword         SyntaxKind = 208
-	CheckpanicKeyword    SyntaxKind = 209
-	PanicKeyword         SyntaxKind = 210
-	ContinueKeyword      SyntaxKind = 211
-	BreakKeyword         SyntaxKind = 212
-	TypeofKeyword        SyntaxKind = 213
-	IsKeyword            SyntaxKind = 214
-	NullKeyword          SyntaxKind = 215
-	LockKeyword          SyntaxKind = 216
-	ForkKeyword          SyntaxKind = 217
-	TrapKeyword          SyntaxKind = 218
-	InKeyword            SyntaxKind = 219
-	ForeachKeyword       SyntaxKind = 220
-	TableKeyword         SyntaxKind = 221
-	KeyKeyword           SyntaxKind = 222
-	LetKeyword           SyntaxKind = 223
-	NewKeyword           SyntaxKind = 224
-	FromKeyword          SyntaxKind = 225
-	WhereKeyword         SyntaxKind = 226
-	SelectKeyword        SyntaxKind = 227
-	StartKeyword         SyntaxKind = 228
-	FlushKeyword         SyntaxKind = 229
-	ConfigurableKeyword  SyntaxKind = 230
-	WaitKeyword          SyntaxKind = 231
-	DoKeyword            SyntaxKind = 232
-	TransactionKeyword   SyntaxKind = 233
-	TransactionalKeyword SyntaxKind = 234
-	CommitKeyword        SyntaxKind = 235
-	RollbackKeyword      SyntaxKind = 236
-	RetryKeyword         SyntaxKind = 237
-	EnumKeyword          SyntaxKind = 238
-	Base16Keyword        SyntaxKind = 239
-	Base64Keyword        SyntaxKind = 240
-	MatchKeyword         SyntaxKind = 241
-	ConflictKeyword      SyntaxKind = 242
-	LimitKeyword         SyntaxKind = 243
-	JoinKeyword          SyntaxKind = 244
-	OuterKeyword         SyntaxKind = 245
-	EqualsKeyword        SyntaxKind = 246
-	ClassKeyword         SyntaxKind = 247
-	OrderKeyword         SyntaxKind = 248
-	ByKeyword            SyntaxKind = 249
-	AscendingKeyword     SyntaxKind = 250
-	DescendingKeyword    SyntaxKind = 251
-	UnderscoreKeyword    SyntaxKind = 252
-	NotIsKeyword         SyntaxKind = 253
-	NaturalKeyword       SyntaxKind = 254
-
-	// Type keywords (300-319)
-	IntKeyword      SyntaxKind = 300
-	ByteKeyword     SyntaxKind = 301
-	FloatKeyword    SyntaxKind = 302
-	DecimalKeyword  SyntaxKind = 303
-	StringKeyword   SyntaxKind = 304
-	BooleanKeyword  SyntaxKind = 305
-	XmlKeyword      SyntaxKind = 306
-	JsonKeyword     SyntaxKind = 307
-	HandleKeyword   SyntaxKind = 308
-	AnyKeyword      SyntaxKind = 309
-	AnydataKeyword  SyntaxKind = 310
-	NeverKeyword    SyntaxKind = 311
-	VarKeyword      SyntaxKind = 312
-	MapKeyword      SyntaxKind = 313
-	FutureKeyword   SyntaxKind = 314
-	TypedescKeyword SyntaxKind = 315
-	ErrorKeyword    SyntaxKind = 316
-	StreamKeyword   SyntaxKind = 317
-	ReadonlyKeyword SyntaxKind = 318
-	DistinctKeyword SyntaxKind = 319
-	FailKeyword     SyntaxKind = 320
-
-	// Contextual keywords (400-402)
-	ReKeyword      SyntaxKind = 400
-	GroupKeyword   SyntaxKind = 401
-	CollectKeyword SyntaxKind = 402
-
-	// Separators (500-519)
-	OpenBraceToken      SyntaxKind = 500
-	CloseBraceToken     SyntaxKind = 501
-	OpenParenToken      SyntaxKind = 502
-	CloseParenToken     SyntaxKind = 503
-	OpenBracketToken    SyntaxKind = 504
-	CloseBracketToken   SyntaxKind = 505
-	SemicolonToken      SyntaxKind = 506
-	DotToken            SyntaxKind = 507
-	ColonToken          SyntaxKind = 508
-	CommaToken          SyntaxKind = 509
-	EllipsisToken       SyntaxKind = 510
-	OpenBracePipeToken  SyntaxKind = 511
-	CloseBracePipeToken SyntaxKind = 512
-	AtToken             SyntaxKind = 513
-	HashToken           SyntaxKind = 514
-	BacktickToken       SyntaxKind = 515
-	DoubleQuoteToken    SyntaxKind = 516
-	SingleQuoteToken    SyntaxKind = 517
-	DoubleBacktickToken SyntaxKind = 518
-	TripleBacktickToken SyntaxKind = 519
-
-	// Operators (550-595)
-	EqualToken                       SyntaxKind = 550
-	DoubleEqualToken                 SyntaxKind = 551
-	TripleEqualToken                 SyntaxKind = 552
-	PlusToken                        SyntaxKind = 553
-	MinusToken                       SyntaxKind = 554
-	SlashToken                       SyntaxKind = 555
-	PercentToken                     SyntaxKind = 556
-	AsteriskToken                    SyntaxKind = 557
-	LtToken                          SyntaxKind = 558
-	LtEqualToken                     SyntaxKind = 559
-	GtToken                          SyntaxKind = 560
-	RightDoubleArrowToken            SyntaxKind = 561
-	QuestionMarkToken                SyntaxKind = 562
-	PipeToken                        SyntaxKind = 563
-	GtEqualToken                     SyntaxKind = 564
-	ExclamationMarkToken             SyntaxKind = 565
-	NotEqualToken                    SyntaxKind = 566
-	NotDoubleEqualToken              SyntaxKind = 567
-	BitwiseAndToken                  SyntaxKind = 568
-	BitwiseXorToken                  SyntaxKind = 569
-	LogicalAndToken                  SyntaxKind = 570
-	LogicalOrToken                   SyntaxKind = 571
-	NegationToken                    SyntaxKind = 572
-	RightArrowToken                  SyntaxKind = 573
-	InterpolationStartToken          SyntaxKind = 574
-	XmlPiStartToken                  SyntaxKind = 575
-	XmlPiEndToken                    SyntaxKind = 576
-	XmlCommentStartToken             SyntaxKind = 577
-	XmlCommentEndToken               SyntaxKind = 578
-	SyncSendToken                    SyntaxKind = 579
-	LeftArrowToken                   SyntaxKind = 580
-	DoubleDotLtToken                 SyntaxKind = 580 // Note: Same value as LeftArrowToken in Java
-	DoubleLtToken                    SyntaxKind = 581
-	AnnotChainingToken               SyntaxKind = 582
-	OptionalChainingToken            SyntaxKind = 583
-	ElvisToken                       SyntaxKind = 584
-	DotLtToken                       SyntaxKind = 585
-	SlashLtToken                     SyntaxKind = 586
-	DoubleSlashDoubleAsteriskLtToken SyntaxKind = 587
-	SlashAsteriskToken               SyntaxKind = 588
-	DoubleGtToken                    SyntaxKind = 589
-	TripleGtToken                    SyntaxKind = 590
-	XmlCdataStartToken               SyntaxKind = 591
-	XmlCdataEndToken                 SyntaxKind = 592
-	BackSlashToken                   SyntaxKind = 593
-	DollarToken                      SyntaxKind = 594
-	EscapedMinusToken                SyntaxKind = 595
-
-	// Documentation reference types (900-908)
-	TypeDocReferenceToken       SyntaxKind = 900
-	ServiceDocReferenceToken    SyntaxKind = 901
-	VariableDocReferenceToken   SyntaxKind = 902
-	VarDocReferenceToken        SyntaxKind = 903
-	AnnotationDocReferenceToken SyntaxKind = 904
-	ModuleDocReferenceToken     SyntaxKind = 905
-	FunctionDocReferenceToken   SyntaxKind = 906
-	ParameterDocReferenceToken  SyntaxKind = 907
-	ConstDocReferenceToken      SyntaxKind = 908
-
-	// Literal tokens (1000-1007)
-	IdentifierToken                  SyntaxKind = 1000
-	StringLiteralToken               SyntaxKind = 1001
-	DecimalIntegerLiteralToken       SyntaxKind = 1002
-	HexIntegerLiteralToken           SyntaxKind = 1003
-	DecimalFloatingPointLiteralToken SyntaxKind = 1004
-	HexFloatingPointLiteralToken     SyntaxKind = 1005
-	XmlTextContent                   SyntaxKind = 1006
-	TemplateString                   SyntaxKind = 1007
-	PromptContent                    SyntaxKind = 1007 // Note: Same value as TemplateString in Java
-
-	// Documentation (1100-1104)
-	DocumentationDescription SyntaxKind = 1100
-	ParameterName            SyntaxKind = 1101
-	CodeContent              SyntaxKind = 1102
-	DeprecationLiteral       SyntaxKind = 1103
-	DocumentationString      SyntaxKind = 1104
-
-	// Other
-	InvalidToken SyntaxKind = 1191
-
-	// Statements (1200-1225)
-	BlockStatement               SyntaxKind = 1200
-	LocalVarDecl                 SyntaxKind = 1201
-	AssignmentStatement          SyntaxKind = 1202
-	IfElseStatement              SyntaxKind = 1203
-	ElseBlock                    SyntaxKind = 1204
-	WhileStatement               SyntaxKind = 1205
-	CallStatement                SyntaxKind = 1206
-	PanicStatement               SyntaxKind = 1207
-	ReturnStatement              SyntaxKind = 1208
-	ContinueStatement            SyntaxKind = 1209
-	BreakStatement               SyntaxKind = 1210
-	CompoundAssignmentStatement  SyntaxKind = 1211
-	LocalTypeDefinitionStatement SyntaxKind = 1212
-	ActionStatement              SyntaxKind = 1213
-	LockStatement                SyntaxKind = 1214
-	NamedWorkerDeclaration       SyntaxKind = 1215
-	ForkStatement                SyntaxKind = 1216
-	ForeachStatement             SyntaxKind = 1217
-	TransactionStatement         SyntaxKind = 1218
-	RollbackStatement            SyntaxKind = 1219
-	RetryStatement               SyntaxKind = 1220
-	XmlNamespaceDeclaration      SyntaxKind = 1221
-	MatchStatement               SyntaxKind = 1222
-	InvalidExpressionStatement   SyntaxKind = 1223
-	DoStatement                  SyntaxKind = 1224
-	FailStatement                SyntaxKind = 1225
-
-	// Expressions (1300-1348)
-	BinaryExpression                    SyntaxKind = 1300
-	BracedExpression                    SyntaxKind = 1301
-	FunctionCall                        SyntaxKind = 1302
-	QualifiedNameReference              SyntaxKind = 1303
-	IndexedExpression                   SyntaxKind = 1304
-	FieldAccess                         SyntaxKind = 1305
-	MethodCall                          SyntaxKind = 1306
-	CheckExpression                     SyntaxKind = 1307
-	MappingConstructor                  SyntaxKind = 1308
-	TypeofExpression                    SyntaxKind = 1309
-	UnaryExpression                     SyntaxKind = 1310
-	TypeTestExpression                  SyntaxKind = 1311
-	SimpleNameReference                 SyntaxKind = 1313
-	TrapExpression                      SyntaxKind = 1314
-	ListConstructor                     SyntaxKind = 1315
-	TypeCastExpression                  SyntaxKind = 1316
-	TableConstructor                    SyntaxKind = 1317
-	LetExpression                       SyntaxKind = 1318
-	XmlTemplateExpression               SyntaxKind = 1319
-	RawTemplateExpression               SyntaxKind = 1320
-	StringTemplateExpression            SyntaxKind = 1321
-	ImplicitNewExpression               SyntaxKind = 1322
-	ExplicitNewExpression               SyntaxKind = 1323
-	ParenthesizedArgList                SyntaxKind = 1324
-	ExplicitAnonymousFunctionExpression SyntaxKind = 1325
-	ImplicitAnonymousFunctionExpression SyntaxKind = 1326
-	QueryExpression                     SyntaxKind = 1327
-	AnnotAccess                         SyntaxKind = 1328
-	OptionalFieldAccess                 SyntaxKind = 1329
-	ConditionalExpression               SyntaxKind = 1330
-	TransactionalExpression             SyntaxKind = 1331
-	ObjectConstructor                   SyntaxKind = 1332
-	XmlFilterExpression                 SyntaxKind = 1333
-	XmlStepExpression                   SyntaxKind = 1334
-	XmlNamePatternChain                 SyntaxKind = 1335
-	XmlAtomicNamePattern                SyntaxKind = 1336
-	StringLiteral                       SyntaxKind = 1337
-	NumericLiteral                      SyntaxKind = 1338
-	BooleanLiteral                      SyntaxKind = 1339
-	NilLiteral                          SyntaxKind = 1340
-	NullLiteral                         SyntaxKind = 1341
-	ByteArrayLiteral                    SyntaxKind = 1342
-	AsteriskLiteral                     SyntaxKind = 1343
-	RequiredExpression                  SyntaxKind = 1344
-	ErrorConstructor                    SyntaxKind = 1345
-	RegexTemplateExpression             SyntaxKind = 1346 // Note: Out of sequence in Java
-	XmlStepMethodCallExtend             SyntaxKind = 1346 // Note: Same value as RegexTemplateExpression in Java
-	XmlStepIndexedExtend                SyntaxKind = 1347
-	NaturalExpression                   SyntaxKind = 1348
-
-	// Minutiae kinds (1500-1503)
-	WhitespaceMinutiae  SyntaxKind = 1500
-	EndOfLineMinutiae   SyntaxKind = 1501
-	CommentMinutiae     SyntaxKind = 1502
-	InvalidNodeMinutiae SyntaxKind = 1503
-
-	// Invalid nodes (1601)
-	InvalidTokenMinutiaeNode SyntaxKind = 1601
-
-	// Module-level declarations (2000-2010)
-	ImportDeclaration             SyntaxKind = 2000
-	FunctionDefinition            SyntaxKind = 2001
-	TypeDefinition                SyntaxKind = 2002
-	ServiceDeclaration            SyntaxKind = 2003
-	ModuleVarDecl                 SyntaxKind = 2004
-	ListenerDeclaration           SyntaxKind = 2005
-	ConstDeclaration              SyntaxKind = 2006
-	AnnotationDeclaration         SyntaxKind = 2007
-	ModuleXmlNamespaceDeclaration SyntaxKind = 2008
-	EnumDeclaration               SyntaxKind = 2009
-	ClassDefinition               SyntaxKind = 2010
-
-	// Type descriptors (2000-2034) - Note: OVERLAPS with module declarations in original Java!
-	TypeDesc              SyntaxKind = 2000 // Same as ImportDeclaration
-	RecordTypeDesc        SyntaxKind = 2001 // Same as FunctionDefinition
-	ObjectTypeDesc        SyntaxKind = 2002 // Same as TypeDefinition
-	NilTypeDesc           SyntaxKind = 2003 // Same as ServiceDeclaration
-	OptionalTypeDesc      SyntaxKind = 2004 // Same as ModuleVarDecl
-	ArrayTypeDesc         SyntaxKind = 2005 // Same as ListenerDeclaration
-	IntTypeDesc           SyntaxKind = 2006 // Same as ConstDeclaration
-	ByteTypeDesc          SyntaxKind = 2007 // Same as AnnotationDeclaration
-	FloatTypeDesc         SyntaxKind = 2008 // Same as ModuleXmlNamespaceDeclaration
-	DecimalTypeDesc       SyntaxKind = 2009 // Same as EnumDeclaration
-	StringTypeDesc        SyntaxKind = 2010 // Same as ClassDefinition
-	BooleanTypeDesc       SyntaxKind = 2011
-	XmlTypeDesc           SyntaxKind = 2012
-	JsonTypeDesc          SyntaxKind = 2013
-	HandleTypeDesc        SyntaxKind = 2014
-	AnyTypeDesc           SyntaxKind = 2015
-	AnydataTypeDesc       SyntaxKind = 2016
-	NeverTypeDesc         SyntaxKind = 2017
-	VarTypeDesc           SyntaxKind = 2018
-	ServiceTypeDesc       SyntaxKind = 2019
-	MapTypeDesc           SyntaxKind = 2020
-	UnionTypeDesc         SyntaxKind = 2021
-	ErrorTypeDesc         SyntaxKind = 2022
-	StreamTypeDesc        SyntaxKind = 2023
-	TableTypeDesc         SyntaxKind = 2024
-	FunctionTypeDesc      SyntaxKind = 2025
-	TupleTypeDesc         SyntaxKind = 2026
-	ParenthesisedTypeDesc SyntaxKind = 2027
-	ReadonlyTypeDesc      SyntaxKind = 2028
-	DistinctTypeDesc      SyntaxKind = 2029
-	IntersectionTypeDesc  SyntaxKind = 2030
-	SingletonTypeDesc     SyntaxKind = 2031
-	TypeReferenceTypeDesc SyntaxKind = 2032
-	TypedescTypeDesc      SyntaxKind = 2033
-	FutureTypeDesc        SyntaxKind = 2034
-
-	// Actions (2500-2512)
-	RemoteMethodCallAction     SyntaxKind = 2500
-	BracedAction               SyntaxKind = 2501
-	CheckAction                SyntaxKind = 2502
-	StartAction                SyntaxKind = 2503
-	TrapAction                 SyntaxKind = 2504
-	FlushAction                SyntaxKind = 2505
-	AsyncSendAction            SyntaxKind = 2506
-	SyncSendAction             SyntaxKind = 2507
-	ReceiveAction              SyntaxKind = 2508
-	WaitAction                 SyntaxKind = 2509
-	QueryAction                SyntaxKind = 2510
-	CommitAction               SyntaxKind = 2511
-	ClientResourceAccessAction SyntaxKind = 2512
-
-	// Other syntax elements (3000-3096)
-	ReturnTypeDescriptor          SyntaxKind = 3000
-	RequiredParam                 SyntaxKind = 3001
-	DefaultableParam              SyntaxKind = 3002
-	RestParam                     SyntaxKind = 3003
-	ExternalFunctionBody          SyntaxKind = 3004
-	RecordField                   SyntaxKind = 3005
-	RecordFieldWithDefaultValue   SyntaxKind = 3006
-	TypeReference                 SyntaxKind = 3007
-	RecordRestType                SyntaxKind = 3008
-	PositionalArg                 SyntaxKind = 3009
-	NamedArg                      SyntaxKind = 3010
-	RestArg                       SyntaxKind = 3011
-	ObjectField                   SyntaxKind = 3012
-	ImportOrgName                 SyntaxKind = 3013
-	ModuleName                    SyntaxKind = 3014
-	SubModuleName                 SyntaxKind = 3015
-	ImportVersion                 SyntaxKind = 3016
-	OrderByClause                 SyntaxKind = 3017
-	ImportPrefix                  SyntaxKind = 3018
-	SpecificField                 SyntaxKind = 3019
-	ComputedNameField             SyntaxKind = 3020
-	SpreadField                   SyntaxKind = 3021
-	OrderKey                      SyntaxKind = 3022
-	ResourceAccessorDefinition    SyntaxKind = 3023
-	Annotation                    SyntaxKind = 3024
-	Metadata                      SyntaxKind = 3025
-	ArrayDimension                SyntaxKind = 3026
-	AnnotationAttachPoint         SyntaxKind = 3028
-	FunctionBodyBlock             SyntaxKind = 3029
-	NamedWorkerDeclarator         SyntaxKind = 3030
-	ExpressionFunctionBody        SyntaxKind = 3031
-	TypeCastParam                 SyntaxKind = 3032
-	KeySpecifier                  SyntaxKind = 3033
-	ExplicitTypeParams            SyntaxKind = 3034
-	LetVarDecl                    SyntaxKind = 3035
-	StreamTypeParams              SyntaxKind = 3036
-	FunctionSignature             SyntaxKind = 3037
-	InferParamList                SyntaxKind = 3038
-	TypeParameter                 SyntaxKind = 3039
-	KeyTypeConstraint             SyntaxKind = 3040
-	QueryConstructType            SyntaxKind = 3041
-	FromClause                    SyntaxKind = 3042
-	WhereClause                   SyntaxKind = 3043
-	LetClause                     SyntaxKind = 3044
-	QueryPipeline                 SyntaxKind = 3045
-	SelectClause                  SyntaxKind = 3046
-	MethodDeclaration             SyntaxKind = 3047
-	TypedBindingPattern           SyntaxKind = 3048
-	BindingPattern                SyntaxKind = 3049
-	CaptureBindingPattern         SyntaxKind = 3050
-	RestBindingPattern            SyntaxKind = 3051
-	ListBindingPattern            SyntaxKind = 3052
-	ReceiveFields                 SyntaxKind = 3053
-	RestType                      SyntaxKind = 3054
-	WaitFieldsList                SyntaxKind = 3055
-	WaitField                     SyntaxKind = 3056
-	EnumMember                    SyntaxKind = 3057
-	BracketedList                 SyntaxKind = 3058
-	ListBpOrListConstructor       SyntaxKind = 3059
-	MappingBindingPattern         SyntaxKind = 3060
-	FieldBindingPattern           SyntaxKind = 3061
-	MappingBpOrMappingConstructor SyntaxKind = 3062
-	WildcardBindingPattern        SyntaxKind = 3063
-	MatchClause                   SyntaxKind = 3064
-	MatchGuard                    SyntaxKind = 3065
-	ObjectMethodDefinition        SyntaxKind = 3066
-	OnConflictClause              SyntaxKind = 3067
-	LimitClause                   SyntaxKind = 3068
-	JoinClause                    SyntaxKind = 3069
-	OnClause                      SyntaxKind = 3070
-	ListMatchPattern              SyntaxKind = 3071
-	RestMatchPattern              SyntaxKind = 3072
-	MappingMatchPattern           SyntaxKind = 3073
-	FieldMatchPattern             SyntaxKind = 3074
-	ErrorMatchPattern             SyntaxKind = 3075
-	NamedArgMatchPattern          SyntaxKind = 3076
-	ErrorBindingPattern           SyntaxKind = 3077
-	NamedArgBindingPattern        SyntaxKind = 3078
-	TupleTypeDescOrListConst      SyntaxKind = 3079
-	OnFailClause                  SyntaxKind = 3080
-	ResourceAccessorDeclaration   SyntaxKind = 3081
-	ResourcePathSegmentParam      SyntaxKind = 3082
-	ResourcePathRestParam         SyntaxKind = 3083
-	IncludedRecordParam           SyntaxKind = 3084
-	ArrayTypeDescOrMemberAccess   SyntaxKind = 3085
-	InferredTypedescDefault       SyntaxKind = 3086
-	SpreadMember                  SyntaxKind = 3087
-	ComputedResourceAccessSegment SyntaxKind = 3088
-	ResourceAccessRestSegment     SyntaxKind = 3089
-	MemberTypeDesc                SyntaxKind = 3090
-	GroupingKeyVarDeclaration     SyntaxKind = 3091
-	GroupingKeyVarName            SyntaxKind = 3092
-	GroupByClause                 SyntaxKind = 3093
-	CollectClause                 SyntaxKind = 3094
-	AlternateReceive              SyntaxKind = 3095
-	ReceiveField                  SyntaxKind = 3096
-
-	// XML elements (4000-4012)
-	XmlElement         SyntaxKind = 4000
-	XmlEmptyElement    SyntaxKind = 4001
-	XmlText            SyntaxKind = 4002
-	XmlComment         SyntaxKind = 4003
-	XmlPi              SyntaxKind = 4004
-	XmlElementStartTag SyntaxKind = 4005
-	XmlElementEndTag   SyntaxKind = 4006
-	XmlSimpleName      SyntaxKind = 4007
-	XmlQualifiedName   SyntaxKind = 4008
-	XmlAttribute       SyntaxKind = 4009
-	XmlAttributeValue  SyntaxKind = 4010
-	Interpolation      SyntaxKind = 4011
-	XmlCdata           SyntaxKind = 4012
-
-	// Regular expressions (4013-4048)
-	ReSequence                             SyntaxKind = 4013
-	ReAtomQuantifier                       SyntaxKind = 4014
-	ReAssertion                            SyntaxKind = 4015
-	ReLiteralCharDotOrEscape               SyntaxKind = 4016
-	ReQuoteEscape                          SyntaxKind = 4017
-	ReSimpleCharClassEscape                SyntaxKind = 4018
-	ReUnicodePropertyEscape                SyntaxKind = 4019
-	ReUnicodeScript                        SyntaxKind = 4020
-	ReUnicodeGeneralCategory               SyntaxKind = 4021
-	ReCharacterClass                       SyntaxKind = 4022
-	ReCharSetAtomWithReCharSetNoDash       SyntaxKind = 4023
-	ReCharSetAtomNoDashWithReCharSetNoDash SyntaxKind = 4024
-	ReCharSetRange                         SyntaxKind = 4025
-	ReCharSetRangeNoDash                   SyntaxKind = 4026
-	ReCharSetRangeWithReCharSet            SyntaxKind = 4027
-	ReCharSetRangeNoDashWithReCharSet      SyntaxKind = 4028
-	ReCapturingGroup                       SyntaxKind = 4029
-	ReFlagExpr                             SyntaxKind = 4030
-	ReFlagsOnOff                           SyntaxKind = 4031
-	ReFlags                                SyntaxKind = 4032
-	ReQuantifier                           SyntaxKind = 4033
-	ReBracedQuantifier                     SyntaxKind = 4034
-	ReAssertionValue                       SyntaxKind = 4035
-	ReLiteralChar                          SyntaxKind = 4036
-	ReNumericEscape                        SyntaxKind = 4037
-	ReControlEscape                        SyntaxKind = 4038
-	ReSimpleCharClassCode                  SyntaxKind = 4039
-	ReProperty                             SyntaxKind = 4040
-	ReUnicodeScriptStart                   SyntaxKind = 4041
-	ReUnicodePropertyValue                 SyntaxKind = 4042
-	ReUnicodeGeneralCategoryStart          SyntaxKind = 4043
-	ReUnicodeGeneralCategoryName           SyntaxKind = 4044
-	ReCharSetAtomNoDash                    SyntaxKind = 4045
-	ReFlagsValue                           SyntaxKind = 4046
-	ReBaseQuantifierValue                  SyntaxKind = 4047
-	Digit                                  SyntaxKind = 4048
-
-	// Documentation (4500-4509)
-	MarkdownDocumentation                    SyntaxKind = 4500
-	MarkdownDocumentationLine                SyntaxKind = 4501
-	MarkdownReferenceDocumentationLine       SyntaxKind = 4502
-	MarkdownParameterDocumentationLine       SyntaxKind = 4503
-	MarkdownReturnParameterDocumentationLine SyntaxKind = 4504
-	MarkdownDeprecationDocumentationLine     SyntaxKind = 4505
-	MarkdownCodeLine                         SyntaxKind = 4506
-	BallerinaNameReference                   SyntaxKind = 4507
-	MarkdownCodeBlock                        SyntaxKind = 4508
-	InlineCodeReference                      SyntaxKind = 4509
-)
-
-// String returns the string representation of the syntax kind.
-func (sk SyntaxKind) String() string {
-	switch sk {
-	case None:
-		return "NONE"
-	case List:
-		return "LIST"
-	case EofToken:
-		return "EOF_TOKEN"
-	case ModulePart:
-		return "MODULE_PART"
-	case Invalid:
-		return "INVALID"
-
-	// Keywords
-	case PublicKeyword:
-		return "PUBLIC_KEYWORD"
-	case PrivateKeyword:
-		return "PRIVATE_KEYWORD"
-	case RemoteKeyword:
-		return "REMOTE_KEYWORD"
-	case AbstractKeyword:
-		return "ABSTRACT_KEYWORD"
-	case ClientKeyword:
-		return "CLIENT_KEYWORD"
-	case ImportKeyword:
-		return "IMPORT_KEYWORD"
-	case FunctionKeyword:
-		return "FUNCTION_KEYWORD"
-	case ConstKeyword:
-		return "CONST_KEYWORD"
-	case ListenerKeyword:
-		return "LISTENER_KEYWORD"
-	case ServiceKeyword:
-		return "SERVICE_KEYWORD"
-	case XmlnsKeyword:
-		return "XMLNS_KEYWORD"
-	case AnnotationKeyword:
-		return "ANNOTATION_KEYWORD"
-	case TypeKeyword:
-		return "TYPE_KEYWORD"
-	case RecordKeyword:
-		return "RECORD_KEYWORD"
-	case ObjectKeyword:
-		return "OBJECT_KEYWORD"
-	case AsKeyword:
-		return "AS_KEYWORD"
-	case OnKeyword:
-		return "ON_KEYWORD"
-	case ResourceKeyword:
-		return "RESOURCE_KEYWORD"
-	case FinalKeyword:
-		return "FINAL_KEYWORD"
-	case SourceKeyword:
-		return "SOURCE_KEYWORD"
-	case WorkerKeyword:
-		return "WORKER_KEYWORD"
-	case ParameterKeyword:
-		return "PARAMETER_KEYWORD"
-	case FieldKeyword:
-		return "FIELD_KEYWORD"
-	case IsolatedKeyword:
-		return "ISOLATED_KEYWORD"
-
-	// Add more cases as needed...
-	default:
-		return "UNKNOWN"
-	}
+type SyntaxKind struct {
+	tag      uint16
+	strValue string
 }
 
-// StringValue returns the string value associated with the syntax kind.
-func (sk SyntaxKind) StringValue() string {
-	switch sk {
-	// Keywords with string values
-	case PublicKeyword:
-		return "public"
-	case PrivateKeyword:
-		return "private"
-	case RemoteKeyword:
-		return "remote"
-	case AbstractKeyword:
-		return "abstract"
-	case ClientKeyword:
-		return "client"
-	case ImportKeyword:
-		return "import"
-	case FunctionKeyword:
-		return "function"
-	case ConstKeyword:
-		return "const"
-	case ListenerKeyword:
-		return "listener"
-	case ServiceKeyword:
-		return "service"
-	case XmlnsKeyword:
-		return "xmlns"
-	case AnnotationKeyword:
-		return "annotation"
-	case TypeKeyword:
-		return "type"
-	case RecordKeyword:
-		return "record"
-	case ObjectKeyword:
-		return "object"
-	case AsKeyword:
-		return "as"
-	case OnKeyword:
-		return "on"
-	case ResourceKeyword:
-		return "resource"
-	case FinalKeyword:
-		return "final"
-	case SourceKeyword:
-		return "source"
-	case WorkerKeyword:
-		return "worker"
-	case ParameterKeyword:
-		return "parameter"
-	case FieldKeyword:
-		return "field"
-	case IsolatedKeyword:
-		return "isolated"
+func (sk SyntaxKind) String() string {
+	return sk.strValue
+}
+
+var (
+	PUBLIC_KEYWORD     = SyntaxKind{tag: 50, strValue: "public"}
+	PRIVATE_KEYWORD    = SyntaxKind{tag: 51, strValue: "private"}
+	REMOTE_KEYWORD     = SyntaxKind{tag: 52, strValue: "remote"}
+	ABSTRACT_KEYWORD   = SyntaxKind{tag: 53, strValue: "abstract"}
+	CLIENT_KEYWORD     = SyntaxKind{tag: 54, strValue: "client"}
+	IMPORT_KEYWORD     = SyntaxKind{tag: 100, strValue: "import"}
+	FUNCTION_KEYWORD   = SyntaxKind{tag: 101, strValue: "function"}
+	CONST_KEYWORD      = SyntaxKind{tag: 102, strValue: "const"}
+	LISTENER_KEYWORD   = SyntaxKind{tag: 103, strValue: "listener"}
+	SERVICE_KEYWORD    = SyntaxKind{tag: 104, strValue: "service"}
+	XMLNS_KEYWORD      = SyntaxKind{tag: 105, strValue: "xmlns"}
+	ANNOTATION_KEYWORD = SyntaxKind{tag: 106, strValue: "annotation"}
+	TYPE_KEYWORD       = SyntaxKind{tag: 107, strValue: "type"}
+	RECORD_KEYWORD     = SyntaxKind{tag: 108, strValue: "record"}
+	OBJECT_KEYWORD     = SyntaxKind{tag: 109, strValue: "object"}
+	AS_KEYWORD         = SyntaxKind{tag: 111, strValue: "as"}
+	ON_KEYWORD         = SyntaxKind{tag: 112, strValue: "on"}
+	RESOURCE_KEYWORD   = SyntaxKind{tag: 113, strValue: "resource"}
+	FINAL_KEYWORD      = SyntaxKind{tag: 114, strValue: "final"}
+	SOURCE_KEYWORD     = SyntaxKind{tag: 115, strValue: "source"}
+	WORKER_KEYWORD     = SyntaxKind{tag: 117, strValue: "worker"}
+	PARAMETER_KEYWORD  = SyntaxKind{tag: 118, strValue: "parameter"}
+	FIELD_KEYWORD      = SyntaxKind{tag: 119, strValue: "field"}
+	ISOLATED_KEYWORD   = SyntaxKind{tag: 120, strValue: "isolated"}
+
+	RETURNS_KEYWORD       = SyntaxKind{tag: 200, strValue: "returns"}
+	RETURN_KEYWORD        = SyntaxKind{tag: 201, strValue: "return"}
+	EXTERNAL_KEYWORD      = SyntaxKind{tag: 202, strValue: "external"}
+	TRUE_KEYWORD          = SyntaxKind{tag: 203, strValue: "true"}
+	FALSE_KEYWORD         = SyntaxKind{tag: 204, strValue: "false"}
+	IF_KEYWORD            = SyntaxKind{tag: 205, strValue: "if"}
+	ELSE_KEYWORD          = SyntaxKind{tag: 206, strValue: "else"}
+	WHILE_KEYWORD         = SyntaxKind{tag: 207, strValue: "while"}
+	CHECK_KEYWORD         = SyntaxKind{tag: 208, strValue: "check"}
+	CHECKPANIC_KEYWORD    = SyntaxKind{tag: 209, strValue: "checkpanic"}
+	PANIC_KEYWORD         = SyntaxKind{tag: 210, strValue: "panic"}
+	CONTINUE_KEYWORD      = SyntaxKind{tag: 211, strValue: "continue"}
+	BREAK_KEYWORD         = SyntaxKind{tag: 212, strValue: "break"}
+	TYPEOF_KEYWORD        = SyntaxKind{tag: 213, strValue: "typeof"}
+	IS_KEYWORD            = SyntaxKind{tag: 214, strValue: "is"}
+	NULL_KEYWORD          = SyntaxKind{tag: 215, strValue: "null"}
+	LOCK_KEYWORD          = SyntaxKind{tag: 216, strValue: "lock"}
+	FORK_KEYWORD          = SyntaxKind{tag: 217, strValue: "fork"}
+	TRAP_KEYWORD          = SyntaxKind{tag: 218, strValue: "trap"}
+	IN_KEYWORD            = SyntaxKind{tag: 219, strValue: "in"}
+	FOREACH_KEYWORD       = SyntaxKind{tag: 220, strValue: "foreach"}
+	TABLE_KEYWORD         = SyntaxKind{tag: 221, strValue: "table"}
+	KEY_KEYWORD           = SyntaxKind{tag: 222, strValue: "key"}
+	LET_KEYWORD           = SyntaxKind{tag: 223, strValue: "let"}
+	NEW_KEYWORD           = SyntaxKind{tag: 224, strValue: "new"}
+	FROM_KEYWORD          = SyntaxKind{tag: 225, strValue: "from"}
+	WHERE_KEYWORD         = SyntaxKind{tag: 226, strValue: "where"}
+	SELECT_KEYWORD        = SyntaxKind{tag: 227, strValue: "select"}
+	START_KEYWORD         = SyntaxKind{tag: 228, strValue: "start"}
+	FLUSH_KEYWORD         = SyntaxKind{tag: 229, strValue: "flush"}
+	CONFIGURABLE_KEYWORD  = SyntaxKind{tag: 230, strValue: "configurable"}
+	WAIT_KEYWORD          = SyntaxKind{tag: 231, strValue: "wait"}
+	DO_KEYWORD            = SyntaxKind{tag: 232, strValue: "do"}
+	TRANSACTION_KEYWORD   = SyntaxKind{tag: 233, strValue: "transaction"}
+	TRANSACTIONAL_KEYWORD = SyntaxKind{tag: 234, strValue: "transactional"}
+	COMMIT_KEYWORD        = SyntaxKind{tag: 235, strValue: "commit"}
+	ROLLBACK_KEYWORD      = SyntaxKind{tag: 236, strValue: "rollback"}
+	RETRY_KEYWORD         = SyntaxKind{tag: 237, strValue: "retry"}
+	ENUM_KEYWORD          = SyntaxKind{tag: 238, strValue: "enum"}
+	BASE16_KEYWORD        = SyntaxKind{tag: 239, strValue: "base16"}
+	BASE64_KEYWORD        = SyntaxKind{tag: 240, strValue: "base64"}
+	MATCH_KEYWORD         = SyntaxKind{tag: 241, strValue: "match"}
+	CONFLICT_KEYWORD      = SyntaxKind{tag: 242, strValue: "conflict"}
+	LIMIT_KEYWORD         = SyntaxKind{tag: 243, strValue: "limit"}
+	JOIN_KEYWORD          = SyntaxKind{tag: 244, strValue: "join"}
+	OUTER_KEYWORD         = SyntaxKind{tag: 245, strValue: "outer"}
+	EQUALS_KEYWORD        = SyntaxKind{tag: 246, strValue: "equals"}
+	CLASS_KEYWORD         = SyntaxKind{tag: 247, strValue: "class"}
+	ORDER_KEYWORD         = SyntaxKind{tag: 248, strValue: "order"}
+	BY_KEYWORD            = SyntaxKind{tag: 249, strValue: "by"}
+	ASCENDING_KEYWORD     = SyntaxKind{tag: 250, strValue: "ascending"}
+	DESCENDING_KEYWORD    = SyntaxKind{tag: 251, strValue: "descending"}
+	UNDERSCORE_KEYWORD    = SyntaxKind{tag: 252, strValue: "_"}
+	NOT_IS_KEYWORD        = SyntaxKind{tag: 253, strValue: "!is"}
+	NATURAL_KEYWORD       = SyntaxKind{tag: 254, strValue: "natural"}
+
+	// Type keywords
+	INT_KEYWORD      = SyntaxKind{tag: 300, strValue: "int"}
+	BYTE_KEYWORD     = SyntaxKind{tag: 301, strValue: "byte"}
+	FLOAT_KEYWORD    = SyntaxKind{tag: 302, strValue: "float"}
+	DECIMAL_KEYWORD  = SyntaxKind{tag: 303, strValue: "decimal"}
+	STRING_KEYWORD   = SyntaxKind{tag: 304, strValue: "string"}
+	BOOLEAN_KEYWORD  = SyntaxKind{tag: 305, strValue: "boolean"}
+	XML_KEYWORD      = SyntaxKind{tag: 306, strValue: "xml"}
+	JSON_KEYWORD     = SyntaxKind{tag: 307, strValue: "json"}
+	HANDLE_KEYWORD   = SyntaxKind{tag: 308, strValue: "handle"}
+	ANY_KEYWORD      = SyntaxKind{tag: 309, strValue: "any"}
+	ANYDATA_KEYWORD  = SyntaxKind{tag: 310, strValue: "anydata"}
+	NEVER_KEYWORD    = SyntaxKind{tag: 311, strValue: "never"}
+	VAR_KEYWORD      = SyntaxKind{tag: 312, strValue: "var"}
+	MAP_KEYWORD      = SyntaxKind{tag: 313, strValue: "map"}
+	FUTURE_KEYWORD   = SyntaxKind{tag: 314, strValue: "future"}
+	TYPEDESC_KEYWORD = SyntaxKind{tag: 315, strValue: "typedesc"}
+	ERROR_KEYWORD    = SyntaxKind{tag: 316, strValue: "error"}
+	STREAM_KEYWORD   = SyntaxKind{tag: 317, strValue: "stream"}
+	READONLY_KEYWORD = SyntaxKind{tag: 318, strValue: "readonly"}
+	DISTINCT_KEYWORD = SyntaxKind{tag: 319, strValue: "distinct"}
+	FAIL_KEYWORD     = SyntaxKind{tag: 320, strValue: "fail"}
+
+	// Contextual keywords
+	RE_KEYWORD      = SyntaxKind{tag: 400, strValue: "re"} // Any kind above this is considered as a keyword
+	GROUP_KEYWORD   = SyntaxKind{tag: 401, strValue: "group"}
+	COLLECT_KEYWORD = SyntaxKind{tag: 402, strValue: "collect"}
 
 	// Separators
-	case OpenBraceToken:
-		return "{"
-	case CloseBraceToken:
-		return "}"
-	case OpenParenToken:
-		return "("
-	case CloseParenToken:
-		return ")"
-	case OpenBracketToken:
-		return "["
-	case CloseBracketToken:
-		return "]"
-	case SemicolonToken:
-		return ";"
-	case DotToken:
-		return "."
-	case ColonToken:
-		return ":"
-	case CommaToken:
-		return ","
-	case EllipsisToken:
-		return "..."
+	OPEN_BRACE_TOKEN       = SyntaxKind{tag: 500, strValue: "{"}
+	CLOSE_BRACE_TOKEN      = SyntaxKind{tag: 501, strValue: "}"}
+	OPEN_PAREN_TOKEN       = SyntaxKind{tag: 502, strValue: "("}
+	CLOSE_PAREN_TOKEN      = SyntaxKind{tag: 503, strValue: ")"}
+	OPEN_BRACKET_TOKEN     = SyntaxKind{tag: 504, strValue: "["}
+	CLOSE_BRACKET_TOKEN    = SyntaxKind{tag: 505, strValue: "]"}
+	SEMICOLON_TOKEN        = SyntaxKind{tag: 506, strValue: ";"}
+	DOT_TOKEN              = SyntaxKind{tag: 507, strValue: "."}
+	COLON_TOKEN            = SyntaxKind{tag: 508, strValue: ":"}
+	COMMA_TOKEN            = SyntaxKind{tag: 509, strValue: ","}
+	ELLIPSIS_TOKEN         = SyntaxKind{tag: 510, strValue: "..."}
+	OPEN_BRACE_PIPE_TOKEN  = SyntaxKind{tag: 511, strValue: "{|"}
+	CLOSE_BRACE_PIPE_TOKEN = SyntaxKind{tag: 512, strValue: "|}"}
+	AT_TOKEN               = SyntaxKind{tag: 513, strValue: "@"}
+	HASH_TOKEN             = SyntaxKind{tag: 514, strValue: "#"}
+	BACKTICK_TOKEN         = SyntaxKind{tag: 515, strValue: "`"}
+	DOUBLE_QUOTE_TOKEN     = SyntaxKind{tag: 516, strValue: "\""}
+	SINGLE_QUOTE_TOKEN     = SyntaxKind{tag: 517, strValue: "'"}
+	DOUBLE_BACKTICK_TOKEN  = SyntaxKind{tag: 518, strValue: "``"}
+	TRIPLE_BACKTICK_TOKEN  = SyntaxKind{tag: 519, strValue: "```"}
 
-	// Add more cases as needed...
-	default:
-		return ""
-	}
-}
+	// Operators
+	EQUAL_TOKEN                           = SyntaxKind{tag: 550, strValue: "="}
+	DOUBLE_EQUAL_TOKEN                    = SyntaxKind{tag: 551, strValue: "=="}
+	TRIPPLE_EQUAL_TOKEN                   = SyntaxKind{tag: 552, strValue: "==="}
+	PLUS_TOKEN                            = SyntaxKind{tag: 553, strValue: "+"}
+	MINUS_TOKEN                           = SyntaxKind{tag: 554, strValue: "-"}
+	SLASH_TOKEN                           = SyntaxKind{tag: 555, strValue: "/"}
+	PERCENT_TOKEN                         = SyntaxKind{tag: 556, strValue: "%"}
+	ASTERISK_TOKEN                        = SyntaxKind{tag: 557, strValue: "*"}
+	LT_TOKEN                              = SyntaxKind{tag: 558, strValue: "<"}
+	LT_EQUAL_TOKEN                        = SyntaxKind{tag: 559, strValue: "<="}
+	GT_TOKEN                              = SyntaxKind{tag: 560, strValue: ">"}
+	RIGHT_DOUBLE_ARROW_TOKEN              = SyntaxKind{tag: 561, strValue: "=>"}
+	QUESTION_MARK_TOKEN                   = SyntaxKind{tag: 562, strValue: "?"}
+	PIPE_TOKEN                            = SyntaxKind{tag: 563, strValue: "|"}
+	GT_EQUAL_TOKEN                        = SyntaxKind{tag: 564, strValue: ">="}
+	EXCLAMATION_MARK_TOKEN                = SyntaxKind{tag: 565, strValue: "!"}
+	NOT_EQUAL_TOKEN                       = SyntaxKind{tag: 566, strValue: "!="}
+	NOT_DOUBLE_EQUAL_TOKEN                = SyntaxKind{tag: 567, strValue: "!=="}
+	BITWISE_AND_TOKEN                     = SyntaxKind{tag: 568, strValue: "&"}
+	BITWISE_XOR_TOKEN                     = SyntaxKind{tag: 569, strValue: "^"}
+	LOGICAL_AND_TOKEN                     = SyntaxKind{tag: 570, strValue: "&&"}
+	LOGICAL_OR_TOKEN                      = SyntaxKind{tag: 571, strValue: "||"}
+	NEGATION_TOKEN                        = SyntaxKind{tag: 572, strValue: "~"}
+	RIGHT_ARROW_TOKEN                     = SyntaxKind{tag: 573, strValue: "->"}
+	INTERPOLATION_START_TOKEN             = SyntaxKind{tag: 574, strValue: "${"}
+	XML_PI_START_TOKEN                    = SyntaxKind{tag: 575, strValue: "<?"}
+	XML_PI_END_TOKEN                      = SyntaxKind{tag: 576, strValue: "?>"}
+	XML_COMMENT_START_TOKEN               = SyntaxKind{tag: 577, strValue: "<!--"}
+	XML_COMMENT_END_TOKEN                 = SyntaxKind{tag: 578, strValue: "-->"}
+	SYNC_SEND_TOKEN                       = SyntaxKind{tag: 579, strValue: "->>"}
+	LEFT_ARROW_TOKEN                      = SyntaxKind{tag: 580, strValue: "<-"}
+	DOUBLE_DOT_LT_TOKEN                   = SyntaxKind{tag: 580, strValue: "..<"}
+	DOUBLE_LT_TOKEN                       = SyntaxKind{tag: 581, strValue: "<<"}
+	ANNOT_CHAINING_TOKEN                  = SyntaxKind{tag: 582, strValue: ".@"}
+	OPTIONAL_CHAINING_TOKEN               = SyntaxKind{tag: 583, strValue: "?."}
+	ELVIS_TOKEN                           = SyntaxKind{tag: 584, strValue: "?:"}
+	DOT_LT_TOKEN                          = SyntaxKind{tag: 585, strValue: ".<"}
+	SLASH_LT_TOKEN                        = SyntaxKind{tag: 586, strValue: "/<"}
+	DOUBLE_SLASH_DOUBLE_ASTERISK_LT_TOKEN = SyntaxKind{tag: 587, strValue: "/**/<"}
+	SLASH_ASTERISK_TOKEN                  = SyntaxKind{tag: 588, strValue: "/*"}
+	DOUBLE_GT_TOKEN                       = SyntaxKind{tag: 589, strValue: ">>"}
+	TRIPPLE_GT_TOKEN                      = SyntaxKind{tag: 590, strValue: ">>>"}
+	XML_CDATA_START_TOKEN                 = SyntaxKind{tag: 591, strValue: "<![CDATA["}
+	XML_CDATA_END_TOKEN                   = SyntaxKind{tag: 592, strValue: "]]>"}
+	BACK_SLASH_TOKEN                      = SyntaxKind{tag: 593, strValue: "\\"}
+	DOLLAR_TOKEN                          = SyntaxKind{tag: 594, strValue: "$"}
+	ESCAPED_MINUS_TOKEN                   = SyntaxKind{tag: 595, strValue: "\\-"}
+
+	// Documentation reference types
+	TYPE_DOC_REFERENCE_TOKEN       = SyntaxKind{tag: 900, strValue: "type"}
+	SERVICE_DOC_REFERENCE_TOKEN    = SyntaxKind{tag: 901, strValue: "service"}
+	VARIABLE_DOC_REFERENCE_TOKEN   = SyntaxKind{tag: 902, strValue: "variable"}
+	VAR_DOC_REFERENCE_TOKEN        = SyntaxKind{tag: 903, strValue: "var"}
+	ANNOTATION_DOC_REFERENCE_TOKEN = SyntaxKind{tag: 904, strValue: "annotation"}
+	MODULE_DOC_REFERENCE_TOKEN     = SyntaxKind{tag: 905, strValue: "module"}
+	FUNCTION_DOC_REFERENCE_TOKEN   = SyntaxKind{tag: 906, strValue: "function"}
+	PARAMETER_DOC_REFERENCE_TOKEN  = SyntaxKind{tag: 907, strValue: "parameter"}
+	CONST_DOC_REFERENCE_TOKEN      = SyntaxKind{tag: 908, strValue: "const"}
+
+	// Literal tokens
+	IDENTIFIER_TOKEN                     = SyntaxKind{tag: 1000, strValue: ""}
+	STRING_LITERAL_TOKEN                 = SyntaxKind{tag: 1001, strValue: ""}
+	DECIMAL_INTEGER_LITERAL_TOKEN        = SyntaxKind{tag: 1002, strValue: ""}
+	HEX_INTEGER_LITERAL_TOKEN            = SyntaxKind{tag: 1003, strValue: ""}
+	DECIMAL_FLOATING_POINT_LITERAL_TOKEN = SyntaxKind{tag: 1004, strValue: ""}
+	HEX_FLOATING_POINT_LITERAL_TOKEN     = SyntaxKind{tag: 1005, strValue: ""}
+	XML_TEXT_CONTENT                     = SyntaxKind{tag: 1006, strValue: ""}
+	TEMPLATE_STRING                      = SyntaxKind{tag: 1007, strValue: ""}
+	PROMPT_CONTENT                       = SyntaxKind{tag: 1007, strValue: ""}
+
+	// Documentation
+	DOCUMENTATION_DESCRIPTION = SyntaxKind{tag: 1100, strValue: ""}
+	PARAMETER_NAME            = SyntaxKind{tag: 1101, strValue: ""}
+	CODE_CONTENT              = SyntaxKind{tag: 1102, strValue: ""}
+	DEPRECATION_LITERAL       = SyntaxKind{tag: 1103, strValue: ""}
+	DOCUMENTATION_STRING      = SyntaxKind{tag: 1104, strValue: ""}
+
+	// Other
+	INVALID_TOKEN = SyntaxKind{tag: 1191, strValue: ""}
+
+	//-----------------------------------------------non-terminal-kinds-----------------------------------------------
+
+	// Minutiae kinds
+	WHITESPACE_MINUTIAE   = SyntaxKind{tag: 1500, strValue: ""}
+	END_OF_LINE_MINUTIAE  = SyntaxKind{tag: 1501, strValue: ""}
+	COMMENT_MINUTIAE      = SyntaxKind{tag: 1502, strValue: ""}
+	INVALID_NODE_MINUTIAE = SyntaxKind{tag: 1503, strValue: ""}
+
+	// Invalid nodes
+	INVALID_TOKEN_MINUTIAE_NODE = SyntaxKind{tag: 1601, strValue: ""}
+
+	// module-level declarations
+	IMPORT_DECLARATION               = SyntaxKind{tag: 2000, strValue: ""}
+	FUNCTION_DEFINITION              = SyntaxKind{tag: 2001, strValue: ""}
+	TYPE_DEFINITION                  = SyntaxKind{tag: 2002, strValue: ""}
+	SERVICE_DECLARATION              = SyntaxKind{tag: 2003, strValue: ""}
+	MODULE_VAR_DECL                  = SyntaxKind{tag: 2004, strValue: ""}
+	LISTENER_DECLARATION             = SyntaxKind{tag: 2005, strValue: ""}
+	CONST_DECLARATION                = SyntaxKind{tag: 2006, strValue: ""}
+	ANNOTATION_DECLARATION           = SyntaxKind{tag: 2007, strValue: ""}
+	MODULE_XML_NAMESPACE_DECLARATION = SyntaxKind{tag: 2008, strValue: ""}
+	ENUM_DECLARATION                 = SyntaxKind{tag: 2009, strValue: ""}
+	CLASS_DEFINITION                 = SyntaxKind{tag: 2010, strValue: ""}
+
+	// Statements
+	BLOCK_STATEMENT                 = SyntaxKind{tag: 1200, strValue: ""}
+	LOCAL_VAR_DECL                  = SyntaxKind{tag: 1201, strValue: ""}
+	ASSIGNMENT_STATEMENT            = SyntaxKind{tag: 1202, strValue: ""}
+	IF_ELSE_STATEMENT               = SyntaxKind{tag: 1203, strValue: ""}
+	ELSE_BLOCK                      = SyntaxKind{tag: 1204, strValue: ""}
+	WHILE_STATEMENT                 = SyntaxKind{tag: 1205, strValue: ""}
+	CALL_STATEMENT                  = SyntaxKind{tag: 1206, strValue: ""}
+	PANIC_STATEMENT                 = SyntaxKind{tag: 1207, strValue: ""}
+	RETURN_STATEMENT                = SyntaxKind{tag: 1208, strValue: ""}
+	CONTINUE_STATEMENT              = SyntaxKind{tag: 1209, strValue: ""}
+	BREAK_STATEMENT                 = SyntaxKind{tag: 1210, strValue: ""}
+	COMPOUND_ASSIGNMENT_STATEMENT   = SyntaxKind{tag: 1211, strValue: ""}
+	LOCAL_TYPE_DEFINITION_STATEMENT = SyntaxKind{tag: 1212, strValue: ""}
+	ACTION_STATEMENT                = SyntaxKind{tag: 1213, strValue: ""}
+	LOCK_STATEMENT                  = SyntaxKind{tag: 1214, strValue: ""}
+	NAMED_WORKER_DECLARATION        = SyntaxKind{tag: 1215, strValue: ""}
+	FORK_STATEMENT                  = SyntaxKind{tag: 1216, strValue: ""}
+	FOREACH_STATEMENT               = SyntaxKind{tag: 1217, strValue: ""}
+	TRANSACTION_STATEMENT           = SyntaxKind{tag: 1218, strValue: ""}
+	ROLLBACK_STATEMENT              = SyntaxKind{tag: 1219, strValue: ""}
+	RETRY_STATEMENT                 = SyntaxKind{tag: 1220, strValue: ""}
+	XML_NAMESPACE_DECLARATION       = SyntaxKind{tag: 1221, strValue: ""}
+	MATCH_STATEMENT                 = SyntaxKind{tag: 1222, strValue: ""}
+	INVALID_EXPRESSION_STATEMENT    = SyntaxKind{tag: 1223, strValue: ""}
+	DO_STATEMENT                    = SyntaxKind{tag: 1224, strValue: ""}
+	FAIL_STATEMENT                  = SyntaxKind{tag: 1225, strValue: ""}
+
+	// Expressions
+	BINARY_EXPRESSION                      = SyntaxKind{tag: 1300, strValue: ""}
+	BRACED_EXPRESSION                      = SyntaxKind{tag: 1301, strValue: ""}
+	FUNCTION_CALL                          = SyntaxKind{tag: 1302, strValue: ""}
+	QUALIFIED_NAME_REFERENCE               = SyntaxKind{tag: 1303, strValue: ""}
+	INDEXED_EXPRESSION                     = SyntaxKind{tag: 1304, strValue: ""}
+	FIELD_ACCESS                           = SyntaxKind{tag: 1305, strValue: ""}
+	METHOD_CALL                            = SyntaxKind{tag: 1306, strValue: ""}
+	CHECK_EXPRESSION                       = SyntaxKind{tag: 1307, strValue: ""}
+	MAPPING_CONSTRUCTOR                    = SyntaxKind{tag: 1308, strValue: ""}
+	TYPEOF_EXPRESSION                      = SyntaxKind{tag: 1309, strValue: ""}
+	UNARY_EXPRESSION                       = SyntaxKind{tag: 1310, strValue: ""}
+	TYPE_TEST_EXPRESSION                   = SyntaxKind{tag: 1311, strValue: ""}
+	SIMPLE_NAME_REFERENCE                  = SyntaxKind{tag: 1313, strValue: ""}
+	TRAP_EXPRESSION                        = SyntaxKind{tag: 1314, strValue: ""}
+	LIST_CONSTRUCTOR                       = SyntaxKind{tag: 1315, strValue: ""}
+	TYPE_CAST_EXPRESSION                   = SyntaxKind{tag: 1316, strValue: ""}
+	TABLE_CONSTRUCTOR                      = SyntaxKind{tag: 1317, strValue: ""}
+	LET_EXPRESSION                         = SyntaxKind{tag: 1318, strValue: ""}
+	XML_TEMPLATE_EXPRESSION                = SyntaxKind{tag: 1319, strValue: ""}
+	REGEX_TEMPLATE_EXPRESSION              = SyntaxKind{tag: 1346, strValue: ""}
+	RAW_TEMPLATE_EXPRESSION                = SyntaxKind{tag: 1320, strValue: ""}
+	STRING_TEMPLATE_EXPRESSION             = SyntaxKind{tag: 1321, strValue: ""}
+	IMPLICIT_NEW_EXPRESSION                = SyntaxKind{tag: 1322, strValue: ""}
+	EXPLICIT_NEW_EXPRESSION                = SyntaxKind{tag: 1323, strValue: ""}
+	PARENTHESIZED_ARG_LIST                 = SyntaxKind{tag: 1324, strValue: ""}
+	EXPLICIT_ANONYMOUS_FUNCTION_EXPRESSION = SyntaxKind{tag: 1325, strValue: ""}
+	IMPLICIT_ANONYMOUS_FUNCTION_EXPRESSION = SyntaxKind{tag: 1326, strValue: ""}
+	QUERY_EXPRESSION                       = SyntaxKind{tag: 1327, strValue: ""}
+	ANNOT_ACCESS                           = SyntaxKind{tag: 1328, strValue: ""}
+	OPTIONAL_FIELD_ACCESS                  = SyntaxKind{tag: 1329, strValue: ""}
+	CONDITIONAL_EXPRESSION                 = SyntaxKind{tag: 1330, strValue: ""}
+	TRANSACTIONAL_EXPRESSION               = SyntaxKind{tag: 1331, strValue: ""}
+	OBJECT_CONSTRUCTOR                     = SyntaxKind{tag: 1332, strValue: ""}
+	XML_FILTER_EXPRESSION                  = SyntaxKind{tag: 1333, strValue: ""}
+	XML_STEP_EXPRESSION                    = SyntaxKind{tag: 1334, strValue: ""}
+	XML_NAME_PATTERN_CHAIN                 = SyntaxKind{tag: 1335, strValue: ""}
+	XML_ATOMIC_NAME_PATTERN                = SyntaxKind{tag: 1336, strValue: ""}
+	STRING_LITERAL                         = SyntaxKind{tag: 1337, strValue: ""}
+	NUMERIC_LITERAL                        = SyntaxKind{tag: 1338, strValue: ""}
+	BOOLEAN_LITERAL                        = SyntaxKind{tag: 1339, strValue: ""}
+	NIL_LITERAL                            = SyntaxKind{tag: 1340, strValue: ""}
+	NULL_LITERAL                           = SyntaxKind{tag: 1341, strValue: ""}
+	BYTE_ARRAY_LITERAL                     = SyntaxKind{tag: 1342, strValue: ""}
+	ASTERISK_LITERAL                       = SyntaxKind{tag: 1343, strValue: ""}
+	REQUIRED_EXPRESSION                    = SyntaxKind{tag: 1344, strValue: ""}
+	ERROR_CONSTRUCTOR                      = SyntaxKind{tag: 1345, strValue: ""}
+	XML_STEP_METHOD_CALL_EXTEND            = SyntaxKind{tag: 1346, strValue: ""}
+	XML_STEP_INDEXED_EXTEND                = SyntaxKind{tag: 1347, strValue: ""}
+	NATURAL_EXPRESSION                     = SyntaxKind{tag: 1348, strValue: ""}
+
+	// Type descriptors
+	TYPE_DESC                = SyntaxKind{tag: 2000, strValue: ""}
+	RECORD_TYPE_DESC         = SyntaxKind{tag: 2001, strValue: ""}
+	OBJECT_TYPE_DESC         = SyntaxKind{tag: 2002, strValue: ""}
+	NIL_TYPE_DESC            = SyntaxKind{tag: 2003, strValue: ""}
+	OPTIONAL_TYPE_DESC       = SyntaxKind{tag: 2004, strValue: ""}
+	ARRAY_TYPE_DESC          = SyntaxKind{tag: 2005, strValue: ""}
+	INT_TYPE_DESC            = SyntaxKind{tag: 2006, strValue: ""}
+	BYTE_TYPE_DESC           = SyntaxKind{tag: 2007, strValue: ""}
+	FLOAT_TYPE_DESC          = SyntaxKind{tag: 2008, strValue: ""}
+	DECIMAL_TYPE_DESC        = SyntaxKind{tag: 2009, strValue: ""}
+	STRING_TYPE_DESC         = SyntaxKind{tag: 2010, strValue: ""}
+	BOOLEAN_TYPE_DESC        = SyntaxKind{tag: 2011, strValue: ""}
+	XML_TYPE_DESC            = SyntaxKind{tag: 2012, strValue: ""}
+	JSON_TYPE_DESC           = SyntaxKind{tag: 2013, strValue: ""}
+	HANDLE_TYPE_DESC         = SyntaxKind{tag: 2014, strValue: ""}
+	ANY_TYPE_DESC            = SyntaxKind{tag: 2015, strValue: ""}
+	ANYDATA_TYPE_DESC        = SyntaxKind{tag: 2016, strValue: ""}
+	NEVER_TYPE_DESC          = SyntaxKind{tag: 2017, strValue: ""}
+	VAR_TYPE_DESC            = SyntaxKind{tag: 2018, strValue: ""}
+	SERVICE_TYPE_DESC        = SyntaxKind{tag: 2019, strValue: ""}
+	MAP_TYPE_DESC            = SyntaxKind{tag: 2020, strValue: ""}
+	UNION_TYPE_DESC          = SyntaxKind{tag: 2021, strValue: ""}
+	ERROR_TYPE_DESC          = SyntaxKind{tag: 2022, strValue: ""}
+	STREAM_TYPE_DESC         = SyntaxKind{tag: 2023, strValue: ""}
+	TABLE_TYPE_DESC          = SyntaxKind{tag: 2024, strValue: ""}
+	FUNCTION_TYPE_DESC       = SyntaxKind{tag: 2025, strValue: ""}
+	TUPLE_TYPE_DESC          = SyntaxKind{tag: 2026, strValue: ""}
+	PARENTHESISED_TYPE_DESC  = SyntaxKind{tag: 2027, strValue: ""}
+	READONLY_TYPE_DESC       = SyntaxKind{tag: 2028, strValue: ""}
+	DISTINCT_TYPE_DESC       = SyntaxKind{tag: 2029, strValue: ""}
+	INTERSECTION_TYPE_DESC   = SyntaxKind{tag: 2030, strValue: ""}
+	SINGLETON_TYPE_DESC      = SyntaxKind{tag: 2031, strValue: ""}
+	TYPE_REFERENCE_TYPE_DESC = SyntaxKind{tag: 2032, strValue: ""}
+	TYPEDESC_TYPE_DESC       = SyntaxKind{tag: 2033, strValue: ""}
+	FUTURE_TYPE_DESC         = SyntaxKind{tag: 2034, strValue: ""}
+
+	// Actions
+	REMOTE_METHOD_CALL_ACTION     = SyntaxKind{tag: 2500, strValue: ""}
+	BRACED_ACTION                 = SyntaxKind{tag: 2501, strValue: ""}
+	CHECK_ACTION                  = SyntaxKind{tag: 2502, strValue: ""}
+	START_ACTION                  = SyntaxKind{tag: 2503, strValue: ""}
+	TRAP_ACTION                   = SyntaxKind{tag: 2504, strValue: ""}
+	FLUSH_ACTION                  = SyntaxKind{tag: 2505, strValue: ""}
+	ASYNC_SEND_ACTION             = SyntaxKind{tag: 2506, strValue: ""}
+	SYNC_SEND_ACTION              = SyntaxKind{tag: 2507, strValue: ""}
+	RECEIVE_ACTION                = SyntaxKind{tag: 2508, strValue: ""}
+	WAIT_ACTION                   = SyntaxKind{tag: 2509, strValue: ""}
+	QUERY_ACTION                  = SyntaxKind{tag: 2510, strValue: ""}
+	COMMIT_ACTION                 = SyntaxKind{tag: 2511, strValue: ""}
+	CLIENT_RESOURCE_ACCESS_ACTION = SyntaxKind{tag: 2512, strValue: ""}
+
+	// Other
+	RETURN_TYPE_DESCRIPTOR            = SyntaxKind{tag: 3000, strValue: ""}
+	REQUIRED_PARAM                    = SyntaxKind{tag: 3001, strValue: ""}
+	DEFAULTABLE_PARAM                 = SyntaxKind{tag: 3002, strValue: ""}
+	REST_PARAM                        = SyntaxKind{tag: 3003, strValue: ""}
+	EXTERNAL_FUNCTION_BODY            = SyntaxKind{tag: 3004, strValue: ""}
+	RECORD_FIELD                      = SyntaxKind{tag: 3005, strValue: ""}
+	RECORD_FIELD_WITH_DEFAULT_VALUE   = SyntaxKind{tag: 3006, strValue: ""}
+	TYPE_REFERENCE                    = SyntaxKind{tag: 3007, strValue: ""}
+	RECORD_REST_TYPE                  = SyntaxKind{tag: 3008, strValue: ""}
+	POSITIONAL_ARG                    = SyntaxKind{tag: 3009, strValue: ""}
+	NAMED_ARG                         = SyntaxKind{tag: 3010, strValue: ""}
+	REST_ARG                          = SyntaxKind{tag: 3011, strValue: ""}
+	OBJECT_FIELD                      = SyntaxKind{tag: 3012, strValue: ""}
+	IMPORT_ORG_NAME                   = SyntaxKind{tag: 3013, strValue: ""}
+	MODULE_NAME                       = SyntaxKind{tag: 3014, strValue: ""}
+	SUB_MODULE_NAME                   = SyntaxKind{tag: 3015, strValue: ""}
+	IMPORT_VERSION                    = SyntaxKind{tag: 3016, strValue: ""}
+	ORDER_BY_CLAUSE                   = SyntaxKind{tag: 3017, strValue: ""}
+	IMPORT_PREFIX                     = SyntaxKind{tag: 3018, strValue: ""}
+	SPECIFIC_FIELD                    = SyntaxKind{tag: 3019, strValue: ""}
+	COMPUTED_NAME_FIELD               = SyntaxKind{tag: 3020, strValue: ""}
+	SPREAD_FIELD                      = SyntaxKind{tag: 3021, strValue: ""}
+	ORDER_KEY                         = SyntaxKind{tag: 3022, strValue: ""}
+	RESOURCE_ACCESSOR_DEFINITION      = SyntaxKind{tag: 3023, strValue: ""}
+	ANNOTATION                        = SyntaxKind{tag: 3024, strValue: ""}
+	METADATA                          = SyntaxKind{tag: 3025, strValue: ""}
+	ARRAY_DIMENSION                   = SyntaxKind{tag: 3026, strValue: ""}
+	ANNOTATION_ATTACH_POINT           = SyntaxKind{tag: 3028, strValue: ""}
+	FUNCTION_BODY_BLOCK               = SyntaxKind{tag: 3029, strValue: ""}
+	NAMED_WORKER_DECLARATOR           = SyntaxKind{tag: 3030, strValue: ""}
+	EXPRESSION_FUNCTION_BODY          = SyntaxKind{tag: 3031, strValue: ""}
+	TYPE_CAST_PARAM                   = SyntaxKind{tag: 3032, strValue: ""}
+	KEY_SPECIFIER                     = SyntaxKind{tag: 3033, strValue: ""}
+	EXPLICIT_TYPE_PARAMS              = SyntaxKind{tag: 3034, strValue: ""}
+	LET_VAR_DECL                      = SyntaxKind{tag: 3035, strValue: ""}
+	STREAM_TYPE_PARAMS                = SyntaxKind{tag: 3036, strValue: ""}
+	FUNCTION_SIGNATURE                = SyntaxKind{tag: 3037, strValue: ""}
+	INFER_PARAM_LIST                  = SyntaxKind{tag: 3038, strValue: ""}
+	TYPE_PARAMETER                    = SyntaxKind{tag: 3039, strValue: ""}
+	KEY_TYPE_CONSTRAINT               = SyntaxKind{tag: 3040, strValue: ""}
+	QUERY_CONSTRUCT_TYPE              = SyntaxKind{tag: 3041, strValue: ""}
+	FROM_CLAUSE                       = SyntaxKind{tag: 3042, strValue: ""}
+	WHERE_CLAUSE                      = SyntaxKind{tag: 3043, strValue: ""}
+	LET_CLAUSE                        = SyntaxKind{tag: 3044, strValue: ""}
+	QUERY_PIPELINE                    = SyntaxKind{tag: 3045, strValue: ""}
+	SELECT_CLAUSE                     = SyntaxKind{tag: 3046, strValue: ""}
+	METHOD_DECLARATION                = SyntaxKind{tag: 3047, strValue: ""}
+	TYPED_BINDING_PATTERN             = SyntaxKind{tag: 3048, strValue: ""}
+	BINDING_PATTERN                   = SyntaxKind{tag: 3049, strValue: ""}
+	CAPTURE_BINDING_PATTERN           = SyntaxKind{tag: 3050, strValue: ""}
+	REST_BINDING_PATTERN              = SyntaxKind{tag: 3051, strValue: ""}
+	LIST_BINDING_PATTERN              = SyntaxKind{tag: 3052, strValue: ""}
+	RECEIVE_FIELDS                    = SyntaxKind{tag: 3053, strValue: ""}
+	REST_TYPE                         = SyntaxKind{tag: 3054, strValue: ""}
+	WAIT_FIELDS_LIST                  = SyntaxKind{tag: 3055, strValue: ""}
+	WAIT_FIELD                        = SyntaxKind{tag: 3056, strValue: ""}
+	ENUM_MEMBER                       = SyntaxKind{tag: 3057, strValue: ""}
+	BRACKETED_LIST                    = SyntaxKind{tag: 3058, strValue: ""}
+	LIST_BP_OR_LIST_CONSTRUCTOR       = SyntaxKind{tag: 3059, strValue: ""}
+	MAPPING_BINDING_PATTERN           = SyntaxKind{tag: 3060, strValue: ""}
+	FIELD_BINDING_PATTERN             = SyntaxKind{tag: 3061, strValue: ""}
+	MAPPING_BP_OR_MAPPING_CONSTRUCTOR = SyntaxKind{tag: 3062, strValue: ""}
+	WILDCARD_BINDING_PATTERN          = SyntaxKind{tag: 3063, strValue: ""}
+	MATCH_CLAUSE                      = SyntaxKind{tag: 3064, strValue: ""}
+	MATCH_GUARD                       = SyntaxKind{tag: 3065, strValue: ""}
+	OBJECT_METHOD_DEFINITION          = SyntaxKind{tag: 3066, strValue: ""}
+	ON_CONFLICT_CLAUSE                = SyntaxKind{tag: 3067, strValue: ""}
+	LIMIT_CLAUSE                      = SyntaxKind{tag: 3068, strValue: ""}
+	JOIN_CLAUSE                       = SyntaxKind{tag: 3069, strValue: ""}
+	ON_CLAUSE                         = SyntaxKind{tag: 3070, strValue: ""}
+	LIST_MATCH_PATTERN                = SyntaxKind{tag: 3071, strValue: ""}
+	REST_MATCH_PATTERN                = SyntaxKind{tag: 3072, strValue: ""}
+	MAPPING_MATCH_PATTERN             = SyntaxKind{tag: 3073, strValue: ""}
+	FIELD_MATCH_PATTERN               = SyntaxKind{tag: 3074, strValue: ""}
+	ERROR_MATCH_PATTERN               = SyntaxKind{tag: 3075, strValue: ""}
+	NAMED_ARG_MATCH_PATTERN           = SyntaxKind{tag: 3076, strValue: ""}
+	ERROR_BINDING_PATTERN             = SyntaxKind{tag: 3077, strValue: ""}
+	NAMED_ARG_BINDING_PATTERN         = SyntaxKind{tag: 3078, strValue: ""}
+	TUPLE_TYPE_DESC_OR_LIST_CONST     = SyntaxKind{tag: 3079, strValue: ""}
+	ON_FAIL_CLAUSE                    = SyntaxKind{tag: 3080, strValue: ""}
+	RESOURCE_ACCESSOR_DECLARATION     = SyntaxKind{tag: 3081, strValue: ""}
+	RESOURCE_PATH_SEGMENT_PARAM       = SyntaxKind{tag: 3082, strValue: ""}
+	RESOURCE_PATH_REST_PARAM          = SyntaxKind{tag: 3083, strValue: ""}
+	INCLUDED_RECORD_PARAM             = SyntaxKind{tag: 3084, strValue: ""}
+	ARRAY_TYPE_DESC_OR_MEMBER_ACCESS  = SyntaxKind{tag: 3085, strValue: ""}
+	INFERRED_TYPEDESC_DEFAULT         = SyntaxKind{tag: 3086, strValue: ""}
+	SPREAD_MEMBER                     = SyntaxKind{tag: 3087, strValue: ""}
+	COMPUTED_RESOURCE_ACCESS_SEGMENT  = SyntaxKind{tag: 3088, strValue: ""}
+	RESOURCE_ACCESS_REST_SEGMENT      = SyntaxKind{tag: 3089, strValue: ""}
+	MEMBER_TYPE_DESC                  = SyntaxKind{tag: 3090, strValue: ""}
+	GROUPING_KEY_VAR_DECLARATION      = SyntaxKind{tag: 3091, strValue: ""}
+	GROUPING_KEY_VAR_NAME             = SyntaxKind{tag: 3092, strValue: ""}
+	GROUP_BY_CLAUSE                   = SyntaxKind{tag: 3093, strValue: ""}
+	COLLECT_CLAUSE                    = SyntaxKind{tag: 3094, strValue: ""}
+	ALTERNATE_RECEIVE                 = SyntaxKind{tag: 3095, strValue: ""}
+	RECEIVE_FIELD                     = SyntaxKind{tag: 3096, strValue: ""}
+
+	// XML
+	XML_ELEMENT           = SyntaxKind{tag: 4000, strValue: ""}
+	XML_EMPTY_ELEMENT     = SyntaxKind{tag: 4001, strValue: ""}
+	XML_TEXT              = SyntaxKind{tag: 4002, strValue: ""}
+	XML_COMMENT           = SyntaxKind{tag: 4003, strValue: ""}
+	XML_PI                = SyntaxKind{tag: 4004, strValue: ""}
+	XML_ELEMENT_START_TAG = SyntaxKind{tag: 4005, strValue: ""}
+	XML_ELEMENT_END_TAG   = SyntaxKind{tag: 4006, strValue: ""}
+	XML_SIMPLE_NAME       = SyntaxKind{tag: 4007, strValue: ""}
+	XML_QUALIFIED_NAME    = SyntaxKind{tag: 4008, strValue: ""}
+	XML_ATTRIBUTE         = SyntaxKind{tag: 4009, strValue: ""}
+	XML_ATTRIBUTE_VALUE   = SyntaxKind{tag: 4010, strValue: ""}
+	INTERPOLATION         = SyntaxKind{tag: 4011, strValue: ""}
+	XML_CDATA             = SyntaxKind{tag: 4012, strValue: ""}
+
+	// Reg Exp
+	RE_SEQUENCE                                       = SyntaxKind{tag: 4013, strValue: ""}
+	RE_ATOM_QUANTIFIER                                = SyntaxKind{tag: 4014, strValue: ""}
+	RE_ASSERTION                                      = SyntaxKind{tag: 4015, strValue: ""}
+	RE_LITERAL_CHAR_DOT_OR_ESCAPE                     = SyntaxKind{tag: 4016, strValue: ""}
+	RE_QUOTE_ESCAPE                                   = SyntaxKind{tag: 4017, strValue: ""}
+	RE_SIMPLE_CHAR_CLASS_ESCAPE                       = SyntaxKind{tag: 4018, strValue: ""}
+	RE_UNICODE_PROPERTY_ESCAPE                        = SyntaxKind{tag: 4019, strValue: ""}
+	RE_UNICODE_SCRIPT                                 = SyntaxKind{tag: 4020, strValue: ""}
+	RE_UNICODE_GENERAL_CATEGORY                       = SyntaxKind{tag: 4021, strValue: ""}
+	RE_CHARACTER_CLASS                                = SyntaxKind{tag: 4022, strValue: ""}
+	RE_CHAR_SET_ATOM_WITH_RE_CHAR_SET_NO_DASH         = SyntaxKind{tag: 4023, strValue: ""}
+	RE_CHAR_SET_ATOM_NO_DASH_WITH_RE_CHAR_SET_NO_DASH = SyntaxKind{tag: 4024, strValue: ""}
+	RE_CHAR_SET_RANGE                                 = SyntaxKind{tag: 4025, strValue: ""}
+	RE_CHAR_SET_RANGE_NO_DASH                         = SyntaxKind{tag: 4026, strValue: ""}
+	RE_CHAR_SET_RANGE_WITH_RE_CHAR_SET                = SyntaxKind{tag: 4027, strValue: ""}
+	RE_CHAR_SET_RANGE_NO_DASH_WITH_RE_CHAR_SET        = SyntaxKind{tag: 4028, strValue: ""}
+	RE_CAPTURING_GROUP                                = SyntaxKind{tag: 4029, strValue: ""}
+	RE_FLAG_EXPR                                      = SyntaxKind{tag: 4030, strValue: ""}
+	RE_FLAGS_ON_OFF                                   = SyntaxKind{tag: 4031, strValue: ""}
+	RE_FLAGS                                          = SyntaxKind{tag: 4032, strValue: ""}
+	RE_QUANTIFIER                                     = SyntaxKind{tag: 4033, strValue: ""}
+	RE_BRACED_QUANTIFIER                              = SyntaxKind{tag: 4034, strValue: ""}
+
+	RE_ASSERTION_VALUE                = SyntaxKind{tag: 4035, strValue: ""}
+	RE_LITERAL_CHAR                   = SyntaxKind{tag: 4036, strValue: ""}
+	RE_NUMERIC_ESCAPE                 = SyntaxKind{tag: 4037, strValue: ""}
+	RE_CONTROL_ESCAPE                 = SyntaxKind{tag: 4038, strValue: ""}
+	RE_SIMPLE_CHAR_CLASS_CODE         = SyntaxKind{tag: 4039, strValue: ""}
+	RE_PROPERTY                       = SyntaxKind{tag: 4040, strValue: ""}
+	RE_UNICODE_SCRIPT_START           = SyntaxKind{tag: 4041, strValue: ""}
+	RE_UNICODE_PROPERTY_VALUE         = SyntaxKind{tag: 4042, strValue: ""}
+	RE_UNICODE_GENERAL_CATEGORY_START = SyntaxKind{tag: 4043, strValue: ""}
+	RE_UNICODE_GENERAL_CATEGORY_NAME  = SyntaxKind{tag: 4044, strValue: ""}
+	RE_CHAR_SET_ATOM_NO_DASH          = SyntaxKind{tag: 4045, strValue: ""}
+	RE_FLAGS_VALUE                    = SyntaxKind{tag: 4046, strValue: ""}
+	RE_BASE_QUANTIFIER_VALUE          = SyntaxKind{tag: 4047, strValue: ""}
+	DIGIT                             = SyntaxKind{tag: 4048, strValue: ""}
+
+	// Documentation
+	MARKDOWN_DOCUMENTATION                       = SyntaxKind{tag: 4500, strValue: ""}
+	MARKDOWN_DOCUMENTATION_LINE                  = SyntaxKind{tag: 4501, strValue: ""}
+	MARKDOWN_REFERENCE_DOCUMENTATION_LINE        = SyntaxKind{tag: 4502, strValue: ""}
+	MARKDOWN_PARAMETER_DOCUMENTATION_LINE        = SyntaxKind{tag: 4503, strValue: ""}
+	MARKDOWN_RETURN_PARAMETER_DOCUMENTATION_LINE = SyntaxKind{tag: 4504, strValue: ""}
+	MARKDOWN_DEPRECATION_DOCUMENTATION_LINE      = SyntaxKind{tag: 4505, strValue: ""}
+	MARKDOWN_CODE_LINE                           = SyntaxKind{tag: 4506, strValue: ""}
+	BALLERINA_NAME_REFERENCE                     = SyntaxKind{tag: 4507, strValue: ""}
+	MARKDOWN_CODE_BLOCK                          = SyntaxKind{tag: 4508, strValue: ""}
+	INLINE_CODE_REFERENCE                        = SyntaxKind{tag: 4509, strValue: ""}
+
+	INVALID     = SyntaxKind{tag: 4, strValue: ""}
+	MODULE_PART = SyntaxKind{tag: 3, strValue: ""}
+	EOF_TOKEN   = SyntaxKind{tag: 2, strValue: ""}
+	LIST        = SyntaxKind{tag: 1, strValue: ""}
+	NONE        = SyntaxKind{tag: 0, strValue: ""}
+)
