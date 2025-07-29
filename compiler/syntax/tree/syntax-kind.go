@@ -5,7 +5,7 @@ type SyntaxKind struct {
 	strValue string
 }
 
-func (sk SyntaxKind) String() string {
+func (sk SyntaxKind) StringValue() string {
 	return sk.strValue
 }
 
