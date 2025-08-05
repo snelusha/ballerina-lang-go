@@ -32,23 +32,19 @@ func newCharReader(charBuffer []rune) CharReader {
 	}
 }
 
-// CharReaderFromTextDocument creates a CharReader from the given TextDocument.
 func CharReaderFromTextDocument(textDocument TextDocument) CharReader {
 	return newCharReader(textDocument.ToCharArray())
 }
 
-// CharReaderFromText creates a CharReader from the given text string.
 func CharReaderFromText(text string) CharReader {
 	charBuffer := []rune(text)
 	return newCharReader(charBuffer)
 }
 
-// Reset sets the offset to the given position.
 func (cr *charReaderImpl) Reset(offset int) {
 	cr.offset = offset
 }
 
-// Peek returns the character at the current offset without advancing.
 func (cr charReaderImpl) Peek() rune {
 	if cr.offset < cr.charBufferLength {
 		return cr.charBuffer[cr.offset]
@@ -58,7 +54,6 @@ func (cr charReaderImpl) Peek() rune {
 	}
 }
 
-// PeekN returns the character at offset + k without advancing.
 func (cr charReaderImpl) PeekN(k int) rune {
 	n := cr.offset + k
 	if n < cr.charBufferLength {
@@ -69,27 +64,22 @@ func (cr charReaderImpl) PeekN(k int) rune {
 	}
 }
 
-// Advance moves the offset forward by one position.
 func (cr *charReaderImpl) Advance() {
 	cr.offset++
 }
 
-// AdvanceN moves the offset forward by k positions.
 func (cr *charReaderImpl) AdvanceN(k int) {
 	cr.offset += k
 }
 
-// Mark sets the lexeme start position to the current offset.
 func (cr *charReaderImpl) Mark() {
 	cr.lexemeStartPos = cr.offset
 }
 
-// GetMarkedChars returns the string consisting of the marked characters.
 func (cr charReaderImpl) GetMarkedChars() string {
 	return string(cr.charBuffer[cr.lexemeStartPos:cr.offset])
 }
 
-// IsEOF returns true if the reader has reached the end of the buffer.
 func (cr charReaderImpl) IsEOF() bool {
 	return cr.offset >= cr.charBufferLength
 }

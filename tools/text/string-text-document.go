@@ -8,14 +8,12 @@ type StringTextDocument interface {
 	String() string
 }
 
-// stringTextDocumentImpl is the concrete implementation of StringTextDocument.
 type stringTextDocumentImpl struct {
 	textDocumentBase
 	text        string
 	textLineMap LineMap
 }
 
-// NewStringTextDocument constructs a StringTextDocument with the given text.
 func NewStringTextDocument(text string) StringTextDocument {
 	return &stringTextDocumentImpl{
 		textDocumentBase: textDocumentBase{},
@@ -23,12 +21,10 @@ func NewStringTextDocument(text string) StringTextDocument {
 	}
 }
 
-// Apply implements the abstract method for applying text document changes.
 func (std *stringTextDocumentImpl) Apply(textDocumentChange TextDocumentChange) TextDocument {
 	startOffset := 0
 	var sb strings.Builder
 	textEditCount := textDocumentChange.GetTextEditCount()
-
 	for i := range textEditCount {
 		textEdit := textDocumentChange.GetTextEdit(i)
 		textRange := textEdit.Range()
@@ -37,11 +33,9 @@ func (std *stringTextDocumentImpl) Apply(textDocumentChange TextDocumentChange) 
 		startOffset = textRange.EndOffset()
 	}
 	sb.WriteString(std.text[startOffset:])
-
 	return NewStringTextDocument(sb.String())
 }
 
-// PopulateTextLineMap implements the abstract method for populating the text line map.
 func (std *stringTextDocumentImpl) PopulateTextLineMap() LineMap {
 	if std.textLineMap != nil {
 		return std.textLineMap
@@ -50,50 +44,30 @@ func (std *stringTextDocumentImpl) PopulateTextLineMap() LineMap {
 	return std.textLineMap
 }
 
-// ToCharArray implements the abstract method for converting to character array.
 func (std *stringTextDocumentImpl) ToCharArray() []rune {
 	return []rune(std.text)
 }
 
-// String returns the text content as a string.
 func (std *stringTextDocumentImpl) String() string {
 	return std.text
 }
 
-// Line returns the text line at the given line number.
-func (std *stringTextDocumentImpl) Line(line int) (TextLine, error) {
-	return std.Lines().TextLine(line)
-}
-
-// LinePositionFrom converts a text position to a line position.
-func (std *stringTextDocumentImpl) LinePositionFrom(textPosition int) (LinePosition, error) {
-	return std.Lines().LinePositionFrom(textPosition)
-}
-
-// TextPositionFrom converts a line position to a text position.
-func (std *stringTextDocumentImpl) TextPositionFrom(linePosition LinePosition) (int, error) {
-	return std.Lines().TextPositionFrom(linePosition)
-}
-
-// TextLines returns the text content of all lines.
 func (std *stringTextDocumentImpl) TextLines() []string {
-	if std.lineMap != nil {
-		return std.lineMap.TextLines()
+	if std.textDocumentBase.lineMap != nil {
+		return std.textDocumentBase.lineMap.TextLines()
 	}
-	std.lineMap = std.PopulateTextLineMap()
-	return std.lineMap.TextLines()
+	std.textDocumentBase.lineMap = std.PopulateTextLineMap()
+	return std.textDocumentBase.lineMap.TextLines()
 }
 
-// Lines returns the line map, populating it if necessary.
 func (std *stringTextDocumentImpl) Lines() LineMap {
-	if std.lineMap != nil {
-		return std.lineMap
+	if std.textDocumentBase.lineMap != nil {
+		return std.textDocumentBase.lineMap
 	}
-	std.lineMap = std.PopulateTextLineMap()
-	return std.lineMap
+	std.textDocumentBase.lineMap = std.PopulateTextLineMap()
+	return std.textDocumentBase.lineMap
 }
 
-// calculateTextLines parses the text and creates TextLine objects for each line.
 func (std *stringTextDocumentImpl) calculateTextLines() []TextLine {
 	startOffset := 0
 	var textLines []TextLine

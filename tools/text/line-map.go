@@ -1,25 +1,23 @@
 package text
 
 import (
-	"ballerina-lang-go/tools/utils"
+	"ballerina-lang-go/common/errors"
 	"fmt"
 )
 
 // LineMap represents a collection of text lines in the TextDocument.
 type LineMap interface {
 	TextLine(line int) (TextLine, error)
-	LinePositionFrom(position int) (LinePosition, error)
-	TextPositionFrom(linePosition LinePosition) (int, error)
+	LinePositionFromPosition(position int) (LinePosition, error)
+	TextPositionFromLinePosition(linePosition LinePosition) (int, error)
 	TextLines() []string
 }
 
-// lineMapImpl is the concrete implementation of LineMap.
 type lineMapImpl struct {
 	textLines []TextLine
 	length    int
 }
 
-// NewLineMap constructs a LineMap with the given text lines.
 func NewLineMap(textLines []TextLine) LineMap {
 	return &lineMapImpl{
 		textLines: textLines,
@@ -27,7 +25,6 @@ func NewLineMap(textLines []TextLine) LineMap {
 	}
 }
 
-// TextLine returns the text line at the given line number.
 func (lm lineMapImpl) TextLine(line int) (TextLine, error) {
 	if err := lm.lineRangeCheck(line); err != nil {
 		return nil, err
@@ -35,8 +32,7 @@ func (lm lineMapImpl) TextLine(line int) (TextLine, error) {
 	return lm.textLines[line], nil
 }
 
-// LinePositionFrom converts a text position to a line position.
-func (lm lineMapImpl) LinePositionFrom(position int) (LinePosition, error) {
+func (lm lineMapImpl) LinePositionFromPosition(position int) (LinePosition, error) {
 	if err := lm.positionRangeCheck(position); err != nil {
 		return nil, err
 	}
@@ -44,19 +40,17 @@ func (lm lineMapImpl) LinePositionFrom(position int) (LinePosition, error) {
 	return LinePositionFromLineAndOffset(textLine.LineNo(), position-textLine.StartOffset()), nil
 }
 
-// TextPositionFrom converts a line position to a text position.
-func (lm lineMapImpl) TextPositionFrom(linePosition LinePosition) (int, error) {
+func (lm lineMapImpl) TextPositionFromLinePosition(linePosition LinePosition) (int, error) {
 	if err := lm.lineRangeCheck(linePosition.Line()); err != nil {
 		return 0, err
 	}
 	textLine := lm.textLines[linePosition.Line()]
 	if textLine.Length() < linePosition.Offset() {
-		return 0, utils.NewIllegalArgumentError(fmt.Sprintf("Cannot find a line with the character offset '%d'", linePosition.Offset()))
+		return 0, errors.NewIllegalArgumentError(fmt.Sprintf("Cannot find a line with the character offset '%d'", linePosition.Offset()))
 	}
 	return textLine.StartOffset() + linePosition.Offset(), nil
 }
 
-// TextLines returns an immutable list of text content from all lines.
 func (lm lineMapImpl) TextLines() []string {
 	lines := make([]string, len(lm.textLines))
 	for i, textLine := range lm.textLines {
@@ -65,18 +59,16 @@ func (lm lineMapImpl) TextLines() []string {
 	return lines
 }
 
-// positionRangeCheck validates that the position is within bounds.
 func (lm lineMapImpl) positionRangeCheck(position int) error {
 	if position < 0 || position > lm.textLines[lm.length-1].EndOffset() {
-		return utils.NewIndexOutOfBoundsError(fmt.Sprintf("Index: '%d', Size: '%d'", position, lm.textLines[lm.length-1].EndOffset()))
+		return errors.NewIndexOutOfBoundsError(fmt.Sprintf("Index: '%d', Size: '%d'", position, lm.textLines[lm.length-1].EndOffset()))
 	}
 	return nil
 }
 
-// lineRangeCheck validates that the line number is within bounds.
 func (lm lineMapImpl) lineRangeCheck(lineNo int) error {
 	if lineNo < 0 || lineNo > lm.length {
-		return utils.NewIndexOutOfBoundsError(fmt.Sprintf("Line number: '%d', Size: '%d'", lineNo, lm.length))
+		return errors.NewIndexOutOfBoundsError(fmt.Sprintf("Line number: '%d', Size: '%d'", lineNo, lm.length))
 	}
 	return nil
 }
@@ -110,6 +102,5 @@ func (lm lineMapImpl) findLineFrom(position int) TextLine {
 			right = middle - 1
 		}
 	}
-
 	return foundTextLine
 }

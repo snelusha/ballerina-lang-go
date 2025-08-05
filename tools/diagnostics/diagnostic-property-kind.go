@@ -4,15 +4,10 @@ package diagnostics
 type DiagnosticPropertyKind uint8
 
 const (
-	// Symbolic represents a symbolic diagnostic property kind.
 	Symbolic DiagnosticPropertyKind = iota
-	// String represents a string diagnostic property kind.
 	String
-	// Numeric represents a numeric diagnostic property kind.
 	Numeric
-	// Collection represents a collection diagnostic property kind.
 	Collection
-	// Other represents other diagnostic property kinds.
 	Other
 )
 

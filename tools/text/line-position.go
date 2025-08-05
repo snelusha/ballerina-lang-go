@@ -16,13 +16,11 @@ type LinePositionLookupKey struct {
 	Offset int
 }
 
-// linePositionImpl is the concrete implementation of LinePosition.
 type linePositionImpl struct {
 	line   int
 	offset int
 }
 
-// LinePositionFromLineAndOffset constructs a LinePosition with the given line and offset.
 func LinePositionFromLineAndOffset(line, offset int) LinePosition {
 	return &linePositionImpl{
 		line:   line,
@@ -30,17 +28,14 @@ func LinePositionFromLineAndOffset(line, offset int) LinePosition {
 	}
 }
 
-// Line returns the line number.
 func (lp linePositionImpl) Line() int {
 	return lp.line
 }
 
-// Offset returns the character offset from the start of the line.
 func (lp linePositionImpl) Offset() int {
 	return lp.offset
 }
 
-// String returns a string representation of the line position.
 func (lp linePositionImpl) String() string {
 	return fmt.Sprintf("%d:%d", lp.line, lp.offset)
 }

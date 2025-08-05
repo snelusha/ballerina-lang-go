@@ -19,14 +19,12 @@ type TextRangeLookupKey struct {
 	EndOffset   int
 }
 
-// textRangeImpl is the concrete implementation of TextRange.
 type textRangeImpl struct {
 	startOffset int
 	endOffset   int
 	length      int
 }
 
-// TextRangeFromStartOffsetAndLength constructs a TextRange with the given start offset and length.
 func TextRangeFromStartOffsetAndLength(startOffset, length int) TextRange {
 	return &textRangeImpl{
 		startOffset: startOffset,
@@ -35,22 +33,18 @@ func TextRangeFromStartOffsetAndLength(startOffset, length int) TextRange {
 	}
 }
 
-// StartOffset returns the start offset of the range.
 func (tr textRangeImpl) StartOffset() int {
 	return tr.startOffset
 }
 
-// EndOffset returns the end offset of the range.
 func (tr textRangeImpl) EndOffset() int {
 	return tr.endOffset
 }
 
-// Length returns the length of the range.
 func (tr textRangeImpl) Length() int {
 	return tr.length
 }
 
-// Contains tests whether the given position is within this range.
 func (tr textRangeImpl) Contains(position int) bool {
 	return tr.startOffset <= position && position < tr.endOffset
 }
@@ -62,7 +56,6 @@ func (tr textRangeImpl) IntersectionExists(textRange TextRange) bool {
 	return tr.startOffset <= textRange.EndOffset() && textRange.StartOffset() <= tr.endOffset
 }
 
-// String returns a string representation of the range.
 func (tr textRangeImpl) String() string {
 	return fmt.Sprintf("(%d,%d)", tr.startOffset, tr.endOffset)
 }

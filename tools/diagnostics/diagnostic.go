@@ -12,7 +12,6 @@ type Diagnostic interface {
 	String() string
 }
 
-// diagnosticBase holds shared state and default implementations.
 type diagnosticBase struct{}
 
 // String returns a string representation of the diagnostic.

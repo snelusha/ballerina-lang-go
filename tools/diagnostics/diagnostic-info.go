@@ -16,9 +16,8 @@ type DiagnosticInfoLookupKey struct {
 	Severity      DiagnosticSeverity
 }
 
-// diagnosticInfoImpl is the concrete implementation of DiagnosticInfo.
 type diagnosticInfoImpl struct {
-	code          *string // pointer to handle nil values like Java
+	code          *string // pointer to handle nil values
 	messageFormat string
 	severity      DiagnosticSeverity
 }
@@ -37,7 +36,6 @@ func NewDiagnosticInfo(code *string, messageFormat string, severity DiagnosticSe
 	}
 }
 
-// Code returns the diagnostic code.
 func (di diagnosticInfoImpl) Code() string {
 	if di.code == nil {
 		return ""
@@ -45,12 +43,10 @@ func (di diagnosticInfoImpl) Code() string {
 	return *di.code
 }
 
-// MessageFormat returns the message format pattern.
 func (di diagnosticInfoImpl) MessageFormat() string {
 	return di.messageFormat
 }
 
-// Severity returns the diagnostic severity.
 func (di diagnosticInfoImpl) Severity() DiagnosticSeverity {
 	return di.severity
 }
