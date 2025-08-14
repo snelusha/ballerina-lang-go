@@ -22,35 +22,35 @@ import "fmt"
 
 // LinePosition represents a line number and a character offset from the start of the line.
 type LinePosition interface {
-	Line() int
-	Offset() int
+	Line() uint
+	Offset() uint
 	String() string
 	LinePositionLookupKey() LinePositionLookupKey
 }
 
 // LinePositionLookupKey represents the comparable fields of LinePosition for equality/hashing.
 type LinePositionLookupKey struct {
-	Line   int
-	Offset int
+	Line   uint
+	Offset uint
 }
 
 type linePositionImpl struct {
-	line   int
-	offset int
+	line   uint
+	offset uint
 }
 
-func LinePositionFromLineAndOffset(line, offset int) LinePosition {
+func LinePositionFromLineAndOffset(line, offset uint) LinePosition {
 	return &linePositionImpl{
 		line:   line,
 		offset: offset,
 	}
 }
 
-func (lp linePositionImpl) Line() int {
+func (lp linePositionImpl) Line() uint {
 	return lp.line
 }
 
-func (lp linePositionImpl) Offset() int {
+func (lp linePositionImpl) Offset() uint {
 	return lp.offset
 }
 

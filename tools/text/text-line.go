@@ -20,24 +20,24 @@ package text
 
 // TextLine represents a single line in the TextDocument.
 type TextLine interface {
-	LineNo() int
+	LineNo() uint
 	Text() string
-	StartOffset() int
-	EndOffset() int
-	EndOffsetWithNewLines() int
-	Length() int
-	LengthWithNewLineChars() int
+	StartOffset() uint
+	EndOffset() uint
+	EndOffsetWithNewLines() uint
+	Length() uint
+	LengthWithNewLineChars() uint
 }
 
 type textLineImpl struct {
-	lineNo               int
+	lineNo               uint
 	text                 string
-	startOffset          int
-	endOffset            int
-	lengthOfNewLineChars int
+	startOffset          uint
+	endOffset            uint
+	lengthOfNewLineChars uint
 }
 
-func NewTextLine(lineNo int, text string, startOffset, endOffset, lengthOfNewLineChars int) TextLine {
+func NewTextLine(lineNo uint, text string, startOffset, endOffset, lengthOfNewLineChars uint) TextLine {
 	return &textLineImpl{
 		lineNo:               lineNo,
 		text:                 text,
@@ -47,7 +47,7 @@ func NewTextLine(lineNo int, text string, startOffset, endOffset, lengthOfNewLin
 	}
 }
 
-func (tl textLineImpl) LineNo() int {
+func (tl textLineImpl) LineNo() uint {
 	return tl.lineNo
 }
 
@@ -55,22 +55,22 @@ func (tl textLineImpl) Text() string {
 	return tl.text
 }
 
-func (tl textLineImpl) StartOffset() int {
+func (tl textLineImpl) StartOffset() uint {
 	return tl.startOffset
 }
 
-func (tl textLineImpl) EndOffset() int {
+func (tl textLineImpl) EndOffset() uint {
 	return tl.endOffset
 }
 
-func (tl textLineImpl) EndOffsetWithNewLines() int {
+func (tl textLineImpl) EndOffsetWithNewLines() uint {
 	return tl.endOffset + tl.lengthOfNewLineChars
 }
 
-func (tl textLineImpl) Length() int {
+func (tl textLineImpl) Length() uint {
 	return tl.endOffset - tl.startOffset
 }
 
-func (tl textLineImpl) LengthWithNewLineChars() int {
+func (tl textLineImpl) LengthWithNewLineChars() uint {
 	return tl.endOffset - tl.startOffset + tl.lengthOfNewLineChars
 }

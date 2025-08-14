@@ -22,10 +22,10 @@ import "fmt"
 
 // TextRange describes a contiguous sequence of unicode code points in the TextDocument.
 type TextRange interface {
-	StartOffset() int
-	EndOffset() int
-	Length() int
-	Contains(position int) bool
+	StartOffset() uint
+	EndOffset() uint
+	Length() uint
+	Contains(position uint) bool
 	IntersectionExists(textRange TextRange) bool
 	String() string
 	TextRangeLookupKey() TextRangeLookupKey
@@ -33,17 +33,17 @@ type TextRange interface {
 
 // TextRangeLookupKey represents the comparable fields of TextRange for equality/hashing.
 type TextRangeLookupKey struct {
-	StartOffset int
-	EndOffset   int
+	StartOffset uint
+	EndOffset   uint
 }
 
 type textRangeImpl struct {
-	startOffset int
-	endOffset   int
-	length      int
+	startOffset uint
+	endOffset   uint
+	length      uint
 }
 
-func TextRangeFromStartOffsetAndLength(startOffset, length int) TextRange {
+func TextRangeFromStartOffsetAndLength(startOffset, length uint) TextRange {
 	return &textRangeImpl{
 		startOffset: startOffset,
 		length:      length,
@@ -51,19 +51,19 @@ func TextRangeFromStartOffsetAndLength(startOffset, length int) TextRange {
 	}
 }
 
-func (tr textRangeImpl) StartOffset() int {
+func (tr textRangeImpl) StartOffset() uint {
 	return tr.startOffset
 }
 
-func (tr textRangeImpl) EndOffset() int {
+func (tr textRangeImpl) EndOffset() uint {
 	return tr.endOffset
 }
 
-func (tr textRangeImpl) Length() int {
+func (tr textRangeImpl) Length() uint {
 	return tr.length
 }
 
-func (tr textRangeImpl) Contains(position int) bool {
+func (tr textRangeImpl) Contains(position uint) bool {
 	return tr.startOffset <= position && position < tr.endOffset
 }
 

@@ -25,32 +25,32 @@ import (
 
 // LineMap represents a collection of text lines in the TextDocument.
 type LineMap interface {
-	TextLine(line int) (TextLine, error)
-	LinePositionFromPosition(position int) (LinePosition, error)
-	TextPositionFromLinePosition(linePosition LinePosition) (int, error)
+	TextLine(line uint) (TextLine, error)
+	LinePositionFromPosition(position uint) (LinePosition, error)
+	TextPositionFromLinePosition(linePosition LinePosition) (uint, error)
 	TextLines() []string
 }
 
 type lineMapImpl struct {
 	textLines []TextLine
-	length    int
+	length    uint
 }
 
 func NewLineMap(textLines []TextLine) LineMap {
 	return &lineMapImpl{
 		textLines: textLines,
-		length:    len(textLines),
+		length:    uint(len(textLines)),
 	}
 }
 
-func (lm lineMapImpl) TextLine(line int) (TextLine, error) {
+func (lm lineMapImpl) TextLine(line uint) (TextLine, error) {
 	if err := lm.lineRangeCheck(line); err != nil {
 		return nil, err
 	}
 	return lm.textLines[line], nil
 }
 
-func (lm lineMapImpl) LinePositionFromPosition(position int) (LinePosition, error) {
+func (lm lineMapImpl) LinePositionFromPosition(position uint) (LinePosition, error) {
 	if err := lm.positionRangeCheck(position); err != nil {
 		return nil, err
 	}
@@ -58,13 +58,13 @@ func (lm lineMapImpl) LinePositionFromPosition(position int) (LinePosition, erro
 	return LinePositionFromLineAndOffset(textLine.LineNo(), position-textLine.StartOffset()), nil
 }
 
-func (lm lineMapImpl) TextPositionFromLinePosition(linePosition LinePosition) (int, error) {
+func (lm lineMapImpl) TextPositionFromLinePosition(linePosition LinePosition) (uint, error) {
 	if err := lm.lineRangeCheck(linePosition.Line()); err != nil {
-		return -1, err
+		return 0, err
 	}
 	textLine := lm.textLines[linePosition.Line()]
 	if textLine.Length() < linePosition.Offset() {
-		return -1, errors.NewIllegalArgumentError(fmt.Sprintf("Cannot find a line with the character offset '%d'", linePosition.Offset()))
+		return 0, errors.NewIllegalArgumentError(fmt.Sprintf("Cannot find a line with the character offset '%d'", linePosition.Offset()))
 	}
 	return textLine.StartOffset() + linePosition.Offset(), nil
 }
@@ -77,23 +77,23 @@ func (lm lineMapImpl) TextLines() []string {
 	return lines
 }
 
-func (lm lineMapImpl) positionRangeCheck(position int) error {
-	if position < 0 || position > lm.textLines[lm.length-1].EndOffset() {
-		return errors.NewIndexOutOfBoundsError(position, lm.textLines[lm.length-1].EndOffset())
+func (lm lineMapImpl) positionRangeCheck(position uint) error {
+	if position > lm.textLines[lm.length-1].EndOffset() {
+		return errors.NewIndexOutOfBoundsError(int(position), int(lm.textLines[lm.length-1].EndOffset()))
 	}
 	return nil
 }
 
-func (lm lineMapImpl) lineRangeCheck(lineNo int) error {
-	if lineNo < 0 || lineNo > lm.length {
-		return errors.NewIndexOutOfBoundsError(lineNo, lm.length)
+func (lm lineMapImpl) lineRangeCheck(lineNo uint) error {
+	if lineNo > lm.length {
+		return errors.NewIndexOutOfBoundsError(int(lineNo), int(lm.length))
 	}
 	return nil
 }
 
 // findLineFrom returns the TextLine to which the given position belongs.
 // Performs a binary search to find the matching text line.
-func (lm lineMapImpl) findLineFrom(position int) TextLine {
+func (lm lineMapImpl) findLineFrom(position uint) TextLine {
 	// Check boundary conditions
 	if position == 0 {
 		return lm.textLines[0]
@@ -102,7 +102,7 @@ func (lm lineMapImpl) findLineFrom(position int) TextLine {
 	}
 
 	var foundTextLine TextLine
-	left := 0
+	var left uint = 0
 	right := lm.length - 1
 
 	for left <= right {

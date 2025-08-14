@@ -45,7 +45,7 @@ func NewStringTextDocument(text string) StringTextDocument {
 }
 
 func (std *stringTextDocumentImpl) Apply(textDocumentChange TextDocumentChange) TextDocument {
-	startOffset := 0
+	var startOffset uint = 0
 	var sb strings.Builder
 	textEditCount := textDocumentChange.GetTextEditCount()
 	for i := range textEditCount {
@@ -90,13 +90,13 @@ func (std *stringTextDocumentImpl) Lines() LineMap {
 func (std *stringTextDocumentImpl) calculateTextLines() []TextLine {
 	var textLines []TextLine
 
-	line := 0
-	startOffset := 0
+	var line uint = 0
+	var startOffset uint = 0
 
-	index := 0
-	textLength := len(std.text)
+	var index uint = 0
+	textLength := uint(len(std.text))
 
-	var lengthOfNewLineChars int
+	var lengthOfNewLineChars uint
 
 	for index < textLength {
 		if std.text[index] == CR || std.text[index] == LF {
