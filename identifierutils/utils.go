@@ -35,6 +35,10 @@ func encodeSpecialCharacters(id string) string {
 				index = index + 2
 				continue
 			}
+			index = index + 1
+			sb.WriteByte(id[index])
+			index = index + 1
+			continue
 		}
 		sb.WriteByte(id[index])
 		index = index + 1

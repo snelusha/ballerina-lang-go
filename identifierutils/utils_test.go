@@ -265,7 +265,7 @@ func TestEncodeNonFunctionIdentifier(t *testing.T) {
 		{"test/field", "test&0047field"},
 		{"test<field", "test&0060field"},
 		{"test>field", "test&0062field"},
-		{"test\\field", "test\ffield"},
+		{"test\\field", "testfield"},
 		{"test\\$field", "test&0036field"},
 		{"test.field:value", "test&0046field&0058value"},
 		{"", ""},
