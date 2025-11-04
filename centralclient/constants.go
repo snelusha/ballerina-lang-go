@@ -1,6 +1,53 @@
 // Package centralclient holds constants for the CentralAPIClient and related logic.
 package centralclient
 
+// HTTP Headers
+const (
+	BallerinaPlatform                 = "Ballerina-Platform"
+	Identity                          = "identity"
+	ResolvedRequestedURI              = "RESOLVED_REQUESTED_URI"
+	SSL                               = "SSL"
+	Authorization                     = "Authorization"
+	ContentType                       = "Content-Type"
+	AcceptEncoding                    = "Accept-Encoding"
+	UserAgent                         = "User-Agent"
+	Location                          = "Location"
+	Accept                            = "Accept"
+	ContentDisposition                = "Content-Disposition"
+	ApplicationOctetStream            = "application/octet-stream"
+	ApplicationJSON                   = "application/json"
+	BallerinaCentralTelemetryDisabled = "Ballerina-Central-Telemetry-Disabled"
+)
+
+// JSON field names
+const (
+	Organization     = "organization"
+	Version          = "version"
+	BalaURL          = "balaURL"
+	Platform         = "platform"
+	AnyPlatform      = "any"
+	PkgName          = "name"
+	IsDeprecated     = "isdeprecated"
+	Digest           = "digest"
+	DeprecateMessage = "deprecatemessage"
+)
+
+// Environment variables
+const (
+	EnableOutputStream           = "ENABLE_OUTPUT_STREAM"
+	SysPropCentralVerboseEnabled = "CENTRAL_VERBOSE_ENABLED"
+	TestModeActive               = "TEST_MODE_ACTIVE"
+	BallerinaStageCentral        = "BALLERINA_STAGE_CENTRAL"
+	BallerinaDevCentral          = "BALLERINA_DEV_CENTRAL"
+)
+
+// Repository URLs
+const (
+	ProductionRepo = "central.ballerina.io"
+	StagingRepo    = "staging-central.ballerina.io"
+	DevRepo        = "dev-central.ballerina.io"
+)
+
 // API paths and query parameters
 const (
 	PackagesPath        = "/packages/"
@@ -19,6 +66,19 @@ const (
 	TriggerPathPrefix   = Separator + "triggers" + Separator
 )
 
+// Hash and crypto
+const (
+	SHA256          = "sha-256="
+	SHA256Algorithm = "SHA-256"
+)
+
+// Progress and download constants
+const (
+	BytesForKB               = 1024
+	ProgressBarByteThreshold = 5
+	UpdateIntervalMillis     = 1000
+)
+
 // Error messages
 const (
 	ErrCannotFindPackage  = "error: could not connect to remote repository to find package: "
@@ -32,11 +92,6 @@ const (
 	ErrPackageDeprecate   = "error: failed to deprecate the package: "
 	ErrPackageUndeprecate = "error: failed to undo deprecation of the package: "
 	ErrPackageResolution  = "error: while connecting to central: "
-)
-
-// System property names
-const (
-	SysPropCentralVerboseEnabled = "CENTRAL_VERBOSE_ENABLED"
 )
 
 // Default timeouts and retry
