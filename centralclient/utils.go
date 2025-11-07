@@ -30,6 +30,16 @@ type LogFormatter interface {
 	formatLog(message string) string
 }
 
+type logFormatterImpl struct{}
+
+func (l *logFormatterImpl) formatLog(message string) string {
+	return message
+}
+
+func NewLogFormatter() LogFormatter {
+	return &logFormatterImpl{}
+}
+
 func createBalaInHomeRepo(balaDownloadResponse *http.Response, pkgPathInBalaCache, pkgOrg, pkgName string, isNightlyBuild bool, deprecationMsg, newUrl, contentDisposition string, outStream io.Writer, logFormatter LogFormatter, trueDigest string) error {
 	responseContentLength := balaDownloadResponse.ContentLength
 	if responseContentLength <= 0 {
@@ -73,6 +83,8 @@ func createBalaInHomeRepo(balaDownloadResponse *http.Response, pkgPathInBalaCach
 					return NewPackageAlreadyExistsError(logFormatter.formatLog(fmt.Sprintf("error accessing bala : %s", balaCacheWithPkgPath)), validPkgVersion)
 				}
 			}
+
+			return NewPackageAlreadyExistsError(logFormatter.formatLog(fmt.Sprintf("package already exists in the home repository: %s", balaCacheWithPkgPath)), validPkgVersion)
 		}
 	}
 
@@ -122,7 +134,7 @@ func getBalaFileName(contentDisposition, balaFile string) string {
 	if contentDisposition != "" {
 		prefix := "attachment; filename="
 		if strings.HasPrefix(contentDisposition, prefix) {
-			return ContentDisposition[len(prefix):]
+			return contentDisposition[len(prefix):]
 		}
 	}
 
@@ -209,7 +221,7 @@ func extractBala(balaFilePath, balaFileDestPath, trueDigest, packageName string,
 		return err
 	}
 
-	actualDigest := "SHA-256=" + checkHashInternal(balaFilePath)
+	actualDigest := SHA256 + checkHashInternal(balaFilePath)
 	if trueDigest != "" && trueDigest != actualDigest {
 		warning := fmt.Sprintf(`*************************************************************
 * WARNING: Certain packages may have originated from sources other than the official distributors. *

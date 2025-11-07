@@ -7,7 +7,7 @@ type Package struct {
 	Platform                     string   `json:"platform"`
 	LanguageSpecificationVersion string   `json:"languageSpecificationVersion"`
 	IsDeprecated                 *bool    `json:"isDeprecated,omitempty"`
-	DeprecateMessage             *bool    `json:"deprecateMessage,omitempty"`
+	DeprecateMessage             string   `json:"deprecateMessage,omitempty"`
 	URL                          string   `json:"URL"`
 	BalaVersion                  string   `json:"balaVersion"`
 	BalaURL                      string   `json:"balaURL"`
