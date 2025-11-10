@@ -129,7 +129,7 @@ func validatePackageVersion(pkgVersion string, logFormatter LogFormatter) (strin
 		return "", NewCentralClientError(logFormatter.formatLog("Version cannot be empty"))
 	}
 
-	version, err := semver.NewVersion(pkgVersion)
+	version, err := semver.StrictNewVersion(pkgVersion)
 	if err != nil {
 		return "", NewCentralClientError(logFormatter.formatLog(fmt.Sprintf("Invalid version: '%s'. %s", pkgVersion, err.Error())))
 	}
