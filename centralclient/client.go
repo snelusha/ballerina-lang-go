@@ -67,7 +67,21 @@ func NewCentralAPIClient(baseURL string, proxyURL *url.URL, accessToken string) 
 }
 
 func (c *centralAPIClientImpl) GetPackage(orgNamePath, packageNamePath, version, supportedPlatform, ballerinaVersion string) (*models.Package, error) {
-	packageSignature := fmt.Sprintf("%s%s%s:%s", orgNamePath, Separator, packageNamePath, version)
+	pkg, err := c.getPackageInternal(orgNamePath, packageNamePath, version, supportedPlatform, ballerinaVersion)
+	if err != nil {
+		switch err.(type) {
+		case *NoPackageError, *CentralClientError:
+			return nil, err
+
+		default:
+			return nil, NewCentralClientError(fmt.Sprintf("%s%s", ErrCannotFindPackage, getPackageSignature(orgNamePath, packageNamePath, version)))
+		}
+	}
+
+	return pkg, nil
+}
+
+func (c *centralAPIClientImpl) getPackageInternal(orgNamePath, packageNamePath, version, supportedPlatform, ballerinaVersion string) (*models.Package, error) {
 	resourceURL := fmt.Sprintf("%s%s%s%s", PackagePathPrefix, orgNamePath, Separator, packageNamePath)
 
 	urlStr := fmt.Sprintf("%s%s", c.baseURL, resourceURL)
@@ -77,7 +91,7 @@ func (c *centralAPIClientImpl) GetPackage(orgNamePath, packageNamePath, version,
 
 	req, err := c.newRequest(http.MethodGet, urlStr, supportedPlatform, ballerinaVersion, nil)
 	if err != nil {
-		return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: %s", ErrCannotFindPackage, packageSignature, err.Error()))
+		return nil, err
 	}
 
 	c.logRequestInitVerbose(req)
@@ -85,7 +99,7 @@ func (c *centralAPIClientImpl) GetPackage(orgNamePath, packageNamePath, version,
 	client := c.getHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: %s", ErrCannotFindPackage, packageSignature, err.Error()))
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -93,7 +107,7 @@ func (c *centralAPIClientImpl) GetPackage(orgNamePath, packageNamePath, version,
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: %s", ErrCannotFindPackage, packageSignature, err.Error()))
+		return nil, err
 	}
 
 	c.logResponseVerbose(resp, string(bodyBytes))
@@ -104,7 +118,7 @@ func (c *centralAPIClientImpl) GetPackage(orgNamePath, packageNamePath, version,
 		case http.StatusOK:
 			var pkg models.Package
 			if err := json.Unmarshal(bodyBytes, &pkg); err != nil {
-				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: %s", ErrCannotFindPackage, packageSignature, err.Error()))
+				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: unexpected error", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, version)))
 			}
 			return &pkg, nil
 
@@ -114,7 +128,7 @@ func (c *centralAPIClientImpl) GetPackage(orgNamePath, packageNamePath, version,
 				if strings.Contains(errResp.Message, "package not found for:") {
 					return nil, NewNoPackageError(errResp.Message)
 				}
-				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: %s", ErrCannotFindPackage, packageSignature, err.Error()))
+				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: unexpected error", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, version)))
 			}
 
 		case http.StatusUnauthorized:
@@ -122,30 +136,31 @@ func (c *centralAPIClientImpl) GetPackage(orgNamePath, packageNamePath, version,
 
 		case http.StatusBadRequest, http.StatusInternalServerError, http.StatusServiceUnavailable:
 			var errResp models.Error
-			if err := json.Unmarshal(bodyBytes, &errResp); err == nil && errResp.Message != "" {
-				return nil, NewCentralClientError(errResp.Message)
+
+			if err := json.Unmarshal(bodyBytes, &errResp); err != nil {
+				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: unexpected error", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, version)))
 			}
+
+			return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: %s", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, version), errResp.Message))
 		}
 	}
 
-	return nil, NewCentralClientError(fmt.Sprintf("%s%s", ErrCannotFindPackage, packageSignature))
+	return nil, NewCentralClientError(fmt.Sprintf("%s%s", ErrCannotFindPackage, getPackageSignature(orgNamePath, packageNamePath, version)))
 }
 
 func (c *centralAPIClientImpl) GetPackageVersions(orgNamePath, packageNamePath, supportedPlatform, ballerinaVersion string) ([]string, error) {
-	packageSignature := fmt.Sprintf("%s%s%s", orgNamePath, Separator, packageNamePath)
-
-	versions, err := c.getPackageVersionsInternal(orgNamePath, packageNamePath, supportedPlatform, ballerinaVersion, packageSignature)
+	versions, err := c.getPackageVersionsInternal(orgNamePath, packageNamePath, supportedPlatform, ballerinaVersion)
 	if err != nil {
 		if _, ok := err.(*CentralClientError); ok {
 			return nil, err
 		}
-		return nil, NewCentralClientError(fmt.Sprintf("%s%s", ErrCannotFindVersions, packageSignature))
+		return nil, NewCentralClientError(fmt.Sprintf("%s%s", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, "")))
 	}
 
 	return versions, nil
 }
 
-func (c *centralAPIClientImpl) getPackageVersionsInternal(orgNamePath, packageNamePath, supportedPlatform, ballerinaVersion, packageSignature string) ([]string, error) {
+func (c *centralAPIClientImpl) getPackageVersionsInternal(orgNamePath, packageNamePath, supportedPlatform, ballerinaVersion string) ([]string, error) {
 	resourceURL := fmt.Sprintf("%s%s%s%s", PackagePathPrefix, orgNamePath, Separator, packageNamePath)
 
 	urlStr := fmt.Sprintf("%s%s", c.baseURL, resourceURL)
@@ -179,7 +194,7 @@ func (c *centralAPIClientImpl) getPackageVersionsInternal(orgNamePath, packageNa
 		case http.StatusOK:
 			var versions []string
 			if err := json.Unmarshal(bodyBytes, &versions); err != nil {
-				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: %s", ErrCannotFindVersions, packageSignature, err.Error()))
+				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: %s", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, ""), err.Error()))
 			}
 			return versions, nil
 
@@ -190,11 +205,11 @@ func (c *centralAPIClientImpl) getPackageVersionsInternal(orgNamePath, packageNa
 			var errResp models.Error
 
 			if err := json.Unmarshal(bodyBytes, &errResp); err != nil {
-				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: unexpected error", ErrCannotFindVersions, packageSignature))
+				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: unexpected error", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, "")))
 			}
 
 			if !strings.Contains(errResp.Message, "package not found:") {
-				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: %s", ErrCannotFindVersions, packageSignature, errResp.Message))
+				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: %s", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, ""), errResp.Message))
 			}
 
 			return []string{}, nil
@@ -203,14 +218,14 @@ func (c *centralAPIClientImpl) getPackageVersionsInternal(orgNamePath, packageNa
 			var errResp models.Error
 
 			if err := json.Unmarshal(bodyBytes, &errResp); err != nil {
-				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: unexpected error", ErrCannotFindVersions, packageSignature))
+				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: unexpected error", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, "")))
 			}
 
-			return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: %s", ErrCannotFindVersions, packageSignature, errResp.Message))
+			return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: %s", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, ""), errResp.Message))
 		}
 	}
 
-	return nil, NewCentralClientError(fmt.Sprintf("%s%s.", ErrCannotFindVersions, packageSignature))
+	return nil, NewCentralClientError(fmt.Sprintf("%s%s.", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, "")))
 }
 
 func (c *centralAPIClientImpl) PullPackage(org, name, version, packagePathInBalaCache, supportedPlatform, ballerinaVersion string, isBuild bool) error {
@@ -941,4 +956,11 @@ func getBearerToken(accessToken string) string {
 
 func isApplicationJSONContentType(contentType string) bool {
 	return strings.HasPrefix(contentType, MediaTypeJSONContent)
+}
+
+func getPackageSignature(org, name, version string) string {
+	if version != "" {
+		return fmt.Sprintf("%s%s%s:%s", org, Separator, name, version)
+	}
+	return fmt.Sprintf("%s%s%s", org, Separator, name)
 }
