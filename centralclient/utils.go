@@ -103,7 +103,7 @@ func createBalaInHomeRepo(balaDownloadResponse *http.Response, pkgPathInBalaCach
 	}
 
 	if err := writeBalaFile(balaDownloadResponse, filepath.Join(tempPath, balaFile), fmt.Sprintf("%s/%s:%s", pkgOrg, pkgName, validPkgVersion), outStream, logFormatter, pkgPathInBalaCache, trueDigest); err != nil {
-		return nil
+		return err
 	}
 
 	tempDir := filepath.Dir(tempPath)

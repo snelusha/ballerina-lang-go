@@ -125,10 +125,11 @@ func (c *centralAPIClientImpl) getPackageInternal(orgNamePath, packageNamePath, 
 		case http.StatusNotFound:
 			var errResp models.Error
 			if err := json.Unmarshal(bodyBytes, &errResp); err != nil {
-				if strings.Contains(errResp.Message, "package not found for:") {
-					return nil, NewNoPackageError(errResp.Message)
-				}
 				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: unexpected error", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, version)))
+			}
+
+			if errResp.Message != "" && strings.Contains(errResp.Message, "package not found for:") {
+				return nil, NewNoPackageError(errResp.Message)
 			}
 
 		case http.StatusUnauthorized:
@@ -794,7 +795,7 @@ func (c *centralAPIClientImpl) pullPackageInternal(org, name, version, packagePa
 
 			downloadResp, err := client.Do(downloadReq)
 			if err != nil {
-				return NewCentralClientError(logFormatter.formatLog(fmt.Sprintf("%s'%s'", ErrCannotPullPackage, getPackageSignature(org, name, version))))
+				return NewCentralClientError(logFormatter.formatLog(fmt.Sprintf("%s'%s': %s", ErrCannotPullPackage, getPackageSignature(org, name, version), err.Error())))
 			}
 			defer downloadResp.Body.Close()
 
