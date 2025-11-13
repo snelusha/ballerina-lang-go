@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"golang.org/x/tools/txtar"
 )
 
 const (
@@ -23,6 +25,153 @@ var utilTestResources = filepath.Join("testdata", "utils")
 type RoundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f RoundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+type TestRunner = func(client CentralAPIClient) (string, string)
+
+type TestCase struct {
+	runner         TestRunner
+	name           string
+	filepath       string
+	expectedOutput string
+	expectedError  string
+}
+
+func parseTestCases(dir string) ([]TestCase, error) {
+	var testCases []TestCase
+
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		if !file.IsDir() {
+			filepath := filepath.Join(dir, file.Name())
+			tc, err := txtar.ParseFile(filepath)
+			if err != nil {
+				return nil, err
+			}
+			testCase, err := parseTestCase(tc, filepath)
+			if err != nil {
+				return nil, err
+			}
+
+			testCases = append(testCases, testCase)
+		}
+	}
+
+	return testCases, nil
+}
+
+func parseTestCase(archive *txtar.Archive, filepath string) (TestCase, error) {
+	if archive == nil || len(archive.Files) <= 2 {
+		return TestCase{}, fmt.Errorf("invalid test case archive")
+	}
+
+	tr := parseInput(archive.Files[0])
+	return TestCase{
+		runner:         tr,
+		name:           archive.Files[0].Name,
+		filepath:       filepath,
+		expectedOutput: strings.TrimSpace(string(archive.Files[1].Data)),
+		expectedError:  strings.TrimSpace(string(archive.Files[2].Data)),
+	}, nil
+}
+
+func parseInput(data txtar.File) TestRunner {
+	lines := strings.Split(strings.TrimSpace(string(data.Data)), "\n")
+	switch lines[0] {
+	case "GetPackageVersions":
+		return func(client CentralAPIClient) (string, string) {
+			versions, err := client.GetPackageVersions(lines[1], lines[2], lines[3], lines[4])
+			if err != nil {
+				return "", err.Error()
+			}
+			return fmt.Sprintf("%v", versions), ""
+		}
+	default:
+		panic("unsupported test case type")
+	}
+}
+
+func updateTestCase(tc TestCase, actualOutput, actualError string) error {
+	archive, err := txtar.ParseFile(tc.filepath)
+	if err != nil {
+		return err
+	}
+
+	if len(archive.Files) < 3 {
+		return fmt.Errorf("invalid archive structure")
+	}
+
+	if actualOutput != "" {
+		archive.Files[1].Data = fmt.Appendf(nil, "%s\n\n", actualOutput)
+	}
+
+	if actualError != "" {
+		archive.Files[2].Data = fmt.Appendf(nil, "%s\n\n", actualError)
+	}
+
+	return os.WriteFile(tc.filepath, txtar.Format(archive), 0o644)
+}
+
+func TestTxtatarTestCases(t *testing.T) {
+	bless := os.Getenv("BLESS") == "1" || os.Getenv("BLESS") == "true"
+
+	testCases, err := parseTestCases("testdata")
+	if err != nil {
+		t.Fatalf("failed to parse test cases: %v", err)
+	}
+
+	for _, tc := range testCases {
+		mockClient := &http.Client{
+			Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+				switch req.URL.Path {
+				case "/registry/packages/wso2/sf":
+					body := `["1.0.0", "1.1.0", "1.2.0"]`
+					return NewJSONResponse(http.StatusOK, body, req), nil
+				case "/registry/packages/unknown/package":
+					body := `{"message":"package not found: unknown/package:*_any"}`
+					return NewJSONResponse(http.StatusNotFound, body, req), nil
+				case "/registry/packages/testorg/testpkg":
+					body := `{"message":"unauthorized access token for organization: 'testorg'"}`
+					return NewJSONResponse(http.StatusUnauthorized, body, req), nil
+				case "/registry/packages/testorg/bad-pkg":
+					body := `{"message":"invalid package name format"}`
+					return NewJSONResponse(http.StatusBadRequest, body, req), nil
+				case "/registry/packages/testorg/internalerror":
+					body := `{"message":"internal server error occurred"}`
+					return NewJSONResponse(http.StatusInternalServerError, body, req), nil
+				case "/registry/packages/testorg/unavailable":
+					body := `{"message":"service temporarily unavailable"}`
+					return NewJSONResponse(http.StatusServiceUnavailable, body, req), nil
+				case "/registry/packages/testorg/invalidjson":
+					body := `invalid json response`
+					return NewJSONResponse(http.StatusOK, body, req), nil
+				default:
+					return NewJSONResponse(http.StatusNotFound, ``, req), nil
+				}
+			}),
+		}
+		client := NewTestCentralAPIClient(mockClient)
+		output, errStr := tc.runner(client)
+
+		if bless {
+			if err := updateTestCase(tc, output, errStr); err != nil {
+				t.Fatalf("failed to update test case %s: %v", tc.name, err)
+			}
+			t.Logf("blessed test case %s", tc.name)
+			continue
+		}
+
+		if output != tc.expectedOutput {
+			t.Errorf("test case %s: expected output '%s', got '%s'", tc.name, tc.expectedOutput, output)
+		}
+		if errStr != tc.expectedError {
+			t.Errorf("test case %s: expected error '%s', got '%s'", tc.name, tc.expectedError, errStr)
+		}
+	}
+}
 
 func NewJSONResponse(status int, body string, req *http.Request) *http.Response {
 	return &http.Response{
@@ -207,6 +356,8 @@ func TestGetPackageVersionsInvalidJSON(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid JSON, got nil")
 	}
+
+	fmt.Println(err.Error())
 
 	if _, ok := err.(*CentralClientError); !ok {
 		t.Errorf("expected CentralClientError, got %T", err)

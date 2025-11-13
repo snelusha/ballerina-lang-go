@@ -197,7 +197,7 @@ func (c *centralAPIClientImpl) getPackageVersionsInternal(orgNamePath, packageNa
 		case http.StatusOK:
 			var versions []string
 			if err := json.Unmarshal(bodyBytes, &versions); err != nil {
-				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: %s", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, ""), err.Error()))
+				return nil, NewCentralClientError(fmt.Sprintf("%s%s. reason: unexpected error", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, "")))
 			}
 			return versions, nil
 
