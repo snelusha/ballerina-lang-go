@@ -45,7 +45,7 @@ func parseTestCases(dir string) ([]TestCase, error) {
 	}
 
 	for _, file := range files {
-		if !file.IsDir() {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".txtar") {
 			filepath := filepath.Join(dir, file.Name())
 			tc, err := txtar.ParseFile(filepath)
 			if err != nil {
@@ -79,7 +79,11 @@ func parseTestCase(archive *txtar.Archive, filepath string) (TestCase, error) {
 }
 
 func parseInput(data txtar.File) TestRunner {
-	lines := strings.Split(strings.TrimSpace(string(data.Data)), "\n")
+	content := strings.ReplaceAll(string(data.Data), "\r\n", "\n")
+	lines := strings.Split(strings.TrimSpace(content), "\n")
+	if len(lines) == 0 {
+		panic(fmt.Sprintf("empty input data in test case: %s", data.Name))
+	}
 	switch lines[0] {
 	case "GetPackageVersions":
 		return func(client CentralAPIClient) (string, string) {
@@ -89,8 +93,58 @@ func parseInput(data txtar.File) TestRunner {
 			}
 			return fmt.Sprintf("%v", versions), ""
 		}
+	case "GetPackage":
+		return func(client CentralAPIClient) (string, string) {
+			pkg, err := client.GetPackage(lines[1], lines[2], lines[3], lines[4], lines[5])
+			if err != nil {
+				return "", err.Error()
+			}
+			return fmt.Sprintf("org=%s name=%s version=%s", pkg.Organization, pkg.Name, pkg.Version), ""
+		}
+	case "GetConnectors":
+		return func(client CentralAPIClient) (string, string) {
+			params := make(map[string]string)
+			params["q"] = lines[1]
+			connectors, err := client.GetConnectors(params, lines[2], lines[3])
+			if err != nil {
+				return "", err.Error()
+			}
+			return fmt.Sprintf("%v", connectors != nil), ""
+		}
+	case "GetConnector":
+		return func(client CentralAPIClient) (string, string) {
+			connector, err := client.GetConnector(lines[1], lines[2], lines[3])
+			if err != nil {
+				return "", err.Error()
+			}
+			if id, ok := connector["id"].(string); ok {
+				return fmt.Sprintf("id=%s", id), ""
+			}
+			return "connector retrieved", ""
+		}
+	case "GetTriggers":
+		return func(client CentralAPIClient) (string, string) {
+			params := make(map[string]string)
+			params["q"] = lines[1]
+			triggers, err := client.GetTriggers(params, lines[2], lines[3])
+			if err != nil {
+				return "", err.Error()
+			}
+			return fmt.Sprintf("%v", triggers != nil), ""
+		}
+	case "GetTrigger":
+		return func(client CentralAPIClient) (string, string) {
+			trigger, err := client.GetTrigger(lines[1], lines[2], lines[3])
+			if err != nil {
+				return "", err.Error()
+			}
+			if id, ok := trigger["id"].(string); ok {
+				return fmt.Sprintf("id=%s", id), ""
+			}
+			return "trigger retrieved", ""
+		}
 	default:
-		panic("unsupported test case type")
+		panic(fmt.Sprintf("unsupported test case type: %s (file: %s)", lines[0], data.Name))
 	}
 }
 
@@ -124,8 +178,14 @@ func TestTxtatarTestCases(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		packageJSONPath := filepath.Join(utilTestResources, "package.json")
+		packageJSON, _ := os.ReadFile(packageJSONPath)
+		packageSearchPath := filepath.Join(utilTestResources, "packageSearch.json")
+		packageSearchJSON, _ := os.ReadFile(packageSearchPath)
+
 		mockClient := &http.Client{
 			Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+				// GetPackageVersions endpoints
 				switch req.URL.Path {
 				case "/registry/packages/wso2/sf":
 					body := `["1.0.0", "1.1.0", "1.2.0"]`
@@ -148,6 +208,90 @@ func TestTxtatarTestCases(t *testing.T) {
 				case "/registry/packages/testorg/invalidjson":
 					body := `invalid json response`
 					return NewJSONResponse(http.StatusOK, body, req), nil
+
+				// GetPackage endpoints
+				case "/registry/packages/foo/winery/1.3.5":
+					return NewJSONResponse(http.StatusOK, string(packageJSON), req), nil
+				case "/registry/packages/unknown/notfound/1.0.0":
+					body := `{"message":"package not found for: unknown/notfound:1.0.0"}`
+					return NewJSONResponse(http.StatusNotFound, body, req), nil
+				case "/registry/packages/testorg/unauthorized/1.0.0":
+					body := `{"message":"unauthorized access token"}`
+					return NewJSONResponse(http.StatusUnauthorized, body, req), nil
+				case "/registry/packages/testorg/badrequest/1.0.0":
+					body := `{"message":"invalid version format"}`
+					return NewJSONResponse(http.StatusBadRequest, body, req), nil
+				case "/registry/packages/testorg/servererror/1.0.0":
+					body := `{"message":"database connection failed"}`
+					return NewJSONResponse(http.StatusInternalServerError, body, req), nil
+
+				// GetConnectors endpoints (path matches /connectors with query params)
+				case "/registry/connectors":
+					if req.URL.Query().Get("q") == "unauthorized" {
+						body := `{"message":"unauthorized access"}`
+						return NewJSONResponse(http.StatusUnauthorized, body, req), nil
+					}
+					if req.URL.Query().Get("q") == "badrequest" {
+						body := `{"message":"invalid query parameter"}`
+						return NewJSONResponse(http.StatusBadRequest, body, req), nil
+					}
+					if req.URL.Query().Get("q") == "servererror" {
+						body := `{"message":"internal server error"}`
+						return NewJSONResponse(http.StatusInternalServerError, body, req), nil
+					}
+					return NewJSONResponse(http.StatusOK, string(packageSearchJSON), req), nil
+
+				// GetConnector endpoints
+				case "/registry/connectors/123":
+					body := `{"id": "123", "organization": "foo", "name": "winery", "version": "1.3.5"}`
+					return NewJSONResponse(http.StatusOK, body, req), nil
+				case "/registry/connectors/notfound":
+					body := `{"message":"connector not found"}`
+					return NewJSONResponse(http.StatusNotFound, body, req), nil
+				case "/registry/connectors/unauthorized":
+					body := `{"message":"unauthorized access"}`
+					return NewJSONResponse(http.StatusUnauthorized, body, req), nil
+				case "/registry/connectors/invalidjson":
+					body := `invalid json`
+					return NewJSONResponse(http.StatusOK, body, req), nil
+				case "/registry/connectors/servererror":
+					body := `{"message":"internal server error"}`
+					return NewJSONResponse(http.StatusInternalServerError, body, req), nil
+
+				// GetTriggers endpoints (path matches /connectors with query params)
+				case "/registry/triggers":
+					if req.URL.Query().Get("q") == "unauthorized" {
+						body := `{"message":"unauthorized access"}`
+						return NewJSONResponse(http.StatusUnauthorized, body, req), nil
+					}
+					if req.URL.Query().Get("q") == "badrequest" {
+						body := `{"message":"invalid query parameter"}`
+						return NewJSONResponse(http.StatusBadRequest, body, req), nil
+					}
+					if req.URL.Query().Get("q") == "servererror" {
+						body := `{"message":"internal server error"}`
+						return NewJSONResponse(http.StatusInternalServerError, body, req), nil
+					}
+					body := `{"count": 2, "triggers": [{"id": "1", "name": "trigger1"}]}`
+					return NewJSONResponse(http.StatusOK, body, req), nil
+
+				// GetTrigger endpoints
+				case "/registry/triggers/456":
+					body := `{"id": "456", "name": "http-trigger", "type": "http"}`
+					return NewJSONResponse(http.StatusOK, body, req), nil
+				case "/registry/triggers/notfound":
+					body := `{"message":"trigger not found"}`
+					return NewJSONResponse(http.StatusNotFound, body, req), nil
+				case "/registry/triggers/unauthorized":
+					body := `{"message":"unauthorized access"}`
+					return NewJSONResponse(http.StatusUnauthorized, body, req), nil
+				case "/registry/triggers/invalidjson":
+					body := `invalid json`
+					return NewJSONResponse(http.StatusOK, body, req), nil
+				case "/registry/triggers/servererror":
+					body := `{"message":"internal server error"}`
+					return NewJSONResponse(http.StatusInternalServerError, body, req), nil
+
 				default:
 					return NewJSONResponse(http.StatusNotFound, ``, req), nil
 				}

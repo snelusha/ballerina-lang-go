@@ -1,0 +1,11 @@
+-- inputs --
+GetTrigger
+456
+any
+slp5
+
+-- expected_output --
+id=456
+
+-- expected_error --
+

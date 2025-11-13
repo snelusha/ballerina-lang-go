@@ -1,0 +1,11 @@
+-- inputs --
+GetTriggers
+http
+any
+slp5
+
+-- expected_output --
+true
+
+-- expected_error --
+
