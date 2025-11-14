@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -69,9 +70,10 @@ func parseTestCase(archive *txtar.Archive, filepath string) (TestCase, error) {
 	}
 
 	tr := parseInput(archive.Files[0])
+
 	return TestCase{
 		runner:         tr,
-		name:           archive.Files[0].Name,
+		name:           strings.TrimSuffix(path.Base(filepath), ".txtar"),
 		filepath:       filepath,
 		expectedOutput: strings.TrimSpace(string(archive.Files[1].Data)),
 		expectedError:  strings.TrimSpace(string(archive.Files[2].Data)),
@@ -117,10 +119,7 @@ func parseInput(data txtar.File) TestRunner {
 			if err != nil {
 				return "", err.Error()
 			}
-			if id, ok := connector["id"].(string); ok {
-				return fmt.Sprintf("id=%s", id), ""
-			}
-			return "connector retrieved", ""
+			return fmt.Sprintf("%v", connector), ""
 		}
 	case "GetTriggers":
 		return func(client CentralAPIClient) (string, string) {
@@ -130,7 +129,7 @@ func parseInput(data txtar.File) TestRunner {
 			if err != nil {
 				return "", err.Error()
 			}
-			return fmt.Sprintf("%v", triggers != nil), ""
+			return fmt.Sprintf("%v", triggers), ""
 		}
 	case "GetTrigger":
 		return func(client CentralAPIClient) (string, string) {
@@ -138,10 +137,7 @@ func parseInput(data txtar.File) TestRunner {
 			if err != nil {
 				return "", err.Error()
 			}
-			if id, ok := trigger["id"].(string); ok {
-				return fmt.Sprintf("id=%s", id), ""
-			}
-			return "trigger retrieved", ""
+			return fmt.Sprintf("%v", trigger), ""
 		}
 	default:
 		panic(fmt.Sprintf("unsupported test case type: %s (file: %s)", lines[0], data.Name))
@@ -169,7 +165,7 @@ func updateTestCase(tc TestCase, actualOutput, actualError string) error {
 	return os.WriteFile(tc.filepath, txtar.Format(archive), 0o644)
 }
 
-func TestTxtatarTestCases(t *testing.T) {
+func TestTxtarTestCases(t *testing.T) {
 	bless := os.Getenv("BLESS") == "1" || os.Getenv("BLESS") == "true"
 
 	testCases, err := parseTestCases("testdata")
@@ -177,127 +173,129 @@ func TestTxtatarTestCases(t *testing.T) {
 		t.Fatalf("failed to parse test cases: %v", err)
 	}
 
-	for _, tc := range testCases {
-		packageJSONPath := filepath.Join(utilTestResources, "package.json")
-		packageJSON, _ := os.ReadFile(packageJSONPath)
-		packageSearchPath := filepath.Join(utilTestResources, "packageSearch.json")
-		packageSearchJSON, _ := os.ReadFile(packageSearchPath)
+	packageJSONPath := filepath.Join(utilTestResources, "package.json")
+	packageJSON, _ := os.ReadFile(packageJSONPath)
+	packageSearchPath := filepath.Join(utilTestResources, "packageSearch.json")
+	packageSearchJSON, _ := os.ReadFile(packageSearchPath)
 
-		mockClient := &http.Client{
-			Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-				// GetPackageVersions endpoints
-				switch req.URL.Path {
-				case "/registry/packages/wso2/sf":
-					body := `["1.0.0", "1.1.0", "1.2.0"]`
-					return NewJSONResponse(http.StatusOK, body, req), nil
-				case "/registry/packages/unknown/package":
-					body := `{"message":"package not found: unknown/package:*_any"}`
-					return NewJSONResponse(http.StatusNotFound, body, req), nil
-				case "/registry/packages/testorg/testpkg":
-					body := `{"message":"unauthorized access token for organization: 'testorg'"}`
-					return NewJSONResponse(http.StatusUnauthorized, body, req), nil
-				case "/registry/packages/testorg/bad-pkg":
-					body := `{"message":"invalid package name format"}`
-					return NewJSONResponse(http.StatusBadRequest, body, req), nil
-				case "/registry/packages/testorg/internalerror":
-					body := `{"message":"internal server error occurred"}`
-					return NewJSONResponse(http.StatusInternalServerError, body, req), nil
-				case "/registry/packages/testorg/unavailable":
-					body := `{"message":"service temporarily unavailable"}`
-					return NewJSONResponse(http.StatusServiceUnavailable, body, req), nil
-				case "/registry/packages/testorg/invalidjson":
-					body := `invalid json response`
-					return NewJSONResponse(http.StatusOK, body, req), nil
+	mockClient := &http.Client{
+		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			// GetPackageVersions endpoints
+			switch req.URL.Path {
+			case "/registry/packages/wso2/sf":
+				body := `["1.0.0", "1.1.0", "1.2.0"]`
+				return NewJSONResponse(http.StatusOK, body, req), nil
+			case "/registry/packages/unknown/package":
+				body := `{"message":"package not found: unknown/package:*_any"}`
+				return NewJSONResponse(http.StatusNotFound, body, req), nil
+			case "/registry/packages/testorg/testpkg":
+				body := `{"message":"unauthorized access token for organization: 'testorg'"}`
+				return NewJSONResponse(http.StatusUnauthorized, body, req), nil
+			case "/registry/packages/testorg/bad-pkg":
+				body := `{"message":"invalid package name format"}`
+				return NewJSONResponse(http.StatusBadRequest, body, req), nil
+			case "/registry/packages/testorg/internalerror":
+				body := `{"message":"internal server error occurred"}`
+				return NewJSONResponse(http.StatusInternalServerError, body, req), nil
+			case "/registry/packages/testorg/unavailable":
+				body := `{"message":"service temporarily unavailable"}`
+				return NewJSONResponse(http.StatusServiceUnavailable, body, req), nil
+			case "/registry/packages/testorg/invalidjson":
+				body := `invalid json response`
+				return NewJSONResponse(http.StatusOK, body, req), nil
 
-				// GetPackage endpoints
-				case "/registry/packages/foo/winery/1.3.5":
-					return NewJSONResponse(http.StatusOK, string(packageJSON), req), nil
-				case "/registry/packages/unknown/notfound/1.0.0":
-					body := `{"message":"package not found for: unknown/notfound:1.0.0"}`
-					return NewJSONResponse(http.StatusNotFound, body, req), nil
-				case "/registry/packages/testorg/unauthorized/1.0.0":
-					body := `{"message":"unauthorized access token"}`
-					return NewJSONResponse(http.StatusUnauthorized, body, req), nil
-				case "/registry/packages/testorg/badrequest/1.0.0":
-					body := `{"message":"invalid version format"}`
-					return NewJSONResponse(http.StatusBadRequest, body, req), nil
-				case "/registry/packages/testorg/servererror/1.0.0":
-					body := `{"message":"database connection failed"}`
-					return NewJSONResponse(http.StatusInternalServerError, body, req), nil
+			// GetPackage endpoints
+			case "/registry/packages/foo/winery/1.3.5":
+				return NewJSONResponse(http.StatusOK, string(packageJSON), req), nil
+			case "/registry/packages/unknown/notfound/1.0.0":
+				body := `{"message":"package not found for: unknown/notfound:1.0.0"}`
+				return NewJSONResponse(http.StatusNotFound, body, req), nil
+			case "/registry/packages/testorg/unauthorized/1.0.0":
+				body := `{"message":"unauthorized access token"}`
+				return NewJSONResponse(http.StatusUnauthorized, body, req), nil
+			case "/registry/packages/testorg/badrequest/1.0.0":
+				body := `{"message":"invalid version format"}`
+				return NewJSONResponse(http.StatusBadRequest, body, req), nil
+			case "/registry/packages/testorg/servererror/1.0.0":
+				body := `{"message":"database connection failed"}`
+				return NewJSONResponse(http.StatusInternalServerError, body, req), nil
 
-				// GetConnectors endpoints (path matches /connectors with query params)
-				case "/registry/connectors":
-					if req.URL.Query().Get("q") == "unauthorized" {
-						body := `{"message":"unauthorized access"}`
-						return NewJSONResponse(http.StatusUnauthorized, body, req), nil
-					}
-					if req.URL.Query().Get("q") == "badrequest" {
-						body := `{"message":"invalid query parameter"}`
-						return NewJSONResponse(http.StatusBadRequest, body, req), nil
-					}
-					if req.URL.Query().Get("q") == "servererror" {
-						body := `{"message":"internal server error"}`
-						return NewJSONResponse(http.StatusInternalServerError, body, req), nil
-					}
-					return NewJSONResponse(http.StatusOK, string(packageSearchJSON), req), nil
-
-				// GetConnector endpoints
-				case "/registry/connectors/123":
-					body := `{"id": "123", "organization": "foo", "name": "winery", "version": "1.3.5"}`
-					return NewJSONResponse(http.StatusOK, body, req), nil
-				case "/registry/connectors/notfound":
-					body := `{"message":"connector not found"}`
-					return NewJSONResponse(http.StatusNotFound, body, req), nil
-				case "/registry/connectors/unauthorized":
+			// GetConnectors endpoints
+			case "/registry/connectors":
+				if req.URL.Query().Get("q") == "unauthorized" {
 					body := `{"message":"unauthorized access"}`
 					return NewJSONResponse(http.StatusUnauthorized, body, req), nil
-				case "/registry/connectors/invalidjson":
-					body := `invalid json`
-					return NewJSONResponse(http.StatusOK, body, req), nil
-				case "/registry/connectors/servererror":
-					body := `{"message":"internal server error"}`
-					return NewJSONResponse(http.StatusInternalServerError, body, req), nil
-
-				// GetTriggers endpoints (path matches /connectors with query params)
-				case "/registry/triggers":
-					if req.URL.Query().Get("q") == "unauthorized" {
-						body := `{"message":"unauthorized access"}`
-						return NewJSONResponse(http.StatusUnauthorized, body, req), nil
-					}
-					if req.URL.Query().Get("q") == "badrequest" {
-						body := `{"message":"invalid query parameter"}`
-						return NewJSONResponse(http.StatusBadRequest, body, req), nil
-					}
-					if req.URL.Query().Get("q") == "servererror" {
-						body := `{"message":"internal server error"}`
-						return NewJSONResponse(http.StatusInternalServerError, body, req), nil
-					}
-					body := `{"count": 2, "triggers": [{"id": "1", "name": "trigger1"}]}`
-					return NewJSONResponse(http.StatusOK, body, req), nil
-
-				// GetTrigger endpoints
-				case "/registry/triggers/456":
-					body := `{"id": "456", "name": "http-trigger", "type": "http"}`
-					return NewJSONResponse(http.StatusOK, body, req), nil
-				case "/registry/triggers/notfound":
-					body := `{"message":"trigger not found"}`
-					return NewJSONResponse(http.StatusNotFound, body, req), nil
-				case "/registry/triggers/unauthorized":
-					body := `{"message":"unauthorized access"}`
-					return NewJSONResponse(http.StatusUnauthorized, body, req), nil
-				case "/registry/triggers/invalidjson":
-					body := `invalid json`
-					return NewJSONResponse(http.StatusOK, body, req), nil
-				case "/registry/triggers/servererror":
-					body := `{"message":"internal server error"}`
-					return NewJSONResponse(http.StatusInternalServerError, body, req), nil
-
-				default:
-					return NewJSONResponse(http.StatusNotFound, ``, req), nil
 				}
-			}),
-		}
-		client := NewTestCentralAPIClient(mockClient)
+				if req.URL.Query().Get("q") == "badrequest" {
+					body := `{"message":"invalid query parameter"}`
+					return NewJSONResponse(http.StatusBadRequest, body, req), nil
+				}
+				if req.URL.Query().Get("q") == "servererror" {
+					body := `{"message":"internal server error"}`
+					return NewJSONResponse(http.StatusInternalServerError, body, req), nil
+				}
+				return NewJSONResponse(http.StatusOK, string(packageSearchJSON), req), nil
+
+			// GetConnector endpoints
+			case "/registry/connectors/123":
+				body := `{"id": "123", "organization": "foo", "name": "winery", "version": "1.3.5"}`
+				return NewJSONResponse(http.StatusOK, body, req), nil
+			case "/registry/connectors/notfound":
+				body := `{"message":"connector not found"}`
+				return NewJSONResponse(http.StatusNotFound, body, req), nil
+			case "/registry/connectors/unauthorized":
+				body := `{"message":"unauthorized access"}`
+				return NewJSONResponse(http.StatusUnauthorized, body, req), nil
+			case "/registry/connectors/invalidjson":
+				body := `invalid json`
+				return NewJSONResponse(http.StatusOK, body, req), nil
+			case "/registry/connectors/servererror":
+				body := `{"message":"internal server error"}`
+				return NewJSONResponse(http.StatusInternalServerError, body, req), nil
+
+			// GetTriggers endpoints
+			case "/registry/triggers":
+				if req.URL.Query().Get("q") == "unauthorized" {
+					body := `{"message":"unauthorized access"}`
+					return NewJSONResponse(http.StatusUnauthorized, body, req), nil
+				}
+				if req.URL.Query().Get("q") == "badrequest" {
+					body := `{"message":"invalid query parameter"}`
+					return NewJSONResponse(http.StatusBadRequest, body, req), nil
+				}
+				if req.URL.Query().Get("q") == "servererror" {
+					body := `{"message":"internal server error"}`
+					return NewJSONResponse(http.StatusInternalServerError, body, req), nil
+				}
+				body := `{"count": 2, "triggers": [{"id": "1", "name": "trigger1"}]}`
+				return NewJSONResponse(http.StatusOK, body, req), nil
+
+			// GetTrigger endpoints
+			case "/registry/triggers/456":
+				body := `{"id": "456", "name": "http-trigger", "type": "http"}`
+				return NewJSONResponse(http.StatusOK, body, req), nil
+			case "/registry/triggers/notfound":
+				body := `{"message":"trigger not found"}`
+				return NewJSONResponse(http.StatusNotFound, body, req), nil
+			case "/registry/triggers/unauthorized":
+				body := `{"message":"unauthorized access"}`
+				return NewJSONResponse(http.StatusUnauthorized, body, req), nil
+			case "/registry/triggers/invalidjson":
+				body := `invalid json`
+				return NewJSONResponse(http.StatusOK, body, req), nil
+			case "/registry/triggers/servererror":
+				body := `{"message":"internal server error"}`
+				return NewJSONResponse(http.StatusInternalServerError, body, req), nil
+
+			default:
+				return NewJSONResponse(http.StatusNotFound, ``, req), nil
+			}
+		}),
+	}
+
+	client := NewTestCentralAPIClient(mockClient)
+
+	for _, tc := range testCases {
 		output, errStr := tc.runner(client)
 
 		if bless {

@@ -621,7 +621,7 @@ func (c *centralAPIClientImpl) getTriggersInternal(params map[string]string, sup
 		return nil, err
 	}
 
-	baseURL.Path = filepath.Join(baseURL.Path, ConnectorsPath)
+	baseURL.Path = filepath.Join(baseURL.Path, TriggersPath)
 	query := baseURL.Query()
 	for key, value := range params {
 		query.Set(key, value)
@@ -708,12 +708,12 @@ func (c *centralAPIClientImpl) getTriggerInternal(id, supportedPlatform, balleri
 	if isApplicationJSONContentType(contentType) && resp.StatusCode == http.StatusOK {
 		var trigger map[string]any
 		if err := json.Unmarshal(bodyBytes, &trigger); err != nil {
-			return nil, NewCentralClientError(fmt.Sprintf("%s. reason: unexpected error", ErrCannotGetTrigger))
+			return nil, NewCentralClientError(fmt.Sprintf("%s reason: unexpected error", ErrCannotGetTrigger))
 		}
 		return trigger, nil
 	}
 
-	return nil, c.handleResponseErrors(resp, fmt.Sprintf("%s id: %s", ErrCannotGetTrigger, id), bodyBytes)
+	return nil, c.handleResponseErrors(resp, fmt.Sprintf("%sid: %s", ErrCannotGetTrigger, id), bodyBytes)
 }
 
 func (c *centralAPIClientImpl) AccessToken() string {
