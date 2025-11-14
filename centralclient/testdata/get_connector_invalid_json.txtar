@@ -6,7 +6,5 @@ slp5
 
 -- expected_output --
 
-
 -- expected_error --
 error: failed to find connector: . reason: unexpected error
-

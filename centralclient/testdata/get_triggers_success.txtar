@@ -9,3 +9,4 @@ map[count:2 triggers:[map[id:1 name:trigger1]]]
 
 -- expected_error --
 
+

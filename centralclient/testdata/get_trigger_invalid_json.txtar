@@ -8,4 +8,3 @@ slp5
 
 -- expected_error --
 error: failed to find the trigger:  reason: unexpected error
-

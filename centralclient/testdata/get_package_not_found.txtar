@@ -10,4 +10,3 @@ slp5
 
 -- expected_error --
 package not found for: unknown/notfound:1.0.0
-

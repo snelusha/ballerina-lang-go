@@ -8,7 +8,5 @@ slp5
 
 -- expected_output --
 
-
 -- expected_error --
 unauthorized access token for organization: 'testorg'. check access token set in 'Settings.toml' file. reason: unauthorized access token
-
