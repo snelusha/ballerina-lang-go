@@ -7,10 +7,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"ballerina-lang-go/common/bfs"
 
 	"github.com/Masterminds/semver/v3"
 )
@@ -47,7 +50,7 @@ func NewLogFormatter(isBuild bool) LogFormatter {
 	}
 }
 
-func createBalaInHomeRepo(balaDownloadResponse *http.Response, pkgPathInBalaCache, pkgOrg, pkgName string, isNightlyBuild bool, deprecationMsg, newUrl, contentDisposition string, outStream io.Writer, logFormatter LogFormatter, trueDigest string) error {
+func createBalaInHomeRepo(balaDownloadResponse *http.Response, fsys fs.FS, pkgPathInBalaCache, pkgOrg, pkgName string, isNightlyBuild bool, deprecationMsg, newUrl, contentDisposition string, outStream io.Writer, logFormatter LogFormatter, trueDigest string) error {
 	responseContentLength := balaDownloadResponse.ContentLength
 	if responseContentLength <= 0 {
 		return NewCentralClientError(logFormatter.formatLog("invalid response from the server, please try again!"))
@@ -72,7 +75,7 @@ func createBalaInHomeRepo(balaDownloadResponse *http.Response, pkgPathInBalaCach
 	// <user.home>.ballerina/bala_cache/<org-name>/<pkg-name>/<pkg-version>
 	balaCacheWithPkgPath := filepath.Join(pkgPathInBalaCache, validPkgVersion, platform)
 
-	info, err := os.Stat(balaCacheWithPkgPath)
+	info, err := fs.Stat(fsys, balaCacheWithPkgPath)
 	if err == nil && info.IsDir() {
 		entries, err := os.ReadDir(balaCacheWithPkgPath)
 		if err != nil {
@@ -98,18 +101,18 @@ func createBalaInHomeRepo(balaDownloadResponse *http.Response, pkgPathInBalaCach
 	// Create the following temp path
 	// bala/<org-name>/<pkg-name>/<pkg-version_temp/<platform>
 	tempPath := filepath.Join(pkgPathInBalaCache, validPkgVersion+"_temp", platform)
-	if err := createBalaFileDirectory(tempPath, logFormatter); err != nil {
+	if err := createBalaFileDirectory(fsys, tempPath, logFormatter); err != nil {
 		return err
 	}
 
-	if err := writeBalaFile(balaDownloadResponse, filepath.Join(tempPath, balaFile), fmt.Sprintf("%s/%s:%s", pkgOrg, pkgName, validPkgVersion), outStream, logFormatter, pkgPathInBalaCache, trueDigest); err != nil {
+	if err := writeBalaFile(balaDownloadResponse, fsys, filepath.Join(tempPath, balaFile), fmt.Sprintf("%s/%s:%s", pkgOrg, pkgName, validPkgVersion), outStream, logFormatter, pkgPathInBalaCache, trueDigest); err != nil {
 		return err
 	}
 
 	tempDir := filepath.Dir(tempPath)
 	platformDir := filepath.Dir(balaCacheWithPkgPath)
 
-	if err := os.Rename(tempDir, platformDir); err != nil {
+	if err := bfs.Rename(fsys, tempDir, platformDir); err != nil {
 		return NewCentralClientError(logFormatter.formatLog("error creating directory for bala file"))
 	}
 
@@ -157,19 +160,19 @@ func getPlatformFromBala(balaName, packageName, version string) string {
 	return parts[0]
 }
 
-func createBalaFileDirectory(fullPathToStoreBala string, logFormatter LogFormatter) error {
-	if err := os.MkdirAll(fullPathToStoreBala, 0o755); err != nil {
+func createBalaFileDirectory(fsys fs.FS, fullPathToStoreBala string, logFormatter LogFormatter) error {
+	if err := bfs.MkdirAll(fsys, fullPathToStoreBala, 0o755); err != nil {
 		return NewCentralClientError(logFormatter.formatLog("error creating directory for bala file"))
 	}
 	return nil
 }
 
-func writeBalaFile(balaDownloadResponse *http.Response, balaPath, fullPkgName string, outStream io.Writer, logFormatter LogFormatter, homeRepo, trueDigest string) error {
-	file, err := os.Create(balaPath)
-	if err != nil {
-		return NewCentralClientError(logFormatter.formatLog(fmt.Sprintf("error occurred copying bala file: %s", err.Error())))
-	}
-	defer file.Close()
+func writeBalaFile(balaDownloadResponse *http.Response, fsys fs.FS, balaPath, fullPkgName string, outStream io.Writer, logFormatter LogFormatter, homeRepo, trueDigest string) error {
+	// file, err := os.Create(balaPath)
+	// if err != nil {
+	// 	return NewCentralClientError(logFormatter.formatLog(fmt.Sprintf("error occurred copying bala file: %s", err.Error())))
+	// }
+	// defer file.Close()
 
 	balaDownloadResponseBody := balaDownloadResponse.Body
 	if balaDownloadResponseBody == nil {
@@ -177,20 +180,28 @@ func writeBalaFile(balaDownloadResponse *http.Response, balaPath, fullPkgName st
 	}
 
 	if outStream == nil {
-		if _, err := io.Copy(file, balaDownloadResponseBody); err != nil {
-			return NewCentralClientError(logFormatter.formatLog(fmt.Sprintf("error occurred copying bala file: %s", err.Error())))
+		content, err := io.ReadAll(balaDownloadResponseBody)
+		if err != nil {
+			return NewCentralClientError(logFormatter.formatLog(fmt.Sprintf("error occurred reading bala file content: %s", err.Error())))
+		}
+		err = bfs.WriteFile(fsys, balaPath, content, 0o644)
+		if err != nil {
+			fmt.Println("Failed to write bala file to the file system:", err)
+			return NewCentralClientError(logFormatter.formatLog(fmt.Sprintf("error occurred writing bala file content: %s", err.Error())))
 		}
 	} else {
-		if err := writeAndHandleProgress(balaDownloadResponse.Body, file, fullPkgName, outStream, logFormatter, homeRepo); err != nil {
-			return err
-		}
+		// if err := writeAndHandleProgress(balaDownloadResponse.Body, file, fullPkgName, outStream, logFormatter, homeRepo); err != nil {
+		// 	return err
+		// }
 	}
 
-	if err := extractBala(balaPath, filepath.Dir(balaPath), trueDigest, fullPkgName, outStream); err != nil {
+	if err := extractBala(fsys, balaPath, filepath.Dir(balaPath), trueDigest, fullPkgName, outStream); err != nil {
+		fmt.Println("Failed to extract bala file:", err)
 		return NewCentralClientError(logFormatter.formatLog(fmt.Sprintf("error occurred extracting bala file: %s", err.Error())))
 	}
 
-	if err := os.Remove(balaPath); err != nil {
+	if err := bfs.Remove(fsys, balaPath); err != nil {
+		fmt.Println("Failed to remove bala file after extraction:", err)
 		return NewCentralClientError(logFormatter.formatLog(fmt.Sprintf("error occurred extracting bala file: %s", err.Error())))
 	}
 
@@ -223,8 +234,8 @@ func writeAndHandleProgress(inputStream io.Reader, outputStream io.Writer,
 	return nil
 }
 
-func extractBala(balaFilePath, balaFileDestPath, trueDigest, packageName string, outStream io.Writer) error {
-	if err := os.MkdirAll(balaFileDestPath, 0o755); err != nil {
+func extractBala(fsys fs.FS, balaFilePath, balaFileDestPath, trueDigest, packageName string, outStream io.Writer) error {
+	if err := bfs.MkdirAll(fsys, balaFileDestPath, 0o755); err != nil {
 		return err
 	}
 
@@ -252,15 +263,16 @@ func extractBala(balaFilePath, balaFileDestPath, trueDigest, packageName string,
 		path := filepath.Join(balaFileDestPath, file.Name)
 
 		if file.FileInfo().IsDir() {
-			os.MkdirAll(path, file.Mode())
+			// os.MkdirAll(path, file.Mode())
+			bfs.MkdirAll(fsys, path, file.Mode())
 			continue
 		}
 
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		if err := bfs.MkdirAll(fsys, filepath.Dir(path), 0o755); err != nil {
 			return err
 		}
 
-		outFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		outFile, err := bfs.OpenFile(fsys, path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
 		if err != nil {
 			return err
 		}
@@ -271,7 +283,11 @@ func extractBala(balaFilePath, balaFileDestPath, trueDigest, packageName string,
 			return err
 		}
 
-		_, err = io.Copy(outFile, rc)
+		// _, err = io.Copy(outFile, rc)
+		err = bfs.WriteFile(fsys, path, func() []byte {
+			data, _ := io.ReadAll(rc)
+			return data
+		}(), file.Mode())
 		outFile.Close()
 		rc.Close()
 

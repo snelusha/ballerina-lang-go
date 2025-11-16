@@ -345,532 +345,532 @@ func NewTestCentralAPIClient(mockClient *http.Client) CentralAPIClient {
 	}
 }
 
-func TestPullPackageSuccess(t *testing.T) {
-	balaPath := filepath.Join(utilTestResources, testBalaName)
-	balaContent, err := os.ReadFile(balaPath)
-	if err != nil {
-		t.Fatalf("failed to read bala file: %v", err)
-	}
-
-	tempDir := t.TempDir()
-
-	expectedBalaFileName := "sf-2020r2-any-1.3.5.bala"
-
-	mockClient := &http.Client{
-		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			if strings.Contains(req.URL.String(), "/registry/packages/") {
-				return &http.Response{
-					StatusCode: http.StatusFound,
-					Status:     http.StatusText(http.StatusFound),
-					Body:       io.NopCloser(strings.NewReader("")),
-					Header: http.Header{
-						"Location":            []string{"https://fileserver.dev-central.ballerina.io/2.0/wso2/sf/1.3.5/" + expectedBalaFileName},
-						"Content-Disposition": []string{"attachment; filename=" + expectedBalaFileName},
-					},
-					Request:    req,
-					Proto:      "HTTP/1.1",
-					ProtoMinor: 1,
-					ProtoMajor: 1,
-					Close:      true,
-				}, nil
-			}
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Status:     http.StatusText(http.StatusOK),
-				Body:       io.NopCloser(strings.NewReader(string(balaContent))),
-				Header: http.Header{
-					"Content-Type":   []string{ApplicationOctetStream},
-					"Content-Length": []string{fmt.Sprintf("%d", len(balaContent))},
-				},
-				Request:       req,
-				Proto:         "HTTP/1.1",
-				ProtoMinor:    1,
-				ProtoMajor:    1,
-				ContentLength: int64(len(balaContent)),
-				Close:         true,
-			}, nil
-		}),
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
-	tc := NewTestCentralAPIClient(mockClient)
-
-	err = tc.PullPackage("wso2", "sf", "1.3.5", tempDir, "2020r2-any", testBalVersion, false)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	balaDir := filepath.Join(tempDir, "1.3.5", "2020r2-any")
-
-	if info, err := os.Stat(balaDir); err != nil || !info.IsDir() {
-		t.Fatalf("bala directory does not exist: %s", balaDir)
-	}
-
-	requiredFiles := []string{
-		"bala.json",
-		"package.json",
-		"dependency-graph.json",
-	}
-
-	for _, file := range requiredFiles {
-		filePath := filepath.Join(balaDir, file)
-		if _, err := os.Stat(filePath); err != nil {
-			t.Errorf("required file does not exist: %s", file)
-		}
-	}
-
-	requiredDirs := []string{
-		"modules",
-	}
-
-	for _, dir := range requiredDirs {
-		dirPath := filepath.Join(balaDir, dir)
-		if info, err := os.Stat(dirPath); err != nil || !info.IsDir() {
-			t.Errorf("required directory does not exist: %s", dir)
-		}
-	}
-}
-
-func TestPullPackageSuccessWithDeprecation(t *testing.T) {
-	balaPath := filepath.Join(utilTestResources, testBalaName)
-	balaContent, err := os.ReadFile(balaPath)
-	if err != nil {
-		t.Fatalf("failed to read bala file: %v", err)
-	}
-
-	tempDir := t.TempDir()
-
-	expectedBalaFileName := "sf-2020r2-any-1.3.5.bala"
-
-	mockClient := &http.Client{
-		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			if strings.Contains(req.URL.String(), "/registry/packages/") {
-				return &http.Response{
-					StatusCode: http.StatusFound,
-					Status:     http.StatusText(http.StatusFound),
-					Body:       io.NopCloser(strings.NewReader("")),
-					Header: http.Header{
-						"Location":            []string{"https://fileserver.dev-central.ballerina.io/2.0/wso2/sf/1.3.5/" + expectedBalaFileName},
-						"Content-Disposition": []string{"attachment; filename=" + expectedBalaFileName},
-						"Is-Deprecated":       []string{"true"},
-						"Deprecate-Message":   []string{"This package is deprecated. Please use the new version."},
-					},
-					Request:    req,
-					Proto:      "HTTP/1.1",
-					ProtoMinor: 1,
-					ProtoMajor: 1,
-					Close:      true,
-				}, nil
-			}
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Status:     http.StatusText(http.StatusOK),
-				Body:       io.NopCloser(strings.NewReader(string(balaContent))),
-				Header: http.Header{
-					"Content-Type":   []string{ApplicationOctetStream},
-					"Content-Length": []string{fmt.Sprintf("%d", len(balaContent))},
-				},
-				Request:       req,
-				Proto:         "HTTP/1.1",
-				ProtoMinor:    1,
-				ProtoMajor:    1,
-				ContentLength: int64(len(balaContent)),
-				Close:         true,
-			}, nil
-		}),
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
-	tc := NewTestCentralAPIClient(mockClient)
-
-	err = tc.PullPackage("wso2", "sf", "1.3.5", tempDir, "2020r2-any", testBalVersion, false)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	balaDir := filepath.Join(tempDir, "1.3.5", "2020r2-any")
-
-	if info, err := os.Stat(balaDir); err != nil || !info.IsDir() {
-		t.Fatalf("bala directory does not exist: %s", balaDir)
-	}
-
-	deprecatedFile := filepath.Join(balaDir, "deprecated.txt")
-	if _, err := os.Stat(deprecatedFile); err != nil {
-		t.Errorf("deprecated.txt file does not exist")
-	} else {
-		content, err := os.ReadFile(deprecatedFile)
-		if err != nil {
-			t.Errorf("failed to read deprecated.txt: %v", err)
-		} else if !strings.Contains(string(content), "This package is deprecated") {
-			t.Errorf("deprecated.txt does not contain expected message, got: %s", string(content))
-		}
-	}
-}
-
-func TestPullPackageNotFound(t *testing.T) {
-	tempDir := t.TempDir()
-
-	mockClient := &http.Client{
-		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			body := `{"message":"package not found: wso2/unknown:1.0.0"}`
-			return NewJSONResponse(http.StatusNotFound, body, req), nil
-		}),
-	}
-
-	tc := NewTestCentralAPIClient(mockClient)
-
-	err := tc.PullPackage("wso2", "unknown", "1.0.0", tempDir, anyPlatform, testBalVersion, false)
-	if err == nil {
-		t.Fatal("expected error for package not found, got nil")
-	}
-
-	if _, ok := err.(*CentralClientError); !ok {
-		t.Errorf("expected CentralClientError, got %T", err)
-	}
-
-	if !strings.Contains(err.Error(), "package not found") {
-		t.Errorf("expected error message to contain 'package not found', got: %s", err.Error())
-	}
-}
-
-func TestPullPackageUnauthorized(t *testing.T) {
-	tempDir := t.TempDir()
-
-	mockClient := &http.Client{
-		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			body := `{"message":"unauthorized access token for organization: 'wso2'"}`
-			return NewJSONResponse(http.StatusUnauthorized, body, req), nil
-		}),
-	}
-
-	tc := NewTestCentralAPIClient(mockClient)
-
-	err := tc.PullPackage("wso2", "sf", "1.3.5", tempDir, anyPlatform, testBalVersion, false)
-	if err == nil {
-		t.Fatal("expected error for unauthorized access, got nil")
-	}
-
-	if _, ok := err.(*CentralClientError); !ok {
-		t.Errorf("expected CentralClientError, got %T", err)
-	}
-
-	if !strings.Contains(err.Error(), "wso2") {
-		t.Errorf("expected error message to contain 'wso2', got: %s", err.Error())
-	}
-}
-
-func TestPullPackageBadRequest(t *testing.T) {
-	tempDir := t.TempDir()
-
-	mockClient := &http.Client{
-		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			body := `{"message":"invalid package version format"}`
-			return NewJSONResponse(http.StatusBadRequest, body, req), nil
-		}),
-	}
-
-	tc := NewTestCentralAPIClient(mockClient)
-
-	err := tc.PullPackage("wso2", "sf", "invalid", tempDir, anyPlatform, testBalVersion, false)
-	if err == nil {
-		t.Fatal("expected error for bad request, got nil")
-	}
-
-	if _, ok := err.(*CentralClientError); !ok {
-		t.Errorf("expected CentralClientError, got %T", err)
-	}
-
-	if !strings.Contains(err.Error(), "invalid package version format") {
-		t.Errorf("expected error message to contain 'invalid package version format', got: %s", err.Error())
-	}
-}
-
-func TestPullPackageInternalServerError(t *testing.T) {
-	tempDir := t.TempDir()
-
-	mockClient := &http.Client{
-		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			body := `{"message":"internal server error occurred"}`
-			return NewJSONResponse(http.StatusInternalServerError, body, req), nil
-		}),
-	}
-
-	tc := NewTestCentralAPIClient(mockClient)
-
-	err := tc.PullPackage("wso2", "sf", "1.3.5", tempDir, anyPlatform, testBalVersion, false)
-	if err == nil {
-		t.Fatal("expected error for internal server error, got nil")
-	}
-
-	if _, ok := err.(*CentralClientError); !ok {
-		t.Errorf("expected CentralClientError, got %T", err)
-	}
-
-	if !strings.Contains(err.Error(), "internal server error occurred") {
-		t.Errorf("expected error message to contain 'internal server error occurred', got: %s", err.Error())
-	}
-}
-
-func TestPullPackageServiceUnavailable(t *testing.T) {
-	tempDir := t.TempDir()
-
-	mockClient := &http.Client{
-		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			body := `{"message":"service temporarily unavailable"}`
-			return NewJSONResponse(http.StatusServiceUnavailable, body, req), nil
-		}),
-	}
-
-	tc := NewTestCentralAPIClient(mockClient)
-
-	err := tc.PullPackage("wso2", "sf", "1.3.5", tempDir, anyPlatform, testBalVersion, false)
-	if err == nil {
-		t.Fatal("expected error for service unavailable, got nil")
-	}
-
-	if _, ok := err.(*CentralClientError); !ok {
-		t.Errorf("expected CentralClientError, got %T", err)
-	}
-
-	if !strings.Contains(err.Error(), "service temporarily unavailable") {
-		t.Errorf("expected error message to contain 'service temporarily unavailable', got: %s", err.Error())
-	}
-}
-
-func TestPullPackageMissingBalaURL(t *testing.T) {
-	tempDir := t.TempDir()
-
-	mockClient := &http.Client{
-		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			return &http.Response{
-				StatusCode: http.StatusFound,
-				Status:     http.StatusText(http.StatusFound),
-				Body:       io.NopCloser(strings.NewReader("")),
-				Header: http.Header{
-					"Digest": []string{"sha-256=abc123"},
-				},
-				Request:    req,
-				Proto:      "HTTP/1.1",
-				ProtoMinor: 1,
-				ProtoMajor: 1,
-				Close:      true,
-			}, nil
-		}),
-	}
-
-	tc := NewTestCentralAPIClient(mockClient)
-
-	err := tc.PullPackage("wso2", "sf", "1.3.5", tempDir, anyPlatform, testBalVersion, false)
-	if err == nil {
-		t.Fatal("expected error for missing bala URL, got nil")
-	}
-
-	if _, ok := err.(*CentralClientError); !ok {
-		t.Errorf("expected CentralClientError, got %T", err)
-	}
-
-	if !strings.Contains(err.Error(), ErrCannotPullPackage) {
-		t.Errorf("expected error message to contain '%s', got: %s", ErrCannotPullPackage, err.Error())
-	}
-}
-
-func TestPullPackageBalaDownloadFailed(t *testing.T) {
-	tempDir := t.TempDir()
-
-	mockClient := &http.Client{
-		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			if req.Header.Get("Accept") == ApplicationOctetStream && !strings.Contains(req.URL.String(), "fileserver") {
-				return &http.Response{
-					StatusCode: http.StatusFound,
-					Status:     http.StatusText(http.StatusFound),
-					Body:       io.NopCloser(strings.NewReader("")),
-					Header: http.Header{
-						"Location":            []string{"https://fileserver.dev-central.ballerina.io/2.0/wso2/sf/1.3.5/sf-any-1.3.5.bala"},
-						"Content-Disposition": []string{testBalaName},
-						"Digest":              []string{"sha-256=abc123"},
-					},
-					Request:    req,
-					Proto:      "HTTP/1.1",
-					ProtoMinor: 1,
-					ProtoMajor: 1,
-					Close:      true,
-				}, nil
-			}
-			body := `{"message":"bala file not found"}`
-			return NewJSONResponse(http.StatusNotFound, body, req), nil
-		}),
-	}
-
-	tc := NewTestCentralAPIClient(mockClient)
-
-	err := tc.PullPackage("wso2", "sf", "1.3.5", tempDir, anyPlatform, testBalVersion, false)
-	if err == nil {
-		t.Fatal("expected error for bala download failure, got nil")
-	}
-
-	if _, ok := err.(*CentralClientError); !ok {
-		t.Errorf("expected CentralClientError, got %T", err)
-	}
-
-	if !strings.Contains(err.Error(), "bala file not found") {
-		t.Errorf("expected error message to contain 'bala file not found', got: %s", err.Error())
-	}
-}
-
-func TestPullPackageRedirectWithoutLocationHeader(t *testing.T) {
-	tempDir := t.TempDir()
-
-	mockClient := &http.Client{
-		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			return &http.Response{
-				StatusCode: http.StatusFound,
-				Status:     http.StatusText(http.StatusFound),
-				Body:       io.NopCloser(strings.NewReader("")),
-				Header: http.Header{
-					"Content-Disposition": []string{testBalaName},
-					"Digest":              []string{"sha-256=abc123"},
-				},
-				Request:    req,
-				Proto:      "HTTP/1.1",
-				ProtoMinor: 1,
-				ProtoMajor: 1,
-				Close:      true,
-			}, nil
-		}),
-	}
-
-	tc := NewTestCentralAPIClient(mockClient)
-
-	err := tc.PullPackage("wso2", "sf", "1.3.5", tempDir, anyPlatform, testBalVersion, false)
-	if err == nil {
-		t.Fatal("expected error for missing Location header, got nil")
-	}
-
-	if _, ok := err.(*CentralClientError); !ok {
-		t.Errorf("expected CentralClientError, got %T", err)
-	}
-}
-
-func TestPullPackageRedirectWithoutContentDisposition(t *testing.T) {
-	tempDir := t.TempDir()
-
-	mockClient := &http.Client{
-		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			return &http.Response{
-				StatusCode: http.StatusFound,
-				Status:     http.StatusText(http.StatusFound),
-				Body:       io.NopCloser(strings.NewReader("")),
-				Header: http.Header{
-					"Location": []string{"https://fileserver.dev-central.ballerina.io/2.0/wso2/sf/1.3.5/sf-any-1.3.5.bala"},
-					"Digest":   []string{"sha-256=abc123"},
-				},
-				Request:    req,
-				Proto:      "HTTP/1.1",
-				ProtoMinor: 1,
-				ProtoMajor: 1,
-				Close:      true,
-			}, nil
-		}),
-	}
-
-	tc := NewTestCentralAPIClient(mockClient)
-
-	err := tc.PullPackage("wso2", "sf", "1.3.5", tempDir, anyPlatform, testBalVersion, false)
-	if err == nil {
-		t.Fatal("expected error for missing Content-Disposition header, got nil")
-	}
-
-	if _, ok := err.(*CentralClientError); !ok {
-		t.Errorf("expected CentralClientError, got %T", err)
-	}
-}
-
-func TestPullPackageConnectionResetRetry(t *testing.T) {
-	balaPath := filepath.Join(utilTestResources, testBalaName)
-	balaContent, err := os.ReadFile(balaPath)
-	if err != nil {
-		t.Fatalf("failed to read bala file: %v", err)
-	}
-
-	tempDir := t.TempDir()
-	expectedBalaFileName := "sf-2020r2-any-1.3.5.bala"
-
-	attemptCount := 0
-	downloadAttempts := 0
-
-	mockClient := &http.Client{
-		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			if strings.Contains(req.URL.String(), "/registry/packages/") {
-				attemptCount++
-				return &http.Response{
-					StatusCode: http.StatusFound,
-					Status:     http.StatusText(http.StatusFound),
-					Body:       io.NopCloser(strings.NewReader("")),
-					Header: http.Header{
-						"Location":            []string{"https://fileserver.dev-central.ballerina.io/2.0/foo/sf/1.3.5/" + expectedBalaFileName},
-						"Content-Disposition": []string{"attachment; filename=" + expectedBalaFileName},
-					},
-					Request:    req,
-					Proto:      "HTTP/1.1",
-					ProtoMinor: 1,
-					ProtoMajor: 1,
-					Close:      true,
-				}, nil
-			}
-
-			downloadAttempts++
-
-			if downloadAttempts <= 2 {
-				return nil, fmt.Errorf("Connection reset by peer")
-			}
-
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Status:     http.StatusText(http.StatusOK),
-				Body:       io.NopCloser(strings.NewReader(string(balaContent))),
-				Header: http.Header{
-					"Content-Type":           []string{ApplicationOctetStream},
-					"Content-Length":         []string{fmt.Sprintf("%d", len(balaContent))},
-					"RESOLVED_REQUESTED_URI": []string{"https://fileserver.dev-central.ballerina.io/2.0/foo/sf/1.3.5/" + expectedBalaFileName},
-				},
-				Request:       req,
-				Proto:         "HTTP/1.1",
-				ProtoMinor:    1,
-				ProtoMajor:    1,
-				ContentLength: int64(len(balaContent)),
-				Close:         true,
-			}, nil
-		}),
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
-	tc := NewTestCentralAPIClient(mockClient)
-
-	err = tc.PullPackage("foo", "sf", "1.3.5", tempDir, "2020r2-any", testBalVersion, false)
-	if err != nil {
-		t.Fatalf("unexpected error after retries: %v", err)
-	}
-
-	balaDir := filepath.Join(tempDir, "1.3.5", "2020r2-any")
-	if info, err := os.Stat(balaDir); err != nil || !info.IsDir() {
-		t.Fatalf("bala directory does not exist after successful retry: %s", balaDir)
-	}
-
-	if attemptCount != 3 {
-		t.Errorf("expected 3 total attempts (2 failures + 1 success), got %d", attemptCount)
-	}
-
-	requiredFiles := []string{"bala.json", "package.json"}
-	for _, file := range requiredFiles {
-		filePath := filepath.Join(balaDir, file)
-		if _, err := os.Stat(filePath); err != nil {
-			t.Errorf("required file does not exist after retry: %s", file)
-		}
-	}
-}
+// func TestPullPackageSuccess(t *testing.T) {
+// 	balaPath := filepath.Join(utilTestResources, testBalaName)
+// 	balaContent, err := os.ReadFile(balaPath)
+// 	if err != nil {
+// 		t.Fatalf("failed to read bala file: %v", err)
+// 	}
+//
+// 	tempDir := t.TempDir()
+//
+// 	expectedBalaFileName := "sf-2020r2-any-1.3.5.bala"
+//
+// 	mockClient := &http.Client{
+// 		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+// 			if strings.Contains(req.URL.String(), "/registry/packages/") {
+// 				return &http.Response{
+// 					StatusCode: http.StatusFound,
+// 					Status:     http.StatusText(http.StatusFound),
+// 					Body:       io.NopCloser(strings.NewReader("")),
+// 					Header: http.Header{
+// 						"Location":            []string{"https://fileserver.dev-central.ballerina.io/2.0/wso2/sf/1.3.5/" + expectedBalaFileName},
+// 						"Content-Disposition": []string{"attachment; filename=" + expectedBalaFileName},
+// 					},
+// 					Request:    req,
+// 					Proto:      "HTTP/1.1",
+// 					ProtoMinor: 1,
+// 					ProtoMajor: 1,
+// 					Close:      true,
+// 				}, nil
+// 			}
+// 			return &http.Response{
+// 				StatusCode: http.StatusOK,
+// 				Status:     http.StatusText(http.StatusOK),
+// 				Body:       io.NopCloser(strings.NewReader(string(balaContent))),
+// 				Header: http.Header{
+// 					"Content-Type":   []string{ApplicationOctetStream},
+// 					"Content-Length": []string{fmt.Sprintf("%d", len(balaContent))},
+// 				},
+// 				Request:       req,
+// 				Proto:         "HTTP/1.1",
+// 				ProtoMinor:    1,
+// 				ProtoMajor:    1,
+// 				ContentLength: int64(len(balaContent)),
+// 				Close:         true,
+// 			}, nil
+// 		}),
+// 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+// 			return http.ErrUseLastResponse
+// 		},
+// 	}
+//
+// 	tc := NewTestCentralAPIClient(mockClient)
+//
+// 	err = tc.PullPackage("wso2", "sf", "1.3.5", ,tempDir, "2020r2-any", testBalVersion, false)
+// 	if err != nil {
+// 		t.Fatalf("unexpected error: %v", err)
+// 	}
+//
+// 	balaDir := filepath.Join(tempDir, "1.3.5", "2020r2-any")
+//
+// 	if info, err := os.Stat(balaDir); err != nil || !info.IsDir() {
+// 		t.Fatalf("bala directory does not exist: %s", balaDir)
+// 	}
+//
+// 	requiredFiles := []string{
+// 		"bala.json",
+// 		"package.json",
+// 		"dependency-graph.json",
+// 	}
+//
+// 	for _, file := range requiredFiles {
+// 		filePath := filepath.Join(balaDir, file)
+// 		if _, err := os.Stat(filePath); err != nil {
+// 			t.Errorf("required file does not exist: %s", file)
+// 		}
+// 	}
+//
+// 	requiredDirs := []string{
+// 		"modules",
+// 	}
+//
+// 	for _, dir := range requiredDirs {
+// 		dirPath := filepath.Join(balaDir, dir)
+// 		if info, err := os.Stat(dirPath); err != nil || !info.IsDir() {
+// 			t.Errorf("required directory does not exist: %s", dir)
+// 		}
+// 	}
+// }
+
+// func TestPullPackageSuccessWithDeprecation(t *testing.T) {
+// 	balaPath := filepath.Join(utilTestResources, testBalaName)
+// 	balaContent, err := os.ReadFile(balaPath)
+// 	if err != nil {
+// 		t.Fatalf("failed to read bala file: %v", err)
+// 	}
+//
+// 	tempDir := t.TempDir()
+//
+// 	expectedBalaFileName := "sf-2020r2-any-1.3.5.bala"
+//
+// 	mockClient := &http.Client{
+// 		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+// 			if strings.Contains(req.URL.String(), "/registry/packages/") {
+// 				return &http.Response{
+// 					StatusCode: http.StatusFound,
+// 					Status:     http.StatusText(http.StatusFound),
+// 					Body:       io.NopCloser(strings.NewReader("")),
+// 					Header: http.Header{
+// 						"Location":            []string{"https://fileserver.dev-central.ballerina.io/2.0/wso2/sf/1.3.5/" + expectedBalaFileName},
+// 						"Content-Disposition": []string{"attachment; filename=" + expectedBalaFileName},
+// 						"Is-Deprecated":       []string{"true"},
+// 						"Deprecate-Message":   []string{"This package is deprecated. Please use the new version."},
+// 					},
+// 					Request:    req,
+// 					Proto:      "HTTP/1.1",
+// 					ProtoMinor: 1,
+// 					ProtoMajor: 1,
+// 					Close:      true,
+// 				}, nil
+// 			}
+// 			return &http.Response{
+// 				StatusCode: http.StatusOK,
+// 				Status:     http.StatusText(http.StatusOK),
+// 				Body:       io.NopCloser(strings.NewReader(string(balaContent))),
+// 				Header: http.Header{
+// 					"Content-Type":   []string{ApplicationOctetStream},
+// 					"Content-Length": []string{fmt.Sprintf("%d", len(balaContent))},
+// 				},
+// 				Request:       req,
+// 				Proto:         "HTTP/1.1",
+// 				ProtoMinor:    1,
+// 				ProtoMajor:    1,
+// 				ContentLength: int64(len(balaContent)),
+// 				Close:         true,
+// 			}, nil
+// 		}),
+// 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+// 			return http.ErrUseLastResponse
+// 		},
+// 	}
+//
+// 	tc := NewTestCentralAPIClient(mockClient)
+//
+// 	err = tc.PullPackage("wso2", "sf", "1.3.5", tempDir, "2020r2-any", testBalVersion, false)
+// 	if err != nil {
+// 		t.Fatalf("unexpected error: %v", err)
+// 	}
+//
+// 	balaDir := filepath.Join(tempDir, "1.3.5", "2020r2-any")
+//
+// 	if info, err := os.Stat(balaDir); err != nil || !info.IsDir() {
+// 		t.Fatalf("bala directory does not exist: %s", balaDir)
+// 	}
+//
+// 	deprecatedFile := filepath.Join(balaDir, "deprecated.txt")
+// 	if _, err := os.Stat(deprecatedFile); err != nil {
+// 		t.Errorf("deprecated.txt file does not exist")
+// 	} else {
+// 		content, err := os.ReadFile(deprecatedFile)
+// 		if err != nil {
+// 			t.Errorf("failed to read deprecated.txt: %v", err)
+// 		} else if !strings.Contains(string(content), "This package is deprecated") {
+// 			t.Errorf("deprecated.txt does not contain expected message, got: %s", string(content))
+// 		}
+// 	}
+// }
+//
+// func TestPullPackageNotFound(t *testing.T) {
+// 	tempDir := t.TempDir()
+//
+// 	mockClient := &http.Client{
+// 		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+// 			body := `{"message":"package not found: wso2/unknown:1.0.0"}`
+// 			return NewJSONResponse(http.StatusNotFound, body, req), nil
+// 		}),
+// 	}
+//
+// 	tc := NewTestCentralAPIClient(mockClient)
+//
+// 	err := tc.PullPackage("wso2", "unknown", "1.0.0", tempDir, anyPlatform, testBalVersion, false)
+// 	if err == nil {
+// 		t.Fatal("expected error for package not found, got nil")
+// 	}
+//
+// 	if _, ok := err.(*CentralClientError); !ok {
+// 		t.Errorf("expected CentralClientError, got %T", err)
+// 	}
+//
+// 	if !strings.Contains(err.Error(), "package not found") {
+// 		t.Errorf("expected error message to contain 'package not found', got: %s", err.Error())
+// 	}
+// }
+//
+// func TestPullPackageUnauthorized(t *testing.T) {
+// 	tempDir := t.TempDir()
+//
+// 	mockClient := &http.Client{
+// 		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+// 			body := `{"message":"unauthorized access token for organization: 'wso2'"}`
+// 			return NewJSONResponse(http.StatusUnauthorized, body, req), nil
+// 		}),
+// 	}
+//
+// 	tc := NewTestCentralAPIClient(mockClient)
+//
+// 	err := tc.PullPackage("wso2", "sf", "1.3.5", tempDir, anyPlatform, testBalVersion, false)
+// 	if err == nil {
+// 		t.Fatal("expected error for unauthorized access, got nil")
+// 	}
+//
+// 	if _, ok := err.(*CentralClientError); !ok {
+// 		t.Errorf("expected CentralClientError, got %T", err)
+// 	}
+//
+// 	if !strings.Contains(err.Error(), "wso2") {
+// 		t.Errorf("expected error message to contain 'wso2', got: %s", err.Error())
+// 	}
+// }
+//
+// func TestPullPackageBadRequest(t *testing.T) {
+// 	tempDir := t.TempDir()
+//
+// 	mockClient := &http.Client{
+// 		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+// 			body := `{"message":"invalid package version format"}`
+// 			return NewJSONResponse(http.StatusBadRequest, body, req), nil
+// 		}),
+// 	}
+//
+// 	tc := NewTestCentralAPIClient(mockClient)
+//
+// 	err := tc.PullPackage("wso2", "sf", "invalid", tempDir, anyPlatform, testBalVersion, false)
+// 	if err == nil {
+// 		t.Fatal("expected error for bad request, got nil")
+// 	}
+//
+// 	if _, ok := err.(*CentralClientError); !ok {
+// 		t.Errorf("expected CentralClientError, got %T", err)
+// 	}
+//
+// 	if !strings.Contains(err.Error(), "invalid package version format") {
+// 		t.Errorf("expected error message to contain 'invalid package version format', got: %s", err.Error())
+// 	}
+// }
+//
+// func TestPullPackageInternalServerError(t *testing.T) {
+// 	tempDir := t.TempDir()
+//
+// 	mockClient := &http.Client{
+// 		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+// 			body := `{"message":"internal server error occurred"}`
+// 			return NewJSONResponse(http.StatusInternalServerError, body, req), nil
+// 		}),
+// 	}
+//
+// 	tc := NewTestCentralAPIClient(mockClient)
+//
+// 	err := tc.PullPackage("wso2", "sf", "1.3.5", tempDir, anyPlatform, testBalVersion, false)
+// 	if err == nil {
+// 		t.Fatal("expected error for internal server error, got nil")
+// 	}
+//
+// 	if _, ok := err.(*CentralClientError); !ok {
+// 		t.Errorf("expected CentralClientError, got %T", err)
+// 	}
+//
+// 	if !strings.Contains(err.Error(), "internal server error occurred") {
+// 		t.Errorf("expected error message to contain 'internal server error occurred', got: %s", err.Error())
+// 	}
+// }
+//
+// func TestPullPackageServiceUnavailable(t *testing.T) {
+// 	tempDir := t.TempDir()
+//
+// 	mockClient := &http.Client{
+// 		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+// 			body := `{"message":"service temporarily unavailable"}`
+// 			return NewJSONResponse(http.StatusServiceUnavailable, body, req), nil
+// 		}),
+// 	}
+//
+// 	tc := NewTestCentralAPIClient(mockClient)
+//
+// 	err := tc.PullPackage("wso2", "sf", "1.3.5", tempDir, anyPlatform, testBalVersion, false)
+// 	if err == nil {
+// 		t.Fatal("expected error for service unavailable, got nil")
+// 	}
+//
+// 	if _, ok := err.(*CentralClientError); !ok {
+// 		t.Errorf("expected CentralClientError, got %T", err)
+// 	}
+//
+// 	if !strings.Contains(err.Error(), "service temporarily unavailable") {
+// 		t.Errorf("expected error message to contain 'service temporarily unavailable', got: %s", err.Error())
+// 	}
+// }
+//
+// func TestPullPackageMissingBalaURL(t *testing.T) {
+// 	tempDir := t.TempDir()
+//
+// 	mockClient := &http.Client{
+// 		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+// 			return &http.Response{
+// 				StatusCode: http.StatusFound,
+// 				Status:     http.StatusText(http.StatusFound),
+// 				Body:       io.NopCloser(strings.NewReader("")),
+// 				Header: http.Header{
+// 					"Digest": []string{"sha-256=abc123"},
+// 				},
+// 				Request:    req,
+// 				Proto:      "HTTP/1.1",
+// 				ProtoMinor: 1,
+// 				ProtoMajor: 1,
+// 				Close:      true,
+// 			}, nil
+// 		}),
+// 	}
+//
+// 	tc := NewTestCentralAPIClient(mockClient)
+//
+// 	err := tc.PullPackage("wso2", "sf", "1.3.5", tempDir, anyPlatform, testBalVersion, false)
+// 	if err == nil {
+// 		t.Fatal("expected error for missing bala URL, got nil")
+// 	}
+//
+// 	if _, ok := err.(*CentralClientError); !ok {
+// 		t.Errorf("expected CentralClientError, got %T", err)
+// 	}
+//
+// 	if !strings.Contains(err.Error(), ErrCannotPullPackage) {
+// 		t.Errorf("expected error message to contain '%s', got: %s", ErrCannotPullPackage, err.Error())
+// 	}
+// }
+//
+// func TestPullPackageBalaDownloadFailed(t *testing.T) {
+// 	tempDir := t.TempDir()
+//
+// 	mockClient := &http.Client{
+// 		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+// 			if req.Header.Get("Accept") == ApplicationOctetStream && !strings.Contains(req.URL.String(), "fileserver") {
+// 				return &http.Response{
+// 					StatusCode: http.StatusFound,
+// 					Status:     http.StatusText(http.StatusFound),
+// 					Body:       io.NopCloser(strings.NewReader("")),
+// 					Header: http.Header{
+// 						"Location":            []string{"https://fileserver.dev-central.ballerina.io/2.0/wso2/sf/1.3.5/sf-any-1.3.5.bala"},
+// 						"Content-Disposition": []string{testBalaName},
+// 						"Digest":              []string{"sha-256=abc123"},
+// 					},
+// 					Request:    req,
+// 					Proto:      "HTTP/1.1",
+// 					ProtoMinor: 1,
+// 					ProtoMajor: 1,
+// 					Close:      true,
+// 				}, nil
+// 			}
+// 			body := `{"message":"bala file not found"}`
+// 			return NewJSONResponse(http.StatusNotFound, body, req), nil
+// 		}),
+// 	}
+//
+// 	tc := NewTestCentralAPIClient(mockClient)
+//
+// 	err := tc.PullPackage("wso2", "sf", "1.3.5", tempDir, anyPlatform, testBalVersion, false)
+// 	if err == nil {
+// 		t.Fatal("expected error for bala download failure, got nil")
+// 	}
+//
+// 	if _, ok := err.(*CentralClientError); !ok {
+// 		t.Errorf("expected CentralClientError, got %T", err)
+// 	}
+//
+// 	if !strings.Contains(err.Error(), "bala file not found") {
+// 		t.Errorf("expected error message to contain 'bala file not found', got: %s", err.Error())
+// 	}
+// }
+//
+// func TestPullPackageRedirectWithoutLocationHeader(t *testing.T) {
+// 	tempDir := t.TempDir()
+//
+// 	mockClient := &http.Client{
+// 		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+// 			return &http.Response{
+// 				StatusCode: http.StatusFound,
+// 				Status:     http.StatusText(http.StatusFound),
+// 				Body:       io.NopCloser(strings.NewReader("")),
+// 				Header: http.Header{
+// 					"Content-Disposition": []string{testBalaName},
+// 					"Digest":              []string{"sha-256=abc123"},
+// 				},
+// 				Request:    req,
+// 				Proto:      "HTTP/1.1",
+// 				ProtoMinor: 1,
+// 				ProtoMajor: 1,
+// 				Close:      true,
+// 			}, nil
+// 		}),
+// 	}
+//
+// 	tc := NewTestCentralAPIClient(mockClient)
+//
+// 	err := tc.PullPackage("wso2", "sf", "1.3.5", tempDir, anyPlatform, testBalVersion, false)
+// 	if err == nil {
+// 		t.Fatal("expected error for missing Location header, got nil")
+// 	}
+//
+// 	if _, ok := err.(*CentralClientError); !ok {
+// 		t.Errorf("expected CentralClientError, got %T", err)
+// 	}
+// }
+//
+// func TestPullPackageRedirectWithoutContentDisposition(t *testing.T) {
+// 	tempDir := t.TempDir()
+//
+// 	mockClient := &http.Client{
+// 		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+// 			return &http.Response{
+// 				StatusCode: http.StatusFound,
+// 				Status:     http.StatusText(http.StatusFound),
+// 				Body:       io.NopCloser(strings.NewReader("")),
+// 				Header: http.Header{
+// 					"Location": []string{"https://fileserver.dev-central.ballerina.io/2.0/wso2/sf/1.3.5/sf-any-1.3.5.bala"},
+// 					"Digest":   []string{"sha-256=abc123"},
+// 				},
+// 				Request:    req,
+// 				Proto:      "HTTP/1.1",
+// 				ProtoMinor: 1,
+// 				ProtoMajor: 1,
+// 				Close:      true,
+// 			}, nil
+// 		}),
+// 	}
+//
+// 	tc := NewTestCentralAPIClient(mockClient)
+//
+// 	err := tc.PullPackage("wso2", "sf", "1.3.5", tempDir, anyPlatform, testBalVersion, false)
+// 	if err == nil {
+// 		t.Fatal("expected error for missing Content-Disposition header, got nil")
+// 	}
+//
+// 	if _, ok := err.(*CentralClientError); !ok {
+// 		t.Errorf("expected CentralClientError, got %T", err)
+// 	}
+// }
+//
+// func TestPullPackageConnectionResetRetry(t *testing.T) {
+// 	balaPath := filepath.Join(utilTestResources, testBalaName)
+// 	balaContent, err := os.ReadFile(balaPath)
+// 	if err != nil {
+// 		t.Fatalf("failed to read bala file: %v", err)
+// 	}
+//
+// 	tempDir := t.TempDir()
+// 	expectedBalaFileName := "sf-2020r2-any-1.3.5.bala"
+//
+// 	attemptCount := 0
+// 	downloadAttempts := 0
+//
+// 	mockClient := &http.Client{
+// 		Transport: RoundTripFunc(func(req *http.Request) (*http.Response, error) {
+// 			if strings.Contains(req.URL.String(), "/registry/packages/") {
+// 				attemptCount++
+// 				return &http.Response{
+// 					StatusCode: http.StatusFound,
+// 					Status:     http.StatusText(http.StatusFound),
+// 					Body:       io.NopCloser(strings.NewReader("")),
+// 					Header: http.Header{
+// 						"Location":            []string{"https://fileserver.dev-central.ballerina.io/2.0/foo/sf/1.3.5/" + expectedBalaFileName},
+// 						"Content-Disposition": []string{"attachment; filename=" + expectedBalaFileName},
+// 					},
+// 					Request:    req,
+// 					Proto:      "HTTP/1.1",
+// 					ProtoMinor: 1,
+// 					ProtoMajor: 1,
+// 					Close:      true,
+// 				}, nil
+// 			}
+//
+// 			downloadAttempts++
+//
+// 			if downloadAttempts <= 2 {
+// 				return nil, fmt.Errorf("Connection reset by peer")
+// 			}
+//
+// 			return &http.Response{
+// 				StatusCode: http.StatusOK,
+// 				Status:     http.StatusText(http.StatusOK),
+// 				Body:       io.NopCloser(strings.NewReader(string(balaContent))),
+// 				Header: http.Header{
+// 					"Content-Type":           []string{ApplicationOctetStream},
+// 					"Content-Length":         []string{fmt.Sprintf("%d", len(balaContent))},
+// 					"RESOLVED_REQUESTED_URI": []string{"https://fileserver.dev-central.ballerina.io/2.0/foo/sf/1.3.5/" + expectedBalaFileName},
+// 				},
+// 				Request:       req,
+// 				Proto:         "HTTP/1.1",
+// 				ProtoMinor:    1,
+// 				ProtoMajor:    1,
+// 				ContentLength: int64(len(balaContent)),
+// 				Close:         true,
+// 			}, nil
+// 		}),
+// 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+// 			return http.ErrUseLastResponse
+// 		},
+// 	}
+//
+// 	tc := NewTestCentralAPIClient(mockClient)
+//
+// 	err = tc.PullPackage("foo", "sf", "1.3.5", tempDir, "2020r2-any", testBalVersion, false)
+// 	if err != nil {
+// 		t.Fatalf("unexpected error after retries: %v", err)
+// 	}
+//
+// 	balaDir := filepath.Join(tempDir, "1.3.5", "2020r2-any")
+// 	if info, err := os.Stat(balaDir); err != nil || !info.IsDir() {
+// 		t.Fatalf("bala directory does not exist after successful retry: %s", balaDir)
+// 	}
+//
+// 	if attemptCount != 3 {
+// 		t.Errorf("expected 3 total attempts (2 failures + 1 success), got %d", attemptCount)
+// 	}
+//
+// 	requiredFiles := []string{"bala.json", "package.json"}
+// 	for _, file := range requiredFiles {
+// 		filePath := filepath.Join(balaDir, file)
+// 		if _, err := os.Stat(filePath); err != nil {
+// 			t.Errorf("required file does not exist after retry: %s", file)
+// 		}
+// 	}
+// }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -20,7 +21,7 @@ import (
 type CentralAPIClient interface {
 	GetPackage(orgNamePath, packageNamePath, version, supportedPlatform, ballerinaVersion string) (*models.Package, error)
 	GetPackageVersions(orgNamePath, packageNamePath, supportedPlatform, ballerinaVersion string) ([]string, error)
-	PullPackage(org, name, versiom, packagePathInBalaCache, supportedPlatform, ballerinaVersion string, isBuild bool) error
+	PullPackage(org, name, version string, fsys fs.FS, packagePathInBalaCache, supportedPlatform, ballerinaVersion string, isBuild bool) error
 	ResolvePackageNames(request *models.PackageNameResolutionRequest, supportedPlatform, ballerinaVersion string) (*models.PackageNameResolutionResponse, error)
 	ResolveDependencies(request *models.PackageResolutionRequest, supportedPlatform, ballerinaVersion string) (*models.PackageResolutionResponse, error)
 	GetConnectors(params map[string]string, supportedPlatform, ballerinaVersion string) (any, error)
@@ -233,10 +234,10 @@ func (c *centralAPIClientImpl) getPackageVersionsInternal(orgNamePath, packageNa
 	return nil, NewCentralClientError(fmt.Sprintf("%s%s", ErrCannotFindVersions, getPackageSignature(orgNamePath, packageNamePath, "")))
 }
 
-func (c *centralAPIClientImpl) PullPackage(org, name, version, packagePathInBalaCache, supportedPlatform, ballerinaVersion string, isBuild bool) error {
+func (c *centralAPIClientImpl) PullPackage(org, name, version string, fsys fs.FS, packagePathInBalaCache, supportedPlatform, ballerinaVersion string, isBuild bool) error {
 	retryCount := 0
 	for retryCount <= c.maxRetries {
-		err := c.pullPackageInternal(org, name, version, packagePathInBalaCache, supportedPlatform, ballerinaVersion, isBuild)
+		err := c.pullPackageInternal(org, name, version, fsys, packagePathInBalaCache, supportedPlatform, ballerinaVersion, isBuild)
 		if err != nil {
 			if strings.Contains(err.Error(), ConnectionReset) && retryCount < c.maxRetries {
 				if c.verboseEnabled {
@@ -724,7 +725,7 @@ func (c *centralAPIClientImpl) SetAccessToken(token string) {
 	c.accessToken = token
 }
 
-func (c *centralAPIClientImpl) pullPackageInternal(org, name, version, packagePathInBalaCache, supportedPlatform, ballerinaVersion string, isBuild bool) error {
+func (c *centralAPIClientImpl) pullPackageInternal(org, name, version string, fsys fs.FS, packagePathInBalaCache, supportedPlatform, ballerinaVersion string, isBuild bool) error {
 	resourceURL := fmt.Sprintf("%s%s%s%s", PackagePathPrefix, org, Separator, name)
 	enableOutputStream := os.Getenv(EnableOutputStream) == "true"
 
@@ -814,7 +815,7 @@ func (c *centralAPIClientImpl) pullPackageInternal(org, name, version, packagePa
 					deprecMsg = deprecationMessage
 				}
 
-				return createBalaInHomeRepo(downloadResp, packagePathInBalaCache, org, name, isNightlyBuild,
+				return createBalaInHomeRepo(downloadResp, fsys, packagePathInBalaCache, org, name, isNightlyBuild,
 					deprecMsg, balaURL, balaFileName, outStream, logFormatter, digest)
 			}
 

@@ -1,9 +1,8 @@
 package main
 
 import (
-	"fmt"
-
 	"ballerina-lang-go/centralclient"
+	"ballerina-lang-go/common/bfs"
 )
 
 var (
@@ -13,8 +12,8 @@ var (
 
 	orgName     = "ballerina"
 	packageName = "url"
-	// version     = "2.6.1"
-	version = ""
+	version     = "2.6.1"
+	// version = ""
 
 	packagePathInBalaCache = "/Users/sithi/.ballerin sfma/repositories/central.ballerina.io/bala/ballerina/url"
 
@@ -24,14 +23,23 @@ var (
 func main() {
 	client := centralclient.NewCentralAPIClient(baseUrl, nil, "")
 
-	connectors, err := client.GetConnectors(map[string]string{
-		"q": "paypal.orders",
-	}, supportedPlatform, ballerinaVersion)
+	memFS := bfs.NewMemFS()
+
+	err := client.PullPackage(orgName, packageName, version, memFS, "/.ballerina", supportedPlatform, ballerinaVersion, isBuild)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("Connectors: %+v\n", connectors)
+	bfs.PrintFiles(memFS)
+
+	// connectors, err := client.GetConnectors(map[string]string{
+	// 	"q": "paypal.orders",
+	// }, supportedPlatform, ballerinaVersion)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	//
+	// fmt.Printf("Connectors: %+v\n", connectors)
 
 	// trigger, err := client.GetTrigger("90", supportedPlatform, ballerinaVersion)
 	// if err != nil {
