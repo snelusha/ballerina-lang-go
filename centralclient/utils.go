@@ -2,6 +2,7 @@ package centralclient
 
 import (
 	"archive/zip"
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -113,6 +114,7 @@ func createBalaInHomeRepo(balaDownloadResponse *http.Response, fsys fs.FS, pkgPa
 	platformDir := filepath.Dir(balaCacheWithPkgPath)
 
 	if err := bfs.Rename(fsys, tempDir, platformDir); err != nil {
+		fmt.Println("Failed to rename temp directory to final bala directory:", err)
 		return NewCentralClientError(logFormatter.formatLog("error creating directory for bala file"))
 	}
 
@@ -239,7 +241,7 @@ func extractBala(fsys fs.FS, balaFilePath, balaFileDestPath, trueDigest, package
 		return err
 	}
 
-	actualDigest := SHA256 + checkHashInternal(balaFilePath)
+	actualDigest := SHA256 + checkHashInternal(fsys, balaFilePath)
 	if trueDigest != "" && trueDigest != actualDigest {
 		warning := fmt.Sprintf(`*************************************************************
 * WARNING: Certain packages may have originated from sources other than the official distributors. *
@@ -251,13 +253,16 @@ func extractBala(fsys fs.FS, balaFilePath, balaFileDestPath, trueDigest, package
 		if outStream != nil {
 			fmt.Fprint(outStream, warning)
 		}
+	} else {
+		fmt.Printf("Verified package: %s\n", packageName)
 	}
 
-	reader, err := zip.OpenReader(balaFilePath)
+	// reader, err := zip.OpenReader(balaFilePath)
+	file, err := fs.ReadFile(fsys, balaFilePath)
+	reader, err := zip.NewReader(strings.NewReader(string(file)), int64(len(file)))
 	if err != nil {
 		return err
 	}
-	defer reader.Close()
 
 	for _, file := range reader.File {
 		path := filepath.Join(balaFileDestPath, file.Name)
@@ -343,15 +348,16 @@ func createMetaFile(metaFilePath string, logFormatter LogFormatter, errMsg strin
 	return nil
 }
 
-func checkHashInternal(filePath string) string {
-	file, err := os.Open(filePath)
+func checkHashInternal(fsys fs.FS, filePath string) string {
+	file, err := fs.ReadFile(fsys, filePath)
 	if err != nil {
 		return ""
 	}
-	defer file.Close()
+
+	reader := bytes.NewReader(file)
 
 	hasher := sha256.New()
-	if _, err := io.Copy(hasher, file); err != nil {
+	if _, err := io.Copy(hasher, reader); err != nil {
 		return ""
 	}
 

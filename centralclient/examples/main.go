@@ -3,6 +3,7 @@ package main
 import (
 	"ballerina-lang-go/centralclient"
 	"ballerina-lang-go/common/bfs"
+	"io/fs"
 )
 
 var (
@@ -25,12 +26,19 @@ func main() {
 
 	memFS := bfs.NewMemFS()
 
-	err := client.PullPackage(orgName, packageName, version, memFS, "/.ballerina", supportedPlatform, ballerinaVersion, isBuild)
+	err := client.PullPackage(orgName, packageName, version, memFS, ".ballerina", supportedPlatform, ballerinaVersion, isBuild)
 	if err != nil {
 		panic(err)
 	}
 
 	bfs.PrintFiles(memFS)
+
+	file, err := fs.ReadFile(memFS, ".ballerina/2.6.1/java21/bala.json")
+	if err != nil {
+		panic(err)
+	}
+
+	println(string(file))
 
 	// connectors, err := client.GetConnectors(map[string]string{
 	// 	"q": "paypal.orders",

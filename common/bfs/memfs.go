@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"strings"
 	"time"
 )
 
@@ -67,18 +68,61 @@ func (mfs *memFS) WriteFile(name string, data []byte, perm fs.FileMode) error {
 }
 
 func (mfs *memFS) Remove(name string) error {
-	delete(mfs.files, name)
+	// Try exact match first
+	if _, ok := mfs.files[name]; ok {
+		delete(mfs.files, name)
+		return nil
+	}
+
+	// Try directory removal (prefix match)
+	dir := name
+	if !strings.HasSuffix(dir, "/") {
+		dir += "/"
+	}
+
+	found := false
+	for fname := range mfs.files {
+		if strings.HasPrefix(fname, dir) {
+			found = true
+			delete(mfs.files, fname)
+		}
+	}
+
+	if !found {
+		return &fs.PathError{Op: "remove", Path: name, Err: fs.ErrNotExist}
+	}
 	return nil
 }
 
 func (mfs *memFS) Rename(oldpath string, newpath string) error {
-	file, ok := mfs.files[oldpath]
-	if !ok {
+	// Try exact match first
+	if file, ok := mfs.files[oldpath]; ok {
+		delete(mfs.files, oldpath)
+		file.name = newpath
+		mfs.files[newpath] = file
+		return nil
+	}
+
+	// Try directory rename (prefix match)
+	oldDir := oldpath
+	if !strings.HasSuffix(oldDir, "/") {
+		oldDir += "/"
+	}
+
+	found := false
+	for name, file := range mfs.files {
+		if strings.HasPrefix(name, oldDir) {
+			found = true
+			newName := newpath + strings.TrimPrefix(name, oldpath)
+			delete(mfs.files, name)
+			file.name = newName
+			mfs.files[newName] = file
+		}
+	}
+
+	if !found {
 		return &fs.PathError{Op: "rename", Path: oldpath, Err: fs.ErrNotExist}
 	}
-	delete(mfs.files, oldpath)
-	file.name = newpath
-	mfs.files[newpath] = file
 	return nil
 }
 
