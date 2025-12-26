@@ -1,0 +1,43 @@
+package symbols
+
+type SymbolKind int
+
+const (
+	SymbolKindPackage SymbolKind = iota
+	SymbolKindStruct
+	SymbolKindObject
+	SymbolKindRecord
+	SymbolKindConnector
+	SymbolKindAction
+	SymbolKindService
+	SymbolKindResource
+	SymbolKindFunction
+	SymbolKindWorker
+	SymbolKindAnnotation
+	SymbolKindAnnotationAttribute
+	SymbolKindConstant
+	SymbolKindVariable
+	SymbolKindPackageVariable
+	SymbolKindTransformer
+	SymbolKindTypeDef
+	SymbolKindEnum
+	SymbolKindError
+	SymbolKindParameter
+	SymbolKindPathParameter
+	SymbolKindPathRestParameter
+	SymbolKindLocalVariable
+	SymbolKindServiceVariable
+	SymbolKindConnectorVariable
+	SymbolKindCastOperator
+	SymbolKindConversionOperator
+	SymbolKindTypeofOperator
+	SymbolKindXmlns
+	SymbolKindScope
+	SymbolKindOther
+	SymbolKindInvokableType
+	SymbolKindResourcePathIdentifierSegment
+	SymbolKindResourcePathParamSegment
+	SymbolKindResourcePathRestParamSegment
+	SymbolKindResourceRootPathSegment
+	SymbolKindSequence
+)
