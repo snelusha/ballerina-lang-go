@@ -1,0 +1,57 @@
+package util
+
+const (
+	FlagPublic int64 = 1 << iota
+	FlagNative
+	FlagFinal
+	FlagAttached
+	FlagDeprecated
+	FlagReadonly
+	FlagFunctionFinal
+	FlagInterface
+	FlagRequired
+	FlagRecord
+	FlagPrivate
+	FlagAnonymous
+	FlagOptional
+	FlagTestable
+	FlagConstant
+	FlagRemote
+	FlagClient
+	FlagResource
+	FlagService
+	FlagListener
+	FlagLambda
+	FlagTypeParam
+	FlagLangLib
+	FlagWorker
+	FlagForked
+	FlagTransactional
+	FlagParameterized
+	FlagDistinct
+	FlagClass
+	FlagIsolated
+	FlagIsolatedParam
+	FlagConfigurable
+	FlagObjectCtor
+	FlagEnum
+	FlagIncluded
+	FlagRequiredParam
+	FlagDefaultableParam
+	FlagRestParam
+	FlagField
+	FlagAnyFunction
+	FlagInfer
+	FlagEnumMember
+	FlagQueryLambda
+	FlagEffectiveTypeDef
+	FlagSourceAnnotation
+)
+
+func IsFlagOn(mask, flag int64) bool {
+	return (mask & flag) == flag
+}
+
+func Unset(mask, flag int64) int64 {
+	return mask & (^flag)
+}
