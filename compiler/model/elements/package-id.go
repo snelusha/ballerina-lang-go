@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"strings"
 
-	"ballerina-lang-go/compiler/bir/model"
+	"ballerina-lang-go/compiler/common"
 )
 
 type PackageID interface {
-	GetOrgName() model.Name
-	GetPkgName() model.Name
-	GetName() model.Name
-	GetVersion() model.Name
-	GetNameComp(index int) model.Name
-	GetNameComps() []model.Name
-	GetSourceFileName() model.Name
+	GetOrgName() common.Name
+	GetPkgName() common.Name
+	GetName() common.Name
+	GetVersion() common.Name
+	GetNameComp(index int) common.Name
+	GetNameComps() []common.Name
+	GetSourceFileName() common.Name
 	GetSourceRoot() string
 	IsUnnamed() bool
 	SkipTests() bool
@@ -23,19 +23,19 @@ type PackageID interface {
 }
 
 type packageIDImpl struct {
-	orgName        model.Name
-	pkgName        model.Name
-	name           model.Name
-	version        model.Name
-	nameComps      []model.Name
-	sourceFileName model.Name
+	orgName        common.Name
+	pkgName        common.Name
+	name           common.Name
+	version        common.Name
+	nameComps      []common.Name
+	sourceFileName common.Name
 	sourceRoot     string
 	isUnnamed      bool
 	skipTests      bool
 	isTestPkg      bool
 }
 
-func NewPackageID(orgName, name, version model.Name) PackageID {
+func NewPackageID(orgName, name, version common.Name) PackageID {
 	return &packageIDImpl{
 		orgName:   orgName,
 		name:      name,
@@ -46,12 +46,12 @@ func NewPackageID(orgName, name, version model.Name) PackageID {
 	}
 }
 
-func NewPackageIDWithComponents(orgName model.Name, nameComps []model.Name, version model.Name) PackageID {
+func NewPackageIDWithComponents(orgName common.Name, nameComps []common.Name, version common.Name) PackageID {
 	nameStrs := make([]string, len(nameComps))
 	for i, n := range nameComps {
 		nameStrs[i] = n.GetValue()
 	}
-	name := model.NewName(strings.Join(nameStrs, "."))
+	name := common.NewName(strings.Join(nameStrs, "."))
 
 	return &packageIDImpl{
 		orgName:   orgName,
@@ -63,7 +63,7 @@ func NewPackageIDWithComponents(orgName model.Name, nameComps []model.Name, vers
 	}
 }
 
-func NewPackageIDWithSourceFile(orgName, pkgName, name, version, sourceFileName model.Name) PackageID {
+func NewPackageIDWithSourceFile(orgName, pkgName, name, version, sourceFileName common.Name) PackageID {
 	return &packageIDImpl{
 		orgName:        orgName,
 		pkgName:        pkgName,
@@ -75,7 +75,7 @@ func NewPackageIDWithSourceFile(orgName, pkgName, name, version, sourceFileName 
 	}
 }
 
-func NewPackageIDFull(orgName, pkgName, name, version, sourceFileName model.Name, sourceRoot string, isTestPkg, skipTest bool) PackageID {
+func NewPackageIDFull(orgName, pkgName, name, version, sourceFileName common.Name, sourceRoot string, isTestPkg, skipTest bool) PackageID {
 	return &packageIDImpl{
 		orgName:        orgName,
 		pkgName:        pkgName,
@@ -89,59 +89,59 @@ func NewPackageIDFull(orgName, pkgName, name, version, sourceFileName model.Name
 	}
 }
 
-func NewUnnamedPackageID(orgName model.Name, sourceFileName string, version model.Name) PackageID {
-	defaultPkg := model.NewName(".")
+func NewUnnamedPackageID(orgName common.Name, sourceFileName string, version common.Name) PackageID {
+	defaultPkg := common.NewName(".")
 	return &packageIDImpl{
 		orgName:        orgName,
 		name:           defaultPkg,
 		pkgName:        defaultPkg,
 		version:        version,
-		nameComps:      []model.Name{defaultPkg},
-		sourceFileName: model.NewName(sourceFileName),
+		nameComps:      []common.Name{defaultPkg},
+		sourceFileName: common.NewName(sourceFileName),
 		isUnnamed:      true,
 		skipTests:      true,
 	}
 }
 
-func createNameComps(name model.Name) []model.Name {
+func createNameComps(name common.Name) []common.Name {
 	nameValue := name.GetValue()
 	if nameValue == "." {
-		return []model.Name{name}
+		return []common.Name{name}
 	}
 
 	parts := strings.Split(nameValue, ".")
-	comps := make([]model.Name, len(parts))
+	comps := make([]common.Name, len(parts))
 	for i, part := range parts {
-		comps[i] = model.NewName(part)
+		comps[i] = common.NewName(part)
 	}
 	return comps
 }
 
-func (p *packageIDImpl) GetOrgName() model.Name {
+func (p *packageIDImpl) GetOrgName() common.Name {
 	return p.orgName
 }
 
-func (p *packageIDImpl) GetPkgName() model.Name {
+func (p *packageIDImpl) GetPkgName() common.Name {
 	return p.pkgName
 }
 
-func (p *packageIDImpl) GetName() model.Name {
+func (p *packageIDImpl) GetName() common.Name {
 	return p.name
 }
 
-func (p *packageIDImpl) GetVersion() model.Name {
+func (p *packageIDImpl) GetVersion() common.Name {
 	return p.version
 }
 
-func (p *packageIDImpl) GetNameComp(index int) model.Name {
+func (p *packageIDImpl) GetNameComp(index int) common.Name {
 	return p.nameComps[index]
 }
 
-func (p *packageIDImpl) GetNameComps() []model.Name {
+func (p *packageIDImpl) GetNameComps() []common.Name {
 	return p.nameComps
 }
 
-func (p *packageIDImpl) GetSourceFileName() model.Name {
+func (p *packageIDImpl) GetSourceFileName() common.Name {
 	return p.sourceFileName
 }
 

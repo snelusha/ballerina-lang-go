@@ -3,9 +3,8 @@ package symbols
 import (
 	"fmt"
 
-	"ballerina-lang-go/compiler/bir/model"
+	"ballerina-lang-go/compiler/common"
 	"ballerina-lang-go/compiler/model/elements"
-	"ballerina-lang-go/compiler/semantics/model/types"
 	"ballerina-lang-go/diagnostics"
 )
 
@@ -26,11 +25,11 @@ type bTypeSymbolImpl struct {
 	annotations         BVarSymbol
 }
 
-func NewBTypeSymbol(symTag, flags int64, name model.Name, pkgID elements.PackageID, bType types.BType, owner BSymbol, pos diagnostics.Location, origin SymbolOrigin) BTypeSymbol {
+func NewBTypeSymbol(symTag, flags int64, name common.Name, pkgID elements.PackageID, bType BType, owner BSymbol, pos diagnostics.Location, origin SymbolOrigin) BTypeSymbol {
 	return NewBTypeSymbolWithOriginalName(symTag, flags, name, name, pkgID, bType, owner, pos, origin)
 }
 
-func NewBTypeSymbolWithOriginalName(symTag, flags int64, name, originalName model.Name, pkgID elements.PackageID, bType types.BType, owner BSymbol, pos diagnostics.Location, origin SymbolOrigin) BTypeSymbol {
+func NewBTypeSymbolWithOriginalName(symTag, flags int64, name, originalName common.Name, pkgID elements.PackageID, bType BType, owner BSymbol, pos diagnostics.Location, origin SymbolOrigin) BTypeSymbol {
 	return &bTypeSymbolImpl{
 		bSymbolImpl: NewBSymbolWithOriginalName(symTag, flags, name, originalName, pkgID, bType, owner, pos, origin).(*bSymbolImpl),
 	}
@@ -79,7 +78,7 @@ type bVarSymbolImpl struct {
 	*bSymbolImpl
 }
 
-func NewBVarSymbol(tag, flags int64, name model.Name, pkgID elements.PackageID, bType types.BType, owner BSymbol, pos diagnostics.Location, origin SymbolOrigin) BVarSymbol {
+func NewBVarSymbol(tag, flags int64, name common.Name, pkgID elements.PackageID, bType BType, owner BSymbol, pos diagnostics.Location, origin SymbolOrigin) BVarSymbol {
 	return &bVarSymbolImpl{
 		bSymbolImpl: NewBSymbol(tag, flags, name, pkgID, bType, owner, pos, origin).(*bSymbolImpl),
 	}

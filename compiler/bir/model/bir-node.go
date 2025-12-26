@@ -3,9 +3,9 @@ package model
 import (
 	"fmt"
 
+	"ballerina-lang-go/compiler/common"
 	"ballerina-lang-go/compiler/model/elements"
 	"ballerina-lang-go/compiler/model/symbols"
-	"ballerina-lang-go/compiler/semantics/model/types"
 	"ballerina-lang-go/diagnostics"
 )
 
@@ -64,7 +64,7 @@ type birPackageImpl struct {
 	recordDefaultValueMap          map[string]map[string]string
 }
 
-func NewBIRPackage(pos diagnostics.Location, org, pkgName, name, version, sourceFileName Name, sourceRoot string, skipTest, isTestPkg bool) BIRPackage {
+func NewBIRPackage(pos diagnostics.Location, org, pkgName, name, version, sourceFileName common.Name, sourceRoot string, skipTest, isTestPkg bool) BIRPackage {
 	pkgID := elements.NewPackageIDFull(org, pkgName, name, version, sourceFileName, sourceRoot, isTestPkg, skipTest)
 	return &birPackageImpl{
 		birNodeImpl:                    newBIRNode(pos),
@@ -171,7 +171,7 @@ type birImportModuleImpl struct {
 	packageID elements.PackageID
 }
 
-func NewBIRImportModule(pos diagnostics.Location, org, name, version Name) BIRImportModule {
+func NewBIRImportModule(pos diagnostics.Location, org, name, version common.Name) BIRImportModule {
 	return &birImportModuleImpl{
 		birNodeImpl: newBIRNode(pos),
 		packageID:   elements.NewPackageID(org, name, version),
@@ -213,10 +213,10 @@ func (b *birDocumentableNodeImpl) SetMarkdownDocAttachment(attachment elements.M
 
 type BIRVariableDcl interface {
 	BIRDocumentableNode
-	GetType() types.BType
-	SetType(bType types.BType)
-	GetName() Name
-	GetOriginalName() Name
+	GetType() symbols.BType
+	SetType(bType symbols.BType)
+	GetName() common.Name
+	GetOriginalName() common.Name
 	GetMetaVarName() string
 	GetJvmVarName() string
 	GetKind() VarKind
@@ -240,9 +240,9 @@ type BIRVariableDcl interface {
 
 type birVariableDclImpl struct {
 	*birDocumentableNodeImpl
-	bType              types.BType
-	name               Name
-	originalName       Name
+	bType              symbols.BType
+	name               common.Name
+	originalName       common.Name
 	metaVarName        string
 	jvmVarName         string
 	kind               VarKind
@@ -256,7 +256,7 @@ type birVariableDclImpl struct {
 	insScope           BirScope
 }
 
-func NewBIRVariableDcl(pos diagnostics.Location, bType types.BType, name, originalName Name, scope VarScope, kind VarKind, metaVarName string) BIRVariableDcl {
+func NewBIRVariableDcl(pos diagnostics.Location, bType symbols.BType, name, originalName common.Name, scope VarScope, kind VarKind, metaVarName string) BIRVariableDcl {
 	jvmVarName := name.GetValue()
 	// TODO: Implement proper replacement logic for %
 	return &birVariableDclImpl{
@@ -271,23 +271,23 @@ func NewBIRVariableDcl(pos diagnostics.Location, bType types.BType, name, origin
 	}
 }
 
-func NewBIRVariableDclSimple(pos diagnostics.Location, bType types.BType, name Name, scope VarScope, kind VarKind, metaVarName string) BIRVariableDcl {
+func NewBIRVariableDclSimple(pos diagnostics.Location, bType symbols.BType, name common.Name, scope VarScope, kind VarKind, metaVarName string) BIRVariableDcl {
 	return NewBIRVariableDcl(pos, bType, name, name, scope, kind, metaVarName)
 }
 
-func (b *birVariableDclImpl) GetType() types.BType {
+func (b *birVariableDclImpl) GetType() symbols.BType {
 	return b.bType
 }
 
-func (b *birVariableDclImpl) SetType(bType types.BType) {
+func (b *birVariableDclImpl) SetType(bType symbols.BType) {
 	b.bType = bType
 }
 
-func (b *birVariableDclImpl) GetName() Name {
+func (b *birVariableDclImpl) GetName() common.Name {
 	return b.name
 }
 
-func (b *birVariableDclImpl) GetOriginalName() Name {
+func (b *birVariableDclImpl) GetOriginalName() common.Name {
 	return b.originalName
 }
 
@@ -373,7 +373,7 @@ func (b *birVariableDclImpl) Accept(visitor BIRVisitor) {
 
 type BIRParameter interface {
 	BIRNode
-	GetName() Name
+	GetName() common.Name
 	GetFlags() int64
 	GetAnnotAttachments() []BIRAnnotationAttachment
 	AddAnnotAttachment(attachment BIRAnnotationAttachment)
@@ -381,12 +381,12 @@ type BIRParameter interface {
 
 type birParameterImpl struct {
 	*birNodeImpl
-	name             Name
+	name             common.Name
 	flags            int64
 	annotAttachments []BIRAnnotationAttachment
 }
 
-func NewBIRParameter(pos diagnostics.Location, name Name, flags int64) BIRParameter {
+func NewBIRParameter(pos diagnostics.Location, name common.Name, flags int64) BIRParameter {
 	return &birParameterImpl{
 		birNodeImpl:      newBIRNode(pos),
 		name:             name,
@@ -395,7 +395,7 @@ func NewBIRParameter(pos diagnostics.Location, name Name, flags int64) BIRParame
 	}
 }
 
-func (b *birParameterImpl) GetName() Name {
+func (b *birParameterImpl) GetName() common.Name {
 	return b.name
 }
 
@@ -432,7 +432,7 @@ type birGlobalVariableDclImpl struct {
 	annotAttachments []BIRAnnotationAttachment
 }
 
-func NewBIRGlobalVariableDcl(pos diagnostics.Location, flags int64, bType types.BType, pkgID elements.PackageID, name, originalName Name, scope VarScope, kind VarKind, metaVarName string, origin symbols.SymbolOrigin) BIRGlobalVariableDcl {
+func NewBIRGlobalVariableDcl(pos diagnostics.Location, flags int64, bType symbols.BType, pkgID elements.PackageID, name, originalName common.Name, scope VarScope, kind VarKind, metaVarName string, origin symbols.SymbolOrigin) BIRGlobalVariableDcl {
 	return &birGlobalVariableDclImpl{
 		birVariableDclImpl: NewBIRVariableDcl(pos, bType, name, originalName, scope, kind, metaVarName).(*birVariableDclImpl),
 		flags:              flags,
@@ -479,7 +479,7 @@ type birFunctionParameterImpl struct {
 	isPathParameter bool
 }
 
-func NewBIRFunctionParameter(pos diagnostics.Location, bType types.BType, name Name, scope VarScope, kind VarKind, metaVarName string, hasDefaultExpr, isPathParameter bool) BIRFunctionParameter {
+func NewBIRFunctionParameter(pos diagnostics.Location, bType symbols.BType, name common.Name, scope VarScope, kind VarKind, metaVarName string, hasDefaultExpr, isPathParameter bool) BIRFunctionParameter {
 	return &birFunctionParameterImpl{
 		birVariableDclImpl: NewBIRVariableDclSimple(pos, bType, name, scope, kind, metaVarName).(*birVariableDclImpl),
 		hasDefaultExpr:     hasDefaultExpr,
@@ -505,12 +505,12 @@ func (b *birFunctionParameterImpl) Accept(visitor BIRVisitor) {
 
 type BIRFunction interface {
 	BIRDocumentableNode
-	types.NamedNode
-	GetName() Name
-	GetOriginalName() Name
+	symbols.NamedNode
+	GetName() common.Name
+	GetOriginalName() common.Name
 	GetFlags() int64
 	GetOrigin() symbols.SymbolOrigin
-	GetType() types.BInvokableType
+	GetType() symbols.BInvokableType
 	GetRequiredParams() []BIRParameter
 	GetReceiver() BIRVariableDcl
 	SetReceiver(receiver BIRVariableDcl)
@@ -521,7 +521,7 @@ type BIRFunction interface {
 	GetParameters() []BIRFunctionParameter
 	GetBasicBlocks() []BIRBasicBlock
 	GetErrorTable() []BIRErrorEntry
-	GetWorkerName() Name
+	GetWorkerName() common.Name
 	GetWorkerChannels() []ChannelDetails
 	GetAnnotAttachments() []BIRAnnotationAttachment
 	GetAnnotAttachmentsOnExternal() []BIRAnnotationAttachment
@@ -530,10 +530,10 @@ type BIRFunction interface {
 	GetDependentGlobalVars() []BIRGlobalVariableDcl
 	GetPathParams() []BIRVariableDcl
 	GetRestPathParam() BIRVariableDcl
-	GetResourcePath() []Name
+	GetResourcePath() []common.Name
 	GetResourcePathSegmentPosList() []diagnostics.Location
-	GetAccessor() Name
-	GetPathSegmentTypeList() []types.BType
+	GetAccessor() common.Name
+	GetPathSegmentTypeList() []symbols.BType
 	HasWorkers() bool
 	SetHasWorkers(hasWorkers bool)
 	AddLocalVar(localVar BIRVariableDcl)
@@ -546,11 +546,11 @@ type BIRFunction interface {
 
 type birFunctionImpl struct {
 	*birDocumentableNodeImpl
-	name                       Name
-	originalName               Name
+	name                       common.Name
+	originalName               common.Name
 	flags                      int64
 	origin                     symbols.SymbolOrigin
-	funcType                   types.BInvokableType
+	funcType                   symbols.BInvokableType
 	requiredParams             []BIRParameter
 	receiver                   BIRVariableDcl
 	restParam                  BIRParameter
@@ -560,7 +560,7 @@ type birFunctionImpl struct {
 	parameters                 []BIRFunctionParameter
 	basicBlocks                []BIRBasicBlock
 	errorTable                 []BIRErrorEntry
-	workerName                 Name
+	workerName                 common.Name
 	workerChannels             []ChannelDetails
 	annotAttachments           []BIRAnnotationAttachment
 	annotAttachmentsOnExternal []BIRAnnotationAttachment
@@ -568,14 +568,14 @@ type birFunctionImpl struct {
 	dependentGlobalVars        []BIRGlobalVariableDcl
 	pathParams                 []BIRVariableDcl
 	restPathParam              BIRVariableDcl
-	resourcePath               []Name
+	resourcePath               []common.Name
 	resourcePathSegmentPosList []diagnostics.Location
-	accessor                   Name
-	pathSegmentTypeList        []types.BType
+	accessor                   common.Name
+	pathSegmentTypeList        []symbols.BType
 	hasWorkers                 bool
 }
 
-func NewBIRFunction(pos diagnostics.Location, name, originalName Name, flags int64, funcType types.BInvokableType, workerName Name, sendInsCount int, origin symbols.SymbolOrigin) BIRFunction {
+func NewBIRFunction(pos diagnostics.Location, name, originalName common.Name, flags int64, funcType symbols.BInvokableType, workerName common.Name, sendInsCount int, origin symbols.SymbolOrigin) BIRFunction {
 	return &birFunctionImpl{
 		birDocumentableNodeImpl: newBIRDocumentableNode(pos),
 		name:                    name,
@@ -596,11 +596,11 @@ func NewBIRFunction(pos diagnostics.Location, name, originalName Name, flags int
 	}
 }
 
-func (b *birFunctionImpl) GetName() Name {
+func (b *birFunctionImpl) GetName() common.Name {
 	return b.name
 }
 
-func (b *birFunctionImpl) GetOriginalName() Name {
+func (b *birFunctionImpl) GetOriginalName() common.Name {
 	return b.originalName
 }
 
@@ -612,7 +612,7 @@ func (b *birFunctionImpl) GetOrigin() symbols.SymbolOrigin {
 	return b.origin
 }
 
-func (b *birFunctionImpl) GetType() types.BInvokableType {
+func (b *birFunctionImpl) GetType() symbols.BInvokableType {
 	return b.funcType
 }
 
@@ -656,7 +656,7 @@ func (b *birFunctionImpl) GetErrorTable() []BIRErrorEntry {
 	return b.errorTable
 }
 
-func (b *birFunctionImpl) GetWorkerName() Name {
+func (b *birFunctionImpl) GetWorkerName() common.Name {
 	return b.workerName
 }
 
@@ -692,7 +692,7 @@ func (b *birFunctionImpl) GetRestPathParam() BIRVariableDcl {
 	return b.restPathParam
 }
 
-func (b *birFunctionImpl) GetResourcePath() []Name {
+func (b *birFunctionImpl) GetResourcePath() []common.Name {
 	return b.resourcePath
 }
 
@@ -700,11 +700,11 @@ func (b *birFunctionImpl) GetResourcePathSegmentPosList() []diagnostics.Location
 	return b.resourcePathSegmentPosList
 }
 
-func (b *birFunctionImpl) GetAccessor() Name {
+func (b *birFunctionImpl) GetAccessor() common.Name {
 	return b.accessor
 }
 
-func (b *birFunctionImpl) GetPathSegmentTypeList() []types.BType {
+func (b *birFunctionImpl) GetPathSegmentTypeList() []symbols.BType {
 	return b.pathSegmentTypeList
 }
 
@@ -747,7 +747,7 @@ func (b *birFunctionImpl) Accept(visitor BIRVisitor) {
 type BIRBasicBlock interface {
 	BIRNode
 	GetNumber() int
-	GetID() Name
+	GetID() common.Name
 	GetInstructions() []BIRNonTerminator
 	GetTerminator() BIRTerminator
 	SetTerminator(terminator BIRTerminator)
@@ -758,14 +758,14 @@ type BIRBasicBlock interface {
 type birBasicBlockImpl struct {
 	*birNodeImpl
 	number       int
-	id           Name
+	id           common.Name
 	instructions []BIRNonTerminator
 	terminator   BIRTerminator
 }
 
 const BIRBasicBlockPrefix = "bb"
 
-func NewBIRBasicBlock(id Name, number int) BIRBasicBlock {
+func NewBIRBasicBlock(id common.Name, number int) BIRBasicBlock {
 	return &birBasicBlockImpl{
 		birNodeImpl:  newBIRNode(nil),
 		number:       number,
@@ -775,18 +775,18 @@ func NewBIRBasicBlock(id Name, number int) BIRBasicBlock {
 }
 
 func NewBIRBasicBlockSimple(number int) BIRBasicBlock {
-	return NewBIRBasicBlock(NewName(fmt.Sprintf("%s%d", BIRBasicBlockPrefix, number)), number)
+	return NewBIRBasicBlock(common.NewName(fmt.Sprintf("%s%d", BIRBasicBlockPrefix, number)), number)
 }
 
 func NewBIRBasicBlockWithPrefix(idPrefix string, number int) BIRBasicBlock {
-	return NewBIRBasicBlock(NewName(fmt.Sprintf("%s%d", idPrefix, number)), number)
+	return NewBIRBasicBlock(common.NewName(fmt.Sprintf("%s%d", idPrefix, number)), number)
 }
 
 func (b *birBasicBlockImpl) GetNumber() int {
 	return b.number
 }
 
-func (b *birBasicBlockImpl) GetID() Name {
+func (b *birBasicBlockImpl) GetID() common.Name {
 	return b.id
 }
 
@@ -816,43 +816,43 @@ func (b *birBasicBlockImpl) Accept(visitor BIRVisitor) {
 
 type BIRTypeDefinition interface {
 	BIRDocumentableNode
-	types.NamedNode
-	GetName() Name
-	GetOriginalName() Name
-	GetInternalName() Name
+	symbols.NamedNode
+	GetName() common.Name
+	GetOriginalName() common.Name
+	GetInternalName() common.Name
 	GetAttachedFuncs() []BIRFunction
 	GetFlags() int64
-	GetType() types.BType
+	GetType() symbols.BType
 	IsBuiltin() bool
-	GetReferencedTypes() []types.BType
-	GetReferenceType() types.BType
-	SetReferenceType(refType types.BType)
+	GetReferencedTypes() []symbols.BType
+	GetReferenceType() symbols.BType
+	SetReferenceType(refType symbols.BType)
 	GetOrigin() symbols.SymbolOrigin
 	GetAnnotAttachments() []BIRAnnotationAttachment
 	GetIndex() int
 	SetIndex(index int)
 	AddAttachedFunc(function BIRFunction)
-	AddReferencedType(bType types.BType)
+	AddReferencedType(bType symbols.BType)
 	AddAnnotAttachment(attachment BIRAnnotationAttachment)
 }
 
 type birTypeDefinitionImpl struct {
 	*birDocumentableNodeImpl
-	name             Name
-	originalName     Name
-	internalName     Name
+	name             common.Name
+	originalName     common.Name
+	internalName     common.Name
 	attachedFuncs    []BIRFunction
 	flags            int64
-	bType            types.BType
+	bType            symbols.BType
 	isBuiltin        bool
-	referencedTypes  []types.BType
-	referenceType    types.BType
+	referencedTypes  []symbols.BType
+	referenceType    symbols.BType
 	origin           symbols.SymbolOrigin
 	annotAttachments []BIRAnnotationAttachment
 	index            int
 }
 
-func NewBIRTypeDefinition(pos diagnostics.Location, internalName Name, flags int64, isBuiltin bool, bType types.BType, attachedFuncs []BIRFunction, origin symbols.SymbolOrigin, name, originalName Name) BIRTypeDefinition {
+func NewBIRTypeDefinition(pos diagnostics.Location, internalName common.Name, flags int64, isBuiltin bool, bType symbols.BType, attachedFuncs []BIRFunction, origin symbols.SymbolOrigin, name, originalName common.Name) BIRTypeDefinition {
 	return &birTypeDefinitionImpl{
 		birDocumentableNodeImpl: newBIRDocumentableNode(pos),
 		internalName:            internalName,
@@ -860,7 +860,7 @@ func NewBIRTypeDefinition(pos diagnostics.Location, internalName Name, flags int
 		isBuiltin:               isBuiltin,
 		bType:                   bType,
 		attachedFuncs:           attachedFuncs,
-		referencedTypes:         make([]types.BType, 0),
+		referencedTypes:         make([]symbols.BType, 0),
 		origin:                  origin,
 		name:                    name,
 		originalName:            originalName,
@@ -868,15 +868,15 @@ func NewBIRTypeDefinition(pos diagnostics.Location, internalName Name, flags int
 	}
 }
 
-func (b *birTypeDefinitionImpl) GetName() Name {
+func (b *birTypeDefinitionImpl) GetName() common.Name {
 	return b.name
 }
 
-func (b *birTypeDefinitionImpl) GetOriginalName() Name {
+func (b *birTypeDefinitionImpl) GetOriginalName() common.Name {
 	return b.originalName
 }
 
-func (b *birTypeDefinitionImpl) GetInternalName() Name {
+func (b *birTypeDefinitionImpl) GetInternalName() common.Name {
 	return b.internalName
 }
 
@@ -888,7 +888,7 @@ func (b *birTypeDefinitionImpl) GetFlags() int64 {
 	return b.flags
 }
 
-func (b *birTypeDefinitionImpl) GetType() types.BType {
+func (b *birTypeDefinitionImpl) GetType() symbols.BType {
 	return b.bType
 }
 
@@ -896,15 +896,15 @@ func (b *birTypeDefinitionImpl) IsBuiltin() bool {
 	return b.isBuiltin
 }
 
-func (b *birTypeDefinitionImpl) GetReferencedTypes() []types.BType {
+func (b *birTypeDefinitionImpl) GetReferencedTypes() []symbols.BType {
 	return b.referencedTypes
 }
 
-func (b *birTypeDefinitionImpl) GetReferenceType() types.BType {
+func (b *birTypeDefinitionImpl) GetReferenceType() symbols.BType {
 	return b.referenceType
 }
 
-func (b *birTypeDefinitionImpl) SetReferenceType(refType types.BType) {
+func (b *birTypeDefinitionImpl) SetReferenceType(refType symbols.BType) {
 	b.referenceType = refType
 }
 
@@ -928,7 +928,7 @@ func (b *birTypeDefinitionImpl) AddAttachedFunc(function BIRFunction) {
 	b.attachedFuncs = append(b.attachedFuncs, function)
 }
 
-func (b *birTypeDefinitionImpl) AddReferencedType(bType types.BType) {
+func (b *birTypeDefinitionImpl) AddReferencedType(bType symbols.BType) {
 	b.referencedTypes = append(b.referencedTypes, bType)
 }
 
@@ -1025,12 +1025,12 @@ func (c *channelDetailsImpl) String() string {
 
 type BIRAnnotation interface {
 	BIRDocumentableNode
-	GetName() Name
-	GetOriginalName() Name
+	GetName() common.Name
+	GetOriginalName() common.Name
 	GetFlags() int64
 	GetOrigin() symbols.SymbolOrigin
 	GetAttachPoints() []elements.AttachPoint
-	GetAnnotationType() types.BType
+	GetAnnotationType() symbols.BType
 	GetPackageID() elements.PackageID
 	SetPackageID(pkgID elements.PackageID)
 	GetAnnotAttachments() []BIRAnnotationAttachment
@@ -1039,17 +1039,17 @@ type BIRAnnotation interface {
 
 type birAnnotationImpl struct {
 	*birDocumentableNodeImpl
-	name             Name
-	originalName     Name
+	name             common.Name
+	originalName     common.Name
 	flags            int64
 	origin           symbols.SymbolOrigin
 	attachPoints     []elements.AttachPoint
-	annotationType   types.BType
+	annotationType   symbols.BType
 	packageID        elements.PackageID
 	annotAttachments []BIRAnnotationAttachment
 }
 
-func NewBIRAnnotation(pos diagnostics.Location, name, originalName Name, flags int64, points []elements.AttachPoint, annotationType types.BType, origin symbols.SymbolOrigin) BIRAnnotation {
+func NewBIRAnnotation(pos diagnostics.Location, name, originalName common.Name, flags int64, points []elements.AttachPoint, annotationType symbols.BType, origin symbols.SymbolOrigin) BIRAnnotation {
 	return &birAnnotationImpl{
 		birDocumentableNodeImpl: newBIRDocumentableNode(pos),
 		name:                    name,
@@ -1062,11 +1062,11 @@ func NewBIRAnnotation(pos diagnostics.Location, name, originalName Name, flags i
 	}
 }
 
-func (b *birAnnotationImpl) GetName() Name {
+func (b *birAnnotationImpl) GetName() common.Name {
 	return b.name
 }
 
-func (b *birAnnotationImpl) GetOriginalName() Name {
+func (b *birAnnotationImpl) GetOriginalName() common.Name {
 	return b.originalName
 }
 
@@ -1082,7 +1082,7 @@ func (b *birAnnotationImpl) GetAttachPoints() []elements.AttachPoint {
 	return b.attachPoints
 }
 
-func (b *birAnnotationImpl) GetAnnotationType() types.BType {
+func (b *birAnnotationImpl) GetAnnotationType() symbols.BType {
 	return b.annotationType
 }
 
@@ -1107,23 +1107,23 @@ func (b *birAnnotationImpl) Accept(visitor BIRVisitor) {
 }
 
 type ConstValue interface {
-	GetType() types.BType
+	GetType() symbols.BType
 	GetValue() interface{}
 }
 
 type constValueImpl struct {
-	bType types.BType
+	bType symbols.BType
 	value interface{}
 }
 
-func NewConstValue(value interface{}, bType types.BType) ConstValue {
+func NewConstValue(value interface{}, bType symbols.BType) ConstValue {
 	return &constValueImpl{
 		value: value,
 		bType: bType,
 	}
 }
 
-func (c *constValueImpl) GetType() types.BType {
+func (c *constValueImpl) GetType() symbols.BType {
 	return c.bType
 }
 
@@ -1133,9 +1133,9 @@ func (c *constValueImpl) GetValue() interface{} {
 
 type BIRConstant interface {
 	BIRDocumentableNode
-	GetName() Name
+	GetName() common.Name
 	GetFlags() int64
-	GetType() types.BType
+	GetType() symbols.BType
 	GetConstValue() ConstValue
 	GetOrigin() symbols.SymbolOrigin
 	GetAnnotAttachments() []BIRAnnotationAttachment
@@ -1144,15 +1144,15 @@ type BIRConstant interface {
 
 type birConstantImpl struct {
 	*birDocumentableNodeImpl
-	name             Name
+	name             common.Name
 	flags            int64
-	bType            types.BType
+	bType            symbols.BType
 	constValue       ConstValue
 	origin           symbols.SymbolOrigin
 	annotAttachments []BIRAnnotationAttachment
 }
 
-func NewBIRConstant(pos diagnostics.Location, name Name, flags int64, bType types.BType, constValue ConstValue, origin symbols.SymbolOrigin) BIRConstant {
+func NewBIRConstant(pos diagnostics.Location, name common.Name, flags int64, bType symbols.BType, constValue ConstValue, origin symbols.SymbolOrigin) BIRConstant {
 	return &birConstantImpl{
 		birDocumentableNodeImpl: newBIRDocumentableNode(pos),
 		name:                    name,
@@ -1164,7 +1164,7 @@ func NewBIRConstant(pos diagnostics.Location, name Name, flags int64, bType type
 	}
 }
 
-func (b *birConstantImpl) GetName() Name {
+func (b *birConstantImpl) GetName() common.Name {
 	return b.name
 }
 
@@ -1172,7 +1172,7 @@ func (b *birConstantImpl) GetFlags() int64 {
 	return b.flags
 }
 
-func (b *birConstantImpl) GetType() types.BType {
+func (b *birConstantImpl) GetType() symbols.BType {
 	return b.bType
 }
 
@@ -1199,16 +1199,16 @@ func (b *birConstantImpl) Accept(visitor BIRVisitor) {
 type BIRAnnotationAttachment interface {
 	BIRNode
 	GetAnnotPkgID() elements.PackageID
-	GetAnnotTagRef() Name
+	GetAnnotTagRef() common.Name
 }
 
 type birAnnotationAttachmentImpl struct {
 	*birNodeImpl
 	annotPkgID  elements.PackageID
-	annotTagRef Name
+	annotTagRef common.Name
 }
 
-func NewBIRAnnotationAttachment(pos diagnostics.Location, annotPkgID elements.PackageID, annotTagRef Name) BIRAnnotationAttachment {
+func NewBIRAnnotationAttachment(pos diagnostics.Location, annotPkgID elements.PackageID, annotTagRef common.Name) BIRAnnotationAttachment {
 	return &birAnnotationAttachmentImpl{
 		birNodeImpl: newBIRNode(pos),
 		annotPkgID:  annotPkgID,
@@ -1220,7 +1220,7 @@ func (b *birAnnotationAttachmentImpl) GetAnnotPkgID() elements.PackageID {
 	return b.annotPkgID
 }
 
-func (b *birAnnotationAttachmentImpl) GetAnnotTagRef() Name {
+func (b *birAnnotationAttachmentImpl) GetAnnotTagRef() common.Name {
 	return b.annotTagRef
 }
 
@@ -1238,7 +1238,7 @@ type birConstAnnotationAttachmentImpl struct {
 	annotValue ConstValue
 }
 
-func NewBIRConstAnnotationAttachment(pos diagnostics.Location, annotPkgID elements.PackageID, annotTagRef Name, annotValue ConstValue) BIRConstAnnotationAttachment {
+func NewBIRConstAnnotationAttachment(pos diagnostics.Location, annotPkgID elements.PackageID, annotTagRef common.Name, annotValue ConstValue) BIRConstAnnotationAttachment {
 	return &birConstAnnotationAttachmentImpl{
 		birAnnotationAttachmentImpl: NewBIRAnnotationAttachment(pos, annotPkgID, annotTagRef).(*birAnnotationAttachmentImpl),
 		annotValue:                  annotValue,
@@ -1394,10 +1394,10 @@ type BIRServiceDeclaration interface {
 	BIRDocumentableNode
 	GetAttachPoint() []string
 	GetAttachPointLiteral() string
-	GetListenerTypes() []types.BType
-	GetGeneratedName() Name
-	GetAssociatedClassName() Name
-	GetType() types.BType
+	GetListenerTypes() []symbols.BType
+	GetGeneratedName() common.Name
+	GetAssociatedClassName() common.Name
+	GetType() symbols.BType
 	GetOrigin() symbols.SymbolOrigin
 	GetFlags() int64
 }
@@ -1406,15 +1406,15 @@ type birServiceDeclarationImpl struct {
 	*birDocumentableNodeImpl
 	attachPoint         []string
 	attachPointLiteral  string
-	listenerTypes       []types.BType
-	generatedName       Name
-	associatedClassName Name
-	bType               types.BType
+	listenerTypes       []symbols.BType
+	generatedName       common.Name
+	associatedClassName common.Name
+	bType               symbols.BType
 	origin              symbols.SymbolOrigin
 	flags               int64
 }
 
-func NewBIRServiceDeclaration(attachPoint []string, attachPointLiteral string, listenerTypes []types.BType, generatedName, associatedClassName Name, bType types.BType, origin symbols.SymbolOrigin, flags int64, location diagnostics.Location) BIRServiceDeclaration {
+func NewBIRServiceDeclaration(attachPoint []string, attachPointLiteral string, listenerTypes []symbols.BType, generatedName, associatedClassName common.Name, bType symbols.BType, origin symbols.SymbolOrigin, flags int64, location diagnostics.Location) BIRServiceDeclaration {
 	return &birServiceDeclarationImpl{
 		birDocumentableNodeImpl: newBIRDocumentableNode(location),
 		attachPoint:             attachPoint,
@@ -1436,19 +1436,19 @@ func (b *birServiceDeclarationImpl) GetAttachPointLiteral() string {
 	return b.attachPointLiteral
 }
 
-func (b *birServiceDeclarationImpl) GetListenerTypes() []types.BType {
+func (b *birServiceDeclarationImpl) GetListenerTypes() []symbols.BType {
 	return b.listenerTypes
 }
 
-func (b *birServiceDeclarationImpl) GetGeneratedName() Name {
+func (b *birServiceDeclarationImpl) GetGeneratedName() common.Name {
 	return b.generatedName
 }
 
-func (b *birServiceDeclarationImpl) GetAssociatedClassName() Name {
+func (b *birServiceDeclarationImpl) GetAssociatedClassName() common.Name {
 	return b.associatedClassName
 }
 
-func (b *birServiceDeclarationImpl) GetType() types.BType {
+func (b *birServiceDeclarationImpl) GetType() symbols.BType {
 	return b.bType
 }
 

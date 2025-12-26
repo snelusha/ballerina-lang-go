@@ -1,7 +1,7 @@
 package symbols
 
 import (
-	"ballerina-lang-go/compiler/bir/model"
+	"ballerina-lang-go/compiler/common"
 )
 
 type ScopeEntry interface {
@@ -32,8 +32,8 @@ func (s *scopeEntryImpl) GetNext() ScopeEntry {
 type Scope interface {
 	GetOwner() BSymbol
 	GetEntries() map[string]ScopeEntry
-	Define(name model.Name, symbol BSymbol)
-	Lookup(name model.Name) ScopeEntry
+	Define(name common.Name, symbol BSymbol)
+	Lookup(name common.Name) ScopeEntry
 }
 
 type scopeImpl struct {
@@ -58,7 +58,7 @@ func (s *scopeImpl) GetEntries() map[string]ScopeEntry {
 	return s.entries
 }
 
-func (s *scopeImpl) Define(name model.Name, symbol BSymbol) {
+func (s *scopeImpl) Define(name common.Name, symbol BSymbol) {
 	current := s.entries[name.GetValue()]
 	if current == nil {
 		current = NotFoundEntry
@@ -68,7 +68,7 @@ func (s *scopeImpl) Define(name model.Name, symbol BSymbol) {
 	s.entries[name.GetValue()] = newEntry
 }
 
-func (s *scopeImpl) Lookup(name model.Name) ScopeEntry {
+func (s *scopeImpl) Lookup(name common.Name) ScopeEntry {
 	entry := s.entries[name.GetValue()]
 	if entry == nil {
 		return NotFoundEntry

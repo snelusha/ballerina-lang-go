@@ -1,8 +1,4 @@
-package types
-
-import (
-	"ballerina-lang-go/compiler/model/symbols"
-)
+package symbols
 
 type BInvokableType interface {
 	BType
@@ -21,7 +17,7 @@ type bInvokableTypeImpl struct {
 	retType    BType
 }
 
-func NewBInvokableType(paramTypes []BType, restType, retType BType, tsymbol symbols.BTypeSymbol) BInvokableType {
+func NewBInvokableType(paramTypes []BType, restType, retType BType, tsymbol BTypeSymbol) BInvokableType {
 	return &bInvokableTypeImpl{
 		bTypeImpl:  NewBTypeWithName(TypeTagInvokable, tsymbol, nil, FlagReadOnly).(*bTypeImpl),
 		paramTypes: paramTypes,
@@ -30,7 +26,7 @@ func NewBInvokableType(paramTypes []BType, restType, retType BType, tsymbol symb
 	}
 }
 
-func NewBInvokableTypeNoRest(paramTypes []BType, retType BType, tsymbol symbols.BTypeSymbol) BInvokableType {
+func NewBInvokableTypeNoRest(paramTypes []BType, retType BType, tsymbol BTypeSymbol) BInvokableType {
 	return NewBInvokableType(paramTypes, nil, retType, tsymbol)
 }
 

@@ -1,9 +1,8 @@
 package symbols
 
 import (
-	"ballerina-lang-go/compiler/bir/model"
+	"ballerina-lang-go/compiler/common"
 	"ballerina-lang-go/compiler/model/elements"
-	"ballerina-lang-go/compiler/semantics/model/types"
 	"ballerina-lang-go/diagnostics"
 )
 
@@ -11,12 +10,12 @@ type BSymbol interface {
 	GetTag() int64
 	GetFlags() int64
 	SetFlags(flags int64)
-	GetName() model.Name
-	GetOriginalName() model.Name
+	GetName() common.Name
+	GetOriginalName() common.Name
 	GetPkgID() elements.PackageID
 	GetKind() SymbolKind
-	GetType() types.BType
-	SetType(bType types.BType)
+	GetType() BType
+	SetType(bType BType)
 	GetOwner() BSymbol
 	SetOwner(owner BSymbol)
 	IsTainted() bool
@@ -36,11 +35,11 @@ type BSymbol interface {
 type bSymbolImpl struct {
 	tag                   int64
 	flags                 int64
-	name                  model.Name
-	originalName          model.Name
+	name                  common.Name
+	originalName          common.Name
 	pkgID                 elements.PackageID
 	kind                  SymbolKind
-	bType                 types.BType
+	bType                 BType
 	owner                 BSymbol
 	tainted               bool
 	closure               bool
@@ -50,11 +49,11 @@ type bSymbolImpl struct {
 	scope                 Scope
 }
 
-func NewBSymbol(tag, flags int64, name model.Name, pkgID elements.PackageID, bType types.BType, owner BSymbol, location diagnostics.Location, origin SymbolOrigin) BSymbol {
+func NewBSymbol(tag, flags int64, name common.Name, pkgID elements.PackageID, bType BType, owner BSymbol, location diagnostics.Location, origin SymbolOrigin) BSymbol {
 	return NewBSymbolWithOriginalName(tag, flags, name, name, pkgID, bType, owner, location, origin)
 }
 
-func NewBSymbolWithOriginalName(tag, flags int64, name, originalName model.Name, pkgID elements.PackageID, bType types.BType, owner BSymbol, location diagnostics.Location, origin SymbolOrigin) BSymbol {
+func NewBSymbolWithOriginalName(tag, flags int64, name, originalName common.Name, pkgID elements.PackageID, bType BType, owner BSymbol, location diagnostics.Location, origin SymbolOrigin) BSymbol {
 	return &bSymbolImpl{
 		tag:          tag,
 		flags:        flags,
@@ -80,11 +79,11 @@ func (b *bSymbolImpl) SetFlags(flags int64) {
 	b.flags = flags
 }
 
-func (b *bSymbolImpl) GetName() model.Name {
+func (b *bSymbolImpl) GetName() common.Name {
 	return b.name
 }
 
-func (b *bSymbolImpl) GetOriginalName() model.Name {
+func (b *bSymbolImpl) GetOriginalName() common.Name {
 	if b.originalName != nil && b.originalName.GetValue() != "" {
 		return b.originalName
 	}
@@ -99,11 +98,11 @@ func (b *bSymbolImpl) GetKind() SymbolKind {
 	return SymbolKindOther
 }
 
-func (b *bSymbolImpl) GetType() types.BType {
+func (b *bSymbolImpl) GetType() BType {
 	return b.bType
 }
 
-func (b *bSymbolImpl) SetType(bType types.BType) {
+func (b *bSymbolImpl) SetType(bType BType) {
 	b.bType = bType
 }
 

@@ -1,7 +1,7 @@
 package model
 
 import (
-	"io.ballerina.tools/diagnostics"
+	"ballerina-lang-go/diagnostics"
 )
 
 type BIRAbstractInstruction interface {

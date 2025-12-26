@@ -1,14 +1,13 @@
-package types
+package symbols
 
 import (
-	"ballerina-lang-go/compiler/bir/model"
-	"ballerina-lang-go/compiler/model/symbols"
+	"ballerina-lang-go/compiler/common"
 )
 
 type BType interface {
 	GetTag() int
-	GetTSymbol() symbols.BTypeSymbol
-	GetName() model.Name
+	GetTSymbol() BTypeSymbol
+	GetName() common.Name
 	GetFlags() int64
 	SetFlags(flags int64)
 	AddFlags(flags int64)
@@ -20,21 +19,21 @@ type BType interface {
 
 type bTypeImpl struct {
 	tag     int
-	tsymbol symbols.BTypeSymbol
-	name    model.Name
+	tsymbol BTypeSymbol
+	name    common.Name
 	flags   int64
 }
 
-func NewBType(tag int, tsymbol symbols.BTypeSymbol) BType {
+func NewBType(tag int, tsymbol BTypeSymbol) BType {
 	return &bTypeImpl{
 		tag:     tag,
 		tsymbol: tsymbol,
-		name:    model.NewName(""),
+		name:    common.NewName(""),
 		flags:   0,
 	}
 }
 
-func NewBTypeWithName(tag int, tsymbol symbols.BTypeSymbol, name model.Name, flags int64) BType {
+func NewBTypeWithName(tag int, tsymbol BTypeSymbol, name common.Name, flags int64) BType {
 	return &bTypeImpl{
 		tag:     tag,
 		tsymbol: tsymbol,
@@ -47,11 +46,11 @@ func (b *bTypeImpl) GetTag() int {
 	return b.tag
 }
 
-func (b *bTypeImpl) GetTSymbol() symbols.BTypeSymbol {
+func (b *bTypeImpl) GetTSymbol() BTypeSymbol {
 	return b.tsymbol
 }
 
-func (b *bTypeImpl) GetName() model.Name {
+func (b *bTypeImpl) GetName() common.Name {
 	return b.name
 }
 

@@ -1,4 +1,4 @@
-package model
+package common
 
 type Name interface {
 	GetValue() string
