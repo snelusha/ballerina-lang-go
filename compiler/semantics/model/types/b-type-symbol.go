@@ -5,7 +5,7 @@ import (
 
 	"ballerina-lang-go/compiler/common"
 	"ballerina-lang-go/compiler/model/elements"
-	"ballerina-lang-go/diagnostics"
+	"ballerina-lang-go/tools/diagnostics"
 )
 
 type BTypeSymbol interface {
