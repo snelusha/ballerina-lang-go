@@ -1,0 +1,88 @@
+module sithi/something v 0.1.0;
+
+
+
+
+
+$annotation_data map<any>;
+
+
+public .<init> function() -> error{map<ballerina/lang.value:0.0.0:Cloneable>}|() {
+    %0(RETURN) error|();
+    %1(TEMP) typeDesc<any|error>;
+
+    bb0 {
+        %1 = newType map<any>;
+        $annotation_data = NewMap %1{};
+        %0 = ConstLoad 0;
+        GOTO bb1;
+    }
+    bb1 {
+        return;
+    }
+
+
+}
+
+public .<start> function() -> error|() {
+    %0(RETURN) error|();
+
+    bb0 {
+        %0 = ConstLoad 0;
+        GOTO bb1;
+    }
+    bb1 {
+        return;
+    }
+
+
+}
+
+public .<stop> function() -> error|() {
+    %0(RETURN) error|();
+
+    bb0 {
+        %0 = ConstLoad 0;
+        GOTO bb1;
+    }
+    bb1 {
+        return;
+    }
+
+
+}
+
+public main function() -> () {
+    %0(RETURN) ();
+    %1(TEMP) error;
+    %2(TEMP) string;
+    %3(TEMP) error;
+    %4(TEMP) ();
+    %5(TEMP) typeDesc<any|error>;
+    %6(TEMP) map<ballerina/lang.value:0.0.0:Cloneable>;
+    %7(TEMP) map<ballerina/lang.value:0.0.0:Cloneable>;
+
+    bb0 {
+        %2 = ConstLoad yeah!;
+        %4 = ConstLoad 0;
+        %3 = <error> %4;
+        %5 = newType map<ballerina/lang.value:0.0.0:Cloneable>;
+        %6 = NewMap %5{};
+        %7 = cloneReadOnly(%6) -> bb1;
+    }
+    bb1 {
+        %1 = error error(%2, %3, %7);
+        panic %1;
+    }
+    bb2 {
+        %0 = ConstLoad 0;
+        GOTO bb3;
+    }
+    bb3 {
+        return;
+    }
+
+
+}
+
+
