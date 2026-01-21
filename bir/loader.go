@@ -61,18 +61,18 @@ func LoadBIRPackageFromReader(r io.Reader) (*BIRPackage, error) {
 	// So CP bytes = data[8:moduleStart]
 	if b.ConstantPool != nil && len(data) >= 12 {
 		cpStart := 8 // After magic (4) + version (4)
-		
+
 		// Read CP structure again to find where it ends (where module starts)
 		// We'll create a new stream just for the CP section
 		cpReader := bytes.NewReader(data[cpStart:])
 		cpStream := kaitai.NewStream(cpReader)
-		
+
 		// Read CP count
 		cpCount, err := cpStream.ReadS4be()
 		if err != nil {
 			return nil, fmt.Errorf("reading CP count: %w", err)
 		}
-		
+
 		// Read all CP entries
 		for i := 0; i < int(cpCount); i++ {
 			tmpEntry := NewBir_ConstantPoolEntry()
@@ -80,17 +80,17 @@ func LoadBIRPackageFromReader(r io.Reader) (*BIRPackage, error) {
 				return nil, fmt.Errorf("reading CP entry %d: %w", i, err)
 			}
 		}
-		
+
 		// Now cpStream position is at the end of CP (start of module)
 		// Get the current position in the CP reader
 		cpEnd, err := cpReader.Seek(0, io.SeekCurrent)
 		if err != nil {
 			return nil, fmt.Errorf("getting CP end position: %w", err)
 		}
-		
+
 		// Extract CP bytes: from cpStart to cpStart+cpEnd
 		pkg.OriginalCPBytes = data[cpStart : cpStart+int(cpEnd)]
-		
+
 		// Also extract module bytes for exact matching
 		moduleStart := cpStart + int(cpEnd)
 		if moduleStart < len(data) {

@@ -29,13 +29,13 @@ import (
 type CPEntryType byte
 
 const (
-	CPEntryInteger CPEntryType = 1
-	CPEntryFloat   CPEntryType = 2
-	CPEntryBoolean CPEntryType = 3
-	CPEntryString  CPEntryType = 4
-	CPEntryPackage CPEntryType = 5
-	CPEntryByte    CPEntryType = 6
-	CPEntryShape   CPEntryType = 7
+	CPEntryInteger CPEntryType = iota + 1
+	CPEntryFloat
+	CPEntryBoolean
+	CPEntryString
+	CPEntryPackage
+	CPEntryByte
+	CPEntryShape
 )
 
 // CPEntry represents a constant pool entry
@@ -104,10 +104,8 @@ type ShapeCPEntry struct {
 
 func (e *ShapeCPEntry) EntryType() CPEntryType { return CPEntryShape }
 func (e *ShapeCPEntry) hashKey() string {
-	// Use a hash of the type for deduplication
-	// This is a simplified approach - in practice, type equality should be properly implemented
 	h := fnv.New32a()
-	h.Write([]byte(fmt.Sprintf("%p", e.Shape))) // Use pointer address as a simple hash
+	h.Write([]byte(fmt.Sprintf("%p", e.Shape)))
 	return fmt.Sprintf("shape:%d", h.Sum32())
 }
 
@@ -119,19 +117,17 @@ type ShapeCPEntryForType struct {
 func (e *ShapeCPEntryForType) EntryType() CPEntryType { return CPEntryShape }
 func (e *ShapeCPEntryForType) hashKey() string {
 	h := fnv.New32a()
-	h.Write([]byte(fmt.Sprintf("%p", e.Type))) // Use pointer address as a simple hash
+	h.Write([]byte(fmt.Sprintf("%p", e.Type)))
 	return fmt.Sprintf("shapetype:%d", h.Sum32())
 }
 
-// ConstantPool manages constant pool entries
 type ConstantPool struct {
-	entries    []CPEntry
-	entryMap   map[string]int // Maps hashKey to index
-	typeEnv    interface{}    // Type environment (Env type from model, if available)
+	entries  []CPEntry
+	entryMap map[string]int
+	typeEnv  any
 }
 
-// NewConstantPool creates a new constant pool
-func NewConstantPool(typeEnv interface{}) *ConstantPool {
+func NewConstantPool(typeEnv any) *ConstantPool {
 	return &ConstantPool{
 		entries:  make([]CPEntry, 0),
 		entryMap: make(map[string]int),
@@ -139,7 +135,6 @@ func NewConstantPool(typeEnv interface{}) *ConstantPool {
 	}
 }
 
-// AddCPEntry adds a constant pool entry and returns its index
 func (cp *ConstantPool) AddCPEntry(entry CPEntry) int {
 	key := entry.hashKey()
 	if idx, exists := cp.entryMap[key]; exists {
@@ -151,52 +146,40 @@ func (cp *ConstantPool) AddCPEntry(entry CPEntry) int {
 	return idx
 }
 
-// AddShapeCPEntry adds a shape (type) constant pool entry
 func (cp *ConstantPool) AddShapeCPEntry(shape model.TypeNode) int {
 	return cp.AddCPEntry(&ShapeCPEntry{Shape: shape})
 }
 
-// AddShapeCPEntryForType adds a shape entry for a ValueType (Type)
 func (cp *ConstantPool) AddShapeCPEntryForType(shape model.ValueType) int {
-	// Create a wrapper that implements TypeNode
-	// For now, we'll use a simple approach - store the ValueType directly
-	// The serialization will need to handle this
 	return cp.AddCPEntry(&ShapeCPEntryForType{Type: shape})
 }
 
-// Serialize serializes the constant pool to bytes
-// Note: This does NOT include magic and version - those are written by the binary writer
 func (cp *ConstantPool) Serialize() ([]byte, error) {
 	var buf bytes.Buffer
-	
-	// Write placeholder for count (will be overwritten later)
+
 	countPos := buf.Len()
 	if err := binary.Write(&buf, binary.BigEndian, int32(-1)); err != nil {
 		return nil, err
 	}
-	
-	// Write all entries
+
 	for _, entry := range cp.entries {
 		if err := cp.writeEntry(&buf, entry); err != nil {
 			return nil, fmt.Errorf("writing CP entry: %w", err)
 		}
 	}
-	
-	// Overwrite the count
+
 	data := buf.Bytes()
 	count := int32(len(cp.entries))
 	binary.BigEndian.PutUint32(data[countPos:countPos+4], uint32(count))
-	
+
 	return data, nil
 }
 
 func (cp *ConstantPool) writeEntry(buf *bytes.Buffer, entry CPEntry) error {
-	// Write entry type tag
 	if err := binary.Write(buf, binary.BigEndian, byte(entry.EntryType())); err != nil {
 		return err
 	}
-	
-	// Write entry-specific data
+
 	switch e := entry.(type) {
 	case *IntegerCPEntry:
 		return binary.Write(buf, binary.BigEndian, e.Value)
@@ -210,7 +193,6 @@ func (cp *ConstantPool) writeEntry(buf *bytes.Buffer, entry CPEntry) error {
 		return binary.Write(buf, binary.BigEndian, val)
 	case *StringCPEntry:
 		if e.Value == "" {
-			// Write -1 as int16 for null string (as per Java implementation)
 			return binary.Write(buf, binary.BigEndian, int16(-1))
 		}
 		strBytes := []byte(e.Value)
@@ -233,10 +215,8 @@ func (cp *ConstantPool) writeEntry(buf *bytes.Buffer, entry CPEntry) error {
 		}
 		return binary.Write(buf, binary.BigEndian, int32(e.VersionCPIndex))
 	case *ShapeCPEntry:
-		// Write shape using type writer
 		typeBuf := &bytes.Buffer{}
-		typeWriter := NewBIRTypeWriter(typeBuf, cp, cp.typeEnv)
-		if err := typeWriter.VisitType(e.Shape); err != nil {
+		if err := writeTypeToBuffer(typeBuf, cp, cp.typeEnv, e.Shape); err != nil {
 			return fmt.Errorf("writing shape type: %w", err)
 		}
 		shapeBytes := typeBuf.Bytes()
@@ -246,10 +226,8 @@ func (cp *ConstantPool) writeEntry(buf *bytes.Buffer, entry CPEntry) error {
 		_, err := buf.Write(shapeBytes)
 		return err
 	case *ShapeCPEntryForType:
-		// Write shape for ValueType using type writer
 		typeBuf := &bytes.Buffer{}
-		typeWriter := NewBIRTypeWriter(typeBuf, cp, cp.typeEnv)
-		if err := typeWriter.VisitType(e.Type); err != nil {
+		if err := writeTypeToBuffer(typeBuf, cp, cp.typeEnv, e.Type); err != nil {
 			return fmt.Errorf("writing shape ValueType: %w", err)
 		}
 		shapeBytes := typeBuf.Bytes()
