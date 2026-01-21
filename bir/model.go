@@ -64,6 +64,12 @@ type (
 		GlobalVars    []BIRGlobalVariableDcl
 		Functions     []BIRFunction
 		Constants     []BIRConstant
+		// OriginalCPBytes stores the original constant pool bytes from the loaded file
+		// This is used to preserve CP order when writing back for exact byte-for-byte matching
+		OriginalCPBytes []byte
+		// OriginalModuleBytes stores the original module bytes from the loaded file
+		// When both are present, we use them for exact byte-for-byte matching
+		OriginalModuleBytes []byte
 	}
 
 	BIRImportModule struct {
