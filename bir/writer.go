@@ -80,22 +80,7 @@ func (w *BIRBinaryWriter) Serialize() ([]byte, error) {
 		return nil, err
 	}
 
-	if len(w.birPackage.OriginalCPBytes) > 0 && len(w.birPackage.OriginalModuleBytes) > 0 {
-		result := &bytes.Buffer{}
-		if _, err := result.Write([]byte(BIRMagic)); err != nil {
-			return nil, err
-		}
-		if err := binary.Write(result, binary.BigEndian, int32(BIRVersion)); err != nil {
-			return nil, err
-		}
-		if _, err := result.Write(w.birPackage.OriginalCPBytes); err != nil {
-			return nil, err
-		}
-		if _, err := result.Write(w.birPackage.OriginalModuleBytes); err != nil {
-			return nil, err
-		}
-		return result.Bytes(), nil
-	}
+	w.cp.PrintEntries()
 
 	cpBytes, err := w.cp.Serialize()
 	if err != nil {

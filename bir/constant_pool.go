@@ -127,6 +127,16 @@ type ConstantPool struct {
 	typeEnv  any
 }
 
+func (cp *ConstantPool) PrintEntries() {
+	for i, entry := range cp.entries {
+		fmt.Printf("Entry %d: Type %d, Key %+v\n", i, entry.EntryType(), entry.hashKey())
+	}
+
+	// for key, idx := range cp.entryMap {
+	// 	fmt.Printf("Map Key: %s, Index: %d\n", key, idx)
+	// }
+}
+
 func NewConstantPool(typeEnv any) *ConstantPool {
 	return &ConstantPool{
 		entries:  make([]CPEntry, 0),
