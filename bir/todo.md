@@ -1,0 +1,3 @@
+writeGlobalVars
+
+- [ ] Write functions
