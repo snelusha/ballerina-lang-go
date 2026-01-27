@@ -4,6 +4,7 @@ package bir
 
 import (
 	"bytes"
+
 	"github.com/kaitai-io/kaitai_struct_go_runtime/kaitai"
 )
 
@@ -1049,6 +1050,7 @@ func (this *Bir_ConstantValue) Read(io *kaitai.Stream, parent kaitai.Struct, roo
 	}
 	return err
 }
+
 func (this *Bir_ConstantValue) Ty() (v *Bir_ShapeCpInfo, err error) {
 	if this._f_ty {
 		return this.ty, nil
@@ -3102,6 +3104,7 @@ func (this *Bir_InstructionConstLoad) Read(io *kaitai.Stream, parent *Bir_Instru
 	}
 	return err
 }
+
 func (this *Bir_InstructionConstLoad) Ty() (v *Bir_ShapeCpInfo, err error) {
 	if this._f_ty {
 		return this.ty, nil
@@ -5733,6 +5736,7 @@ func (this *Bir_IntersectionConstantInfo) Read(io *kaitai.Stream, parent *Bir_Co
 	}
 	return err
 }
+
 func (this *Bir_IntersectionConstantInfo) EffectiveType() (v *Bir_ShapeCpInfo, err error) {
 	if this._f_effectiveType {
 		return this.effectiveType, nil
@@ -5745,6 +5749,7 @@ func (this *Bir_IntersectionConstantInfo) EffectiveType() (v *Bir_ShapeCpInfo, e
 	this.effectiveType = this._root.ConstantPool.ConstantPoolEntries[tmp468.EffectiveTypeCpIndex].CpInfo.(*Bir_ShapeCpInfo)
 	return this.effectiveType, nil
 }
+
 func (this *Bir_IntersectionConstantInfo) IntersectionType() (v *Bir_TypeIntersection, err error) {
 	if this._f_intersectionType {
 		return this.intersectionType, nil
@@ -5757,6 +5762,7 @@ func (this *Bir_IntersectionConstantInfo) IntersectionType() (v *Bir_TypeInterse
 	this.intersectionType = tmp469.Shape.TypeStructure.(*Bir_TypeIntersection)
 	return this.intersectionType, nil
 }
+
 func (this *Bir_IntersectionConstantInfo) Ty() (v *Bir_ShapeCpInfo, err error) {
 	if this._f_ty {
 		return this.ty, nil
@@ -9101,6 +9107,7 @@ func (this *Bir_TypeInfo) Read(io *kaitai.Stream, parent *Bir_ShapeCpInfo, root 
 	}
 	return err
 }
+
 func (this *Bir_TypeInfo) NameAsStr() (v string, err error) {
 	if this._f_nameAsStr {
 		return this.nameAsStr, nil

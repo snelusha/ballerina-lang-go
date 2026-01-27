@@ -17,15 +17,16 @@
 package bir
 
 import (
+	"fmt"
+
 	"ballerina-lang-go/model"
 	"ballerina-lang-go/tools/diagnostics"
-	"fmt"
 )
 
 //go:generate kaitai-struct-compiler --target go bir.ksy --outdir ../ --go-package bir
 //go:generate mv bir.go bir-def-gen.go
 type ConstValue struct {
-	Type  model.ValueType
+	Type  minimalBType
 	Value interface{}
 }
 
@@ -89,7 +90,7 @@ type (
 
 	BIRVariableDcl struct {
 		BIRDocumentableNodeBase
-		Type               model.ValueType
+		Type               minimalBType
 		Name               model.Name
 		OriginalName       model.Name
 		MetaVarName        string
@@ -132,7 +133,7 @@ type (
 		BIRDocumentableNodeBase
 		Name       model.Name
 		Flags      int64
-		Type       model.ValueType
+		Type       minimalBType
 		ConstValue ConstValue
 		Origin     model.SymbolOrigin
 	}

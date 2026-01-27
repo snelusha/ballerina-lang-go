@@ -17,9 +17,10 @@
 package bir
 
 import (
-	"ballerina-lang-go/model"
 	"fmt"
 	"strings"
+
+	"ballerina-lang-go/model"
 )
 
 type PrettyPrinter struct {
@@ -82,12 +83,12 @@ func (p *PrettyPrinter) PrintFunction(function BIRFunction) {
 			if i > 0 {
 				p.write(",")
 			}
-			p.write(p.PrintType(param))
+			p.write(p.PrintTypeLegacy(param))
 		}
 		p.write(")")
 		if ty.GetReturnType() != nil {
 			p.write(" -> ")
-			p.write(p.PrintType(ty.GetReturnType()))
+			p.write(p.PrintTypeLegacy(ty.GetReturnType()))
 		}
 	} else {
 		p.write("<NIL>")
@@ -142,7 +143,7 @@ func (p *PrettyPrinter) PrintInstruction(instruction BIRInstruction) string {
 }
 
 func (p *PrettyPrinter) PrintNewArray(array *NewArray) string {
-	return fmt.Sprintf("%s = newArray %s[%s]", p.PrintOperand(*array.LhsOp), p.PrintType(array.Type), p.PrintOperand(*array.SizeOp))
+	return fmt.Sprintf("%s = newArray %s[%s]", p.PrintOperand(*array.LhsOp), p.PrintTypeLegacy(array.Type), p.PrintOperand(*array.SizeOp))
 }
 
 func (p *PrettyPrinter) PrintFieldAccess(access *FieldAccess) string {
@@ -237,11 +238,20 @@ func (p *PrettyPrinter) PrintGlobalVar(globalVar BIRGlobalVariableDcl) string {
 	sb := strings.Builder{}
 	sb.WriteString(globalVar.Name.Value())
 	sb.WriteString("  ")
-	sb.WriteString(p.PrintType(globalVar.Type))
+	sb.WriteString(p.PrintType(&globalVar.Type))
 	return sb.String()
 }
 
-func (p *PrettyPrinter) PrintType(typeNode model.ValueType) string {
+func (p *PrettyPrinter) PrintTypeLegacy(typeNode model.ValueType) string {
+	if typeNode == nil {
+		return "<UNKNOWN>"
+	}
+	sb := strings.Builder{}
+	sb.WriteString(string(typeNode.GetTypeKind()))
+	return sb.String()
+}
+
+func (p *PrettyPrinter) PrintType(typeNode *minimalBType) string {
 	if typeNode == nil {
 		return "<UNKNOWN>"
 	}
@@ -265,5 +275,4 @@ func (p *PrettyPrinter) PrintPackageID(packageID *model.PackageID) string {
 	pkgName := string(*packageID.PkgName)
 	version := string(*packageID.Version)
 	return fmt.Sprintf("%s.%s v %s", orgName, pkgName, version)
-
 }
