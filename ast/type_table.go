@@ -19,8 +19,7 @@ package ast
 import "ballerina-lang-go/model"
 
 // TODO: think of a better way and place to put this
-type BTypeSymbolTable struct {
-}
+type BTypeSymbolTable struct{}
 
 var _ model.TypeSymbolTable = &BTypeSymbolTable{}
 

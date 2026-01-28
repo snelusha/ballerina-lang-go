@@ -26,7 +26,7 @@ import (
 //go:generate kaitai-struct-compiler --target go bir.ksy --outdir ../ --go-package bir
 //go:generate mv bir.go bir-def-gen.go
 type ConstValue struct {
-	Type  minimalBType
+	Type  model.ValueType
 	Value interface{}
 }
 
@@ -90,7 +90,7 @@ type (
 
 	BIRVariableDcl struct {
 		BIRDocumentableNodeBase
-		Type               minimalBType
+		Type               model.ValueType
 		Name               model.Name
 		OriginalName       model.Name
 		MetaVarName        string
@@ -133,7 +133,7 @@ type (
 		BIRDocumentableNodeBase
 		Name       model.Name
 		Flags      int64
-		Type       minimalBType
+		Type       model.ValueType
 		ConstValue ConstValue
 		Origin     model.SymbolOrigin
 	}

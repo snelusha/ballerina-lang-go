@@ -68,10 +68,10 @@ func (cx *stmtContext) popLoopCtx() {
 	cx.loopCtx = cx.loopCtx.enclosing
 }
 
-func (cx *stmtContext) addLocalVar(name model.Name, ty *minimalBType, kind VarKind) *BIROperand {
+func (cx *stmtContext) addLocalVar(name model.Name, ty model.ValueType, kind VarKind) *BIROperand {
 	varDcl := &BIRVariableDcl{}
 	varDcl.Name = name
-	varDcl.Type = *ty
+	varDcl.Type = ty
 	varDcl.Kind = kind
 	varDcl.Scope = VAR_SCOPE_FUNCTION
 	varDcl.MetaVarName = name.Value()
@@ -79,7 +79,7 @@ func (cx *stmtContext) addLocalVar(name model.Name, ty *minimalBType, kind VarKi
 	return &BIROperand{VariableDcl: varDcl, index: len(cx.localVars) - 1}
 }
 
-func (cx *stmtContext) addTempVar(ty *minimalBType) *BIROperand {
+func (cx *stmtContext) addTempVar(ty model.ValueType) *BIROperand {
 	return cx.addLocalVar(model.Name(fmt.Sprintf("%%%d", len(cx.localVars))), ty, VAR_KIND_TEMP)
 }
 

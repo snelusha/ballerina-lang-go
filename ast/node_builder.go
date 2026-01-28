@@ -1136,7 +1136,7 @@ func (n *NodeBuilder) createSimpleLiteralInner(literal tree.Node, isFiniteType b
 	bLangNode.SetPosition(getPosition(literal))
 	bLangNode.SetBType(n.symbolTable.GetTypeFromTag(typeTag))
 	bType := bLangNode.GetBType().(BType)
-	bType.bTypesetTag(typeTag)
+	bType.BTypesetTag(typeTag)
 	bLiteral.SetValue(value)
 	bLiteral.SetOriginalValue(*originalValue)
 	return bLiteral

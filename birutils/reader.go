@@ -1,10 +1,12 @@
-package bir
+package birutils
 
 import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
 
+	"ballerina-lang-go/ast"
+	"ballerina-lang-go/bir"
 	"ballerina-lang-go/model"
 )
 
@@ -19,11 +21,11 @@ func NewBIRReader(data []byte) *BIRReader {
 	}
 }
 
-func (br *BIRReader) LoadBIRPackage() (*BIRPackage, error) {
+func (br *BIRReader) LoadBIRPackage() (*bir.BIRPackage, error) {
 	return br.readPackage()
 }
 
-func (br *BIRReader) readPackage() (*BIRPackage, error) {
+func (br *BIRReader) readPackage() (*bir.BIRPackage, error) {
 	magic := make([]byte, 4)
 	_, err := br.r.Read(magic)
 	if err != nil {
@@ -69,11 +71,14 @@ func (br *BIRReader) readPackage() (*BIRPackage, error) {
 		return nil, fmt.Errorf("reading global vars: %w", err)
 	}
 
-	return &BIRPackage{
+	functions, err := br.readFunctions()
+
+	return &bir.BIRPackage{
 		PackageID:     pkgID,
 		ImportModules: imports,
 		Constants:     constants,
 		GlobalVars:    globalVars,
+		Functions:     functions,
 	}, nil
 }
 
@@ -190,11 +195,10 @@ func (br *BIRReader) readConstantPool() error {
 				return err
 			}
 
-			br.cp[i] = minimalBType{
-				tag:   int(tag),
-				name:  name,
-				flags: flags,
-			}
+			t := ast.NewBType(model.TypeTags(tag), nil, name, uint64(flags))
+
+			// FIXME: Revisit this
+			br.cp[i] = *t.(*ast.BTypeImpl)
 		default:
 			return fmt.Errorf("unknown CP tag: %d at entry %d", tag, i)
 		}
@@ -224,11 +228,11 @@ func (r *BIRReader) getPackageFromCP(index int) *model.PackageID {
 	return nil
 }
 
-func (r *BIRReader) getTypeFromCP(index int) *minimalBType {
+func (r *BIRReader) getTypeFromCP(index int) ast.BType {
 	if index < 0 || index >= len(r.cp) {
 		return nil
 	}
-	if t, ok := r.cp[index].(minimalBType); ok {
+	if t, ok := r.cp[index].(ast.BTypeImpl); ok {
 		return &t
 	}
 	return nil
@@ -244,13 +248,13 @@ func (r *BIRReader) getIntegerFromCP(index int) int64 {
 	return 0
 }
 
-func (br *BIRReader) readImports() ([]BIRImportModule, error) {
+func (br *BIRReader) readImports() ([]bir.BIRImportModule, error) {
 	var count int32
 	if err := binary.Read(br.r, binary.BigEndian, &count); err != nil {
 		return nil, err
 	}
 
-	imports := make([]BIRImportModule, count)
+	imports := make([]bir.BIRImportModule, count)
 	for i := 0; i < int(count); i++ {
 		var orgIdx, pkgNameIdx, moduleNameIdx, versionIdx int32
 		if err := binary.Read(br.r, binary.BigEndian, &orgIdx); err != nil {
@@ -271,7 +275,7 @@ func (br *BIRReader) readImports() ([]BIRImportModule, error) {
 		moduleName := model.Name(br.getStringFromCP(int(moduleNameIdx)))
 		version := model.Name(br.getStringFromCP(int(versionIdx)))
 
-		imports[i] = BIRImportModule{
+		imports[i] = bir.BIRImportModule{
 			PackageID: &model.PackageID{
 				OrgName: &org,
 				PkgName: &pkgName,
@@ -284,13 +288,13 @@ func (br *BIRReader) readImports() ([]BIRImportModule, error) {
 	return imports, nil
 }
 
-func (br *BIRReader) readConstants() ([]BIRConstant, error) {
+func (br *BIRReader) readConstants() ([]bir.BIRConstant, error) {
 	var count int32
 	if err := binary.Read(br.r, binary.BigEndian, &count); err != nil {
 		return nil, err
 	}
 
-	constants := make([]BIRConstant, count)
+	constants := make([]bir.BIRConstant, count)
 	for i := 0; i < int(count); i++ {
 		var nameIdx int32
 		if err := binary.Read(br.r, binary.BigEndian, &nameIdx); err != nil {
@@ -309,7 +313,7 @@ func (br *BIRReader) readConstants() ([]BIRConstant, error) {
 			return nil, err
 		}
 
-		constant := BIRConstant{
+		constant := bir.BIRConstant{
 			Name:   name,
 			Flags:  flags,
 			Origin: model.SymbolOrigin(origin),
@@ -321,7 +325,7 @@ func (br *BIRReader) readConstants() ([]BIRConstant, error) {
 		}
 
 		t := br.getTypeFromCP(int(typeIdx))
-		constant.Type = *t
+		constant.Type = t
 
 		var length int64
 		if err := binary.Read(br.r, binary.BigEndian, &length); err != nil {
@@ -334,14 +338,14 @@ func (br *BIRReader) readConstants() ([]BIRConstant, error) {
 		}
 
 		cv := br.getTypeFromCP(int(cTypeIdx))
-		switch model.TypeTags(cv.tag) {
+		switch model.TypeTags(cv.BTypeGetTag()) {
 		case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
 			var valueIdx int32
 			if err := binary.Read(br.r, binary.BigEndian, &valueIdx); err != nil {
 				return nil, err
 			}
-			constant.ConstValue = ConstValue{
-				Type:  *cv,
+			constant.ConstValue = bir.ConstValue{
+				Type:  cv,
 				Value: br.getIntegerFromCP(int(valueIdx)),
 			}
 		}
@@ -352,13 +356,13 @@ func (br *BIRReader) readConstants() ([]BIRConstant, error) {
 	return constants, nil
 }
 
-func (br *BIRReader) readGlobalVars() ([]BIRGlobalVariableDcl, error) {
+func (br *BIRReader) readGlobalVars() ([]bir.BIRGlobalVariableDcl, error) {
 	var count int32
 	if err := binary.Read(br.r, binary.BigEndian, &count); err != nil {
 		return nil, err
 	}
 
-	variables := make([]BIRGlobalVariableDcl, count)
+	variables := make([]bir.BIRGlobalVariableDcl, count)
 	for i := 0; i < int(count); i++ {
 		var kind uint8
 		if err := binary.Read(br.r, binary.BigEndian, &kind); err != nil {
@@ -387,15 +391,13 @@ func (br *BIRReader) readGlobalVars() ([]BIRGlobalVariableDcl, error) {
 			return nil, err
 		}
 
-		fmt.Printf("Global Var Type Index: %d\n", typeIdx)
-
 		t := br.getTypeFromCP(int(typeIdx))
 
-		variables[i] = BIRGlobalVariableDcl{
-			BIRVariableDcl: BIRVariableDcl{
-				Kind: VarKind(kind),
+		variables[i] = bir.BIRGlobalVariableDcl{
+			BIRVariableDcl: bir.BIRVariableDcl{
+				Kind: bir.VarKind(kind),
 				Name: name,
-				Type: *t,
+				Type: t,
 			},
 			Flags:  flags,
 			Origin: model.SymbolOrigin(origin),
@@ -403,4 +405,172 @@ func (br *BIRReader) readGlobalVars() ([]BIRGlobalVariableDcl, error) {
 	}
 
 	return variables, nil
+}
+
+func (br *BIRReader) readFunctions() ([]bir.BIRFunction, error) {
+	var count int32
+	if err := binary.Read(br.r, binary.BigEndian, &count); err != nil {
+		return nil, err
+	}
+
+	functions := make([]bir.BIRFunction, count)
+	for i := 0; i < int(count); i++ {
+		var nameIdx int32
+		if err := binary.Read(br.r, binary.BigEndian, &nameIdx); err != nil {
+			return nil, err
+		}
+
+		name := model.Name(br.getStringFromCP(int(nameIdx)))
+
+		var originalNameIdx int32
+		if err := binary.Read(br.r, binary.BigEndian, &originalNameIdx); err != nil {
+			return nil, err
+		}
+
+		originalName := model.Name(br.getStringFromCP(int(originalNameIdx)))
+
+		var flag int64
+		if err := binary.Read(br.r, binary.BigEndian, &flag); err != nil {
+			return nil, err
+		}
+
+		var origin uint8
+		if err := binary.Read(br.r, binary.BigEndian, &origin); err != nil {
+			return nil, err
+		}
+
+		function := bir.BIRFunction{
+			Name:         name,
+			OriginalName: originalName,
+			Flags:        flag,
+			Origin:       model.SymbolOrigin(origin),
+		}
+
+		// var typeIdx int32
+		// if err := binary.Read(br.r, binary.BigEndian, &typeIdx); err != nil {
+		// 	return nil, err
+		// }
+
+		// t := br.getTypeFromCP(int(typeIdx))
+		// fmt.Printf("Function %s type: %+v\n", name, t)
+
+		var requiredParamsCount int32
+		if err := binary.Read(br.r, binary.BigEndian, &requiredParamsCount); err != nil {
+			return nil, err
+		}
+		fmt.Printf("[READER] REQUIRED PARAMS COUNT: %d IN FUNCTION %s\n", requiredParamsCount, name)
+
+		requiredParams := make([]bir.BIRParameter, requiredParamsCount)
+		for j := 0; j < int(requiredParamsCount); j++ {
+			var paramNameIdx int32
+			if err := binary.Read(br.r, binary.BigEndian, &paramNameIdx); err != nil {
+				return nil, err
+			}
+			paramName := model.Name(br.getStringFromCP(int(paramNameIdx)))
+			fmt.Printf("[READER] PARAM NAME: %s\n", paramName)
+
+			var paramFlags int64
+			if err := binary.Read(br.r, binary.BigEndian, &paramFlags); err != nil {
+				return nil, err
+			}
+
+			requiredParams[j] = bir.BIRParameter{
+				Name:  paramName,
+				Flags: paramFlags,
+			}
+		}
+		function.RequiredParams = requiredParams
+
+		var length int64
+		if err := binary.Read(br.r, binary.BigEndian, &length); err != nil {
+			return nil, err
+		}
+
+		var argsCount int32
+		if err := binary.Read(br.r, binary.BigEndian, &argsCount); err != nil {
+			return nil, err
+		}
+		function.ArgsCount = int(argsCount)
+
+		var hasReturnVar bool
+		if err := binary.Read(br.r, binary.BigEndian, &hasReturnVar); err != nil {
+			return nil, err
+		}
+
+		if hasReturnVar {
+			var returnVarKind uint8
+			if err := binary.Read(br.r, binary.BigEndian, &returnVarKind); err != nil {
+				return nil, err
+			}
+
+			var returnVarTypeIdx int32
+			if err := binary.Read(br.r, binary.BigEndian, &returnVarTypeIdx); err != nil {
+				return nil, err
+			}
+			returnVarType := br.getTypeFromCP(int(returnVarTypeIdx))
+
+			var returnVarNameIdx int32
+			if err := binary.Read(br.r, binary.BigEndian, &returnVarNameIdx); err != nil {
+				return nil, err
+			}
+			returnVarName := model.Name(br.getStringFromCP(int(returnVarNameIdx)))
+
+			function.ReturnVariable = &bir.BIRVariableDcl{
+				Kind: bir.VarKind(returnVarKind),
+				Name: returnVarName,
+				Type: returnVarType,
+			}
+		}
+
+		// var localVarCount int32
+		// if err := binary.Read(br.r, binary.BigEndian, &localVarCount); err != nil {
+		// 	return nil, err
+		// }
+
+		// localVars := make([]bir.BIRVariableDcl, localVarCount)
+		// for range localVars {
+		// 	var localVarKind uint8
+		// 	if err := binary.Read(br.r, binary.BigEndian, &localVarKind); err != nil {
+		// 		return nil, err
+		// 	}
+		//
+		// 	var localVarTypeIdx int32
+		// 	if err := binary.Read(br.r, binary.BigEndian, &localVarTypeIdx); err != nil {
+		// 		return nil, err
+		// 	}
+		// 	localVarType := br.getTypeFromCP(int(localVarTypeIdx))
+		//
+		// 	var localVarNameIdx int32
+		// 	if err := binary.Read(br.r, binary.BigEndian, &localVarNameIdx); err != nil {
+		// 		return nil, err
+		// 	}
+		// 	localVarName := model.Name(br.getStringFromCP(int(localVarNameIdx)))
+		//
+		// 	localVar := bir.BIRVariableDcl{
+		// 		Kind: bir.VarKind(localVarKind),
+		// 		Name: localVarName,
+		// 		Type: localVarType,
+		// 	}
+
+		// fmt.Printf("[READER] LOCAL VAR: %+v\n", localVar)
+
+		// if localVarKind == uint8(bir.VAR_KIND_ARG) {
+		// 	fmt.Printf("[READER] KIND ARG\n")
+		//
+		// 	var metaVarNameIdx int32
+		// 	if err := binary.Read(br.r, binary.BigEndian, &metaVarNameIdx); err != nil {
+		// 		return nil, err
+		// 	}
+		// 	metaVarName := br.getStringFromCP(int(metaVarNameIdx))
+		// 	localVar.MetaVarName = metaVarName
+		// }
+
+		// localVars = append(localVars, localVar)
+		// }
+		// function.LocalVars = localVars
+
+		functions[i] = function
+	}
+
+	return functions, nil
 }
