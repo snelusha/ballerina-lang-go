@@ -17,15 +17,16 @@
 package bir
 
 import (
-	"ballerina-lang-go/ast"
-	debugcommon "ballerina-lang-go/common"
-	"ballerina-lang-go/context"
-	"ballerina-lang-go/parser"
 	"flag"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"ballerina-lang-go/ast"
+	debugcommon "ballerina-lang-go/common"
+	"ballerina-lang-go/context"
+	"ballerina-lang-go/parser"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
@@ -72,7 +73,6 @@ func getBIRDiff(expectedText, actualText string) string {
 	dmp := diffmatchpatch.New()
 	diffs := dmp.DiffMain(expectedText, actualText, false)
 	return dmp.DiffPrettyText(diffs)
-
 }
 
 func getCorpusDir(t *testing.T) string {

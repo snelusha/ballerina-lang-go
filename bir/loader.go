@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 
+	"ballerina-lang-go/ast"
 	"ballerina-lang-go/context"
 	"ballerina-lang-go/model"
 	"ballerina-lang-go/tools/diagnostics"
@@ -79,14 +80,10 @@ func LoadBIRPackageFromReader(cx *context.CompilerContext, r io.Reader) (*BIRPac
 		return nil, err
 	}
 
-	fmt.Printf("[LOADER] FunctionCount %d\n", b.Module.FunctionCount)
-
 	// Functions (only high‑level meta: names/flags/origin/required params).
 	if err := populateFunctions(cx, b, pkg); err != nil {
 		return nil, err
 	}
-
-	fmt.Println("[LOADER] Populated functions")
 
 	// Annotations.
 	if err := populateAnnotations(b, pkg); err != nil {
@@ -137,7 +134,6 @@ func buildBIRPackage(b *Bir) (*BIRPackage, error) {
 
 // populateImports fills BIRPackage.importModules from Module.Imports.
 func populateImports(b *Bir, pkg *BIRPackage) error {
-	fmt.Printf("[LOADER] Populating %d imports\n", b.Module.ImportCount)
 	if b.Module.ImportCount == 0 {
 		return nil
 	}
@@ -304,7 +300,6 @@ func populateFunctions(cx *context.CompilerContext, b *Bir, pkg *BIRPackage) err
 
 // populateConstants maps Bir_Constant -> BIRConstant.
 func populateConstants(b *Bir, pkg *BIRPackage) error {
-	fmt.Printf("[LOADER] ConstCount %d\n", b.Module.ConstCount)
 	if b.Module.ConstCount == 0 {
 		return nil
 	}
@@ -321,7 +316,7 @@ func populateConstants(b *Bir, pkg *BIRPackage) error {
 
 		// Type + value + attachments left nil/zeroed; mapping them would
 		// require full type + const value decoding.
-		var t *minimalBType
+		var t ast.BType
 		cv := ConstValue{}
 
 		// Parse type
@@ -342,7 +337,7 @@ func populateConstants(b *Bir, pkg *BIRPackage) error {
 			},
 			Name:       name,
 			Flags:      c.Flags,
-			Type:       *t,
+			Type:       t,
 			ConstValue: cv,
 			Origin:     origin,
 		}
@@ -389,8 +384,6 @@ func populateGlobals(b *Bir, pkg *BIRPackage) error {
 		return nil
 	}
 
-	fmt.Printf("[LOADER] GlobalVarCount %d\n", b.Module.GlobalVarCount)
-
 	globals := make([]BIRGlobalVariableDcl, 0, len(b.Module.GlobalVars))
 
 	// Use the package's PackageID for all globals.
@@ -407,15 +400,12 @@ func populateGlobals(b *Bir, pkg *BIRPackage) error {
 		kind := VarKind(gv.Kind)
 		scope := VAR_SCOPE_GLOBAL
 
-		var t *minimalBType
+		var t ast.BType
 		metaVarName := name.Value()
-
-		fmt.Printf("[LOADER] Global Var: %s, TypeCpIndex: %d\n", name.Value(), gv.TypeCpIndex)
 
 		// Parse type
 		if gv.TypeCpIndex >= 0 {
 			t = parseTypeFromCP(b, gv.TypeCpIndex)
-			fmt.Printf("[LOADER] Parsed Global Var Type: %+v\n", t)
 		}
 
 		g := BIRGlobalVariableDcl{
@@ -425,7 +415,7 @@ func populateGlobals(b *Bir, pkg *BIRPackage) error {
 						Pos: pos,
 					},
 				},
-				Type:         *t,
+				Type:         t,
 				Name:         name,
 				OriginalName: name,
 				MetaVarName:  metaVarName,
@@ -562,7 +552,6 @@ func populateFunctionBody(cx *context.CompilerContext, b *Bir, fn *BIRFunction, 
 
 	// Populate basic blocks
 	if body.FunctionBasicBlocksInfo != nil && body.FunctionBasicBlocksInfo.BasicBlocksCount > 0 {
-		fmt.Printf("[LOADER] Populating basic blocks for function %s\n", fn.Name.Value())
 		basicBlocks, err := populateBasicBlocks(cx, b, body.FunctionBasicBlocksInfo)
 		if err != nil {
 			return fmt.Errorf("populating basic blocks: %w", err)
@@ -828,7 +817,6 @@ func parseCallTerminator(cx *context.CompilerContext, b *Bir, pos diagnostics.Lo
 
 // createNonTerminator creates a BIRNonTerminator instance from Kaitai instruction data.
 func createNonTerminator(b *Bir, kind InstructionKind, pos diagnostics.Location, kaitaiIns *Bir_Instruction) BIRNonTerminator {
-	fmt.Printf("[LOADER] Creating non-terminator of kind %d at pos %+v\n", kind, pos)
 	if kaitaiIns == nil || kaitaiIns.InstructionStructure == nil {
 		// Fallback to minimal implementation
 		return nil
@@ -838,20 +826,16 @@ func createNonTerminator(b *Bir, kind InstructionKind, pos diagnostics.Location,
 
 	switch kind {
 	case INSTRUCTION_KIND_MOVE:
-		fmt.Println("[LOADER] Parsing MOVE instruction")
 		return parseMoveInstruction(b, pos, kaitaiIns)
 	case INSTRUCTION_KIND_CONST_LOAD:
-		fmt.Println("[LOADER] Parsing CONST_LOAD instruction")
 		return parseConstantLoadInstruction(b, pos, kaitaiIns)
 	case INSTRUCTION_KIND_ADD, INSTRUCTION_KIND_SUB, INSTRUCTION_KIND_MUL, INSTRUCTION_KIND_DIV, INSTRUCTION_KIND_MOD,
 		INSTRUCTION_KIND_EQUAL, INSTRUCTION_KIND_NOT_EQUAL, INSTRUCTION_KIND_GREATER_THAN, INSTRUCTION_KIND_GREATER_EQUAL,
 		INSTRUCTION_KIND_LESS_THAN, INSTRUCTION_KIND_LESS_EQUAL, INSTRUCTION_KIND_AND, INSTRUCTION_KIND_OR,
 		INSTRUCTION_KIND_REF_EQUAL, INSTRUCTION_KIND_REF_NOT_EQUAL, INSTRUCTION_KIND_CLOSED_RANGE, INSTRUCTION_KIND_HALF_OPEN_RANGE,
 		INSTRUCTION_KIND_ANNOT_ACCESS:
-		fmt.Println("[LOADER] Parsing BINARY_OP instruction")
 		return parseBinaryOpInstruction(b, pos, kind, kaitaiIns)
 	case INSTRUCTION_KIND_TYPEOF, INSTRUCTION_KIND_NOT, INSTRUCTION_KIND_NEGATE:
-		fmt.Println("[LOADER] Parsing UNARY_OP instruction")
 		return parseUnaryOpInstruction(b, pos, kind, kaitaiIns)
 	default:
 		return nil
@@ -879,7 +863,6 @@ func parseMoveInstruction(b *Bir, pos diagnostics.Location, kaitaiIns *Bir_Instr
 // parseConstantLoadInstruction parses a ConstantLoad instruction
 func parseConstantLoadInstruction(b *Bir, pos diagnostics.Location, kaitaiIns *Bir_Instruction) BIRNonTerminator {
 	if constIns, ok := kaitaiIns.InstructionStructure.(*Bir_InstructionConstLoad); ok && constIns != nil {
-		fmt.Printf("[LOADER] Parsing ConstantLoad instruction: %+v\n", constIns)
 		lhsOp := parseOperand(b, constIns.LhsOperand)
 		var constType model.ValueType
 		if constIns.TypeCpIndex >= 0 {
@@ -976,14 +959,12 @@ func parseReturnVar(b *Bir, rv *Bir_ReturnVar) *BIRVariableDcl {
 
 	name := model.Name(cpString(b, rv.NameCpIndex))
 	kind := VarKind(rv.Kind)
-	var t *minimalBType
-	fmt.Printf("[LOADER] Return Var: %s, TypeCpIndex: %d\n", name.Value(), rv.TypeCpIndex)
+	var t ast.BType
 	if rv.TypeCpIndex >= 0 {
 		t = parseTypeFromCP(b, rv.TypeCpIndex)
-		fmt.Printf("[LOADER] Parsed Return Var Type: %+v\n", t)
 	}
 	return &BIRVariableDcl{
-		Type:  *t,
+		Type:  t,
 		Name:  name,
 		Scope: VAR_SCOPE_FUNCTION,
 		Kind:  kind,
@@ -998,17 +979,15 @@ func parseFunctionParameter(b *Bir, dp *Bir_DefaultParameter) *BIRFunctionParame
 
 	name := model.Name(cpString(b, dp.NameCpIndex))
 	kind := VarKind(dp.Kind)
-	var t *minimalBType
-	fmt.Printf("[LOADER] Function Param: %s, TypeCpIndex: %d\n", name.Value(), dp.TypeCpIndex)
+	var t ast.BType
 	if dp.TypeCpIndex >= 0 {
 		t = parseTypeFromCP(b, dp.TypeCpIndex)
-		fmt.Printf("[LOADER] Parsed Function Param Type: %+v\n", t)
 	}
 	metaVarName := cpString(b, dp.MetaVarNameCpIndex)
 	hasDefaultExpr := dp.HasDefaultExpr != 0
 	return &BIRFunctionParameter{
 		BIRVariableDcl: BIRVariableDcl{
-			Type:         *t,
+			Type:         t,
 			Name:         name,
 			OriginalName: name,
 			MetaVarName:  metaVarName,
@@ -1027,14 +1006,14 @@ func parseLocalVariable(b *Bir, lv *Bir_LocalVariable) *BIRVariableDcl {
 
 	name := model.Name(cpString(b, lv.NameCpIndex))
 	kind := VarKind(lv.Kind)
-	var t *minimalBType
-	fmt.Printf("[LOADER] Local Var: %s, TypeCpIndex: %d\n", name.Value(), lv.TypeCpIndex)
+
+	var t ast.BType
 	if lv.TypeCpIndex >= 0 {
 		t = parseTypeFromCP(b, lv.TypeCpIndex)
-		fmt.Printf("[LOADER] Parsed Local Var Type: %+v\n", t)
 	}
+
 	localVar := &BIRVariableDcl{
-		Type:  *t,
+		Type:  t,
 		Name:  name,
 		Scope: VAR_SCOPE_FUNCTION,
 		Kind:  kind,
@@ -1052,7 +1031,7 @@ func parseLocalVariable(b *Bir, lv *Bir_LocalVariable) *BIRVariableDcl {
 // Helper functions for parsing complex structures
 
 // parseTypeFromCP parses a BType from a constant pool index (shape_cp_info).
-func parseTypeFromCP(b *Bir, cpIndex int32) *minimalBType {
+func parseTypeFromCP(b *Bir, cpIndex int32) ast.BType {
 	if cpIndex < 0 {
 		return nil
 	}
@@ -1068,57 +1047,14 @@ func parseTypeFromCP(b *Bir, cpIndex int32) *minimalBType {
 		return nil
 	}
 
-	// Create a minimal BType implementation from the type info
 	return createBTypeFromTypeInfo(b, shapeCp.Shape)
 }
 
-// createBTypeFromTypeInfo creates a minimal BType from Bir_TypeInfo.
-// This is a placeholder implementation until full type system is available.
-func createBTypeFromTypeInfo(b *Bir, ti *Bir_TypeInfo) *minimalBType {
+func createBTypeFromTypeInfo(b *Bir, ti *Bir_TypeInfo) ast.BType {
 	if ti == nil {
 		return nil
 	}
-
-	// Create a minimal type implementation
-	// The actual type structure is complex and would require full type system
-	// For now, we create a stub that satisfies the BType interface
-	return &minimalBType{
-		tag:   int(ti.TypeTag),
-		name:  model.Name(cpString(b, ti.NameIndex)),
-		flags: ti.TypeFlag,
-	}
-}
-
-// minimalBType is a minimal implementation of BType for parsing purposes.
-type minimalBType struct {
-	tag     int
-	name    model.Name
-	flags   int64
-	semType any
-	tsymbol any
-}
-
-func (t *minimalBType) GetTag() int                    { return t.tag }
-func (t *minimalBType) SetTag(tag int)                 { t.tag = tag }
-func (t *minimalBType) GetName() model.Name            { return t.name }
-func (t *minimalBType) SetName(name model.Name)        { t.name = name }
-func (t *minimalBType) GetFlags() int64                { return t.flags }
-func (t *minimalBType) SetFlags(flags int64)           { t.flags = flags }
-func (t *minimalBType) GetSemType() any                { return t.semType }
-func (t *minimalBType) SetSemType(semType any)         { t.semType = semType }
-func (t *minimalBType) GetTsymbol() any                { return t.tsymbol }
-func (t *minimalBType) SetTsymbol(tsymbol any)         { t.tsymbol = tsymbol }
-func (t *minimalBType) GetReturnType() model.ValueType { return nil }
-func (t *minimalBType) GetTypeKind() model.TypeKind {
-	// Return a default type kind - this is a minimal implementation
-	return model.TypeKind_OTHER
-}
-
-func (t *minimalBType) String() string {
-	if t.name.Value() != "" {
-		return t.name.Value()
-	}
-	return fmt.Sprintf("type_%d", t.tag)
+	return ast.NewBType(model.TypeTags(ti.TypeTag), nil, model.Name(cpString(b, ti.NameIndex)), uint64(ti.TypeFlag))
 }
 
 // parseMarkdown parses markdown documentation from Bir_Markdown.
@@ -1132,7 +1068,7 @@ func parseConstantValue(b *Bir, cv *Bir_ConstantValue) ConstValue {
 		return ConstValue{}
 	}
 
-	var constType *minimalBType
+	var constType ast.BType
 	if cv.ConstantValueTypeCpIndex >= 0 {
 		constType = parseTypeFromCP(b, cv.ConstantValueTypeCpIndex)
 	}
@@ -1147,7 +1083,7 @@ func parseConstantValue(b *Bir, cv *Bir_ConstantValue) ConstValue {
 	}
 
 	return ConstValue{
-		Type:  *constType,
+		Type:  constType,
 		Value: value,
 	}
 }
@@ -1249,13 +1185,13 @@ func parseReceiver(b *Bir, rec *Bir_Reciever) *BIRVariableDcl {
 
 	name := model.Name(cpString(b, rec.NameCpIndex))
 	kind := VarKind(rec.Kind)
-	var t *minimalBType
+	var t ast.BType
 	if rec.TypeCpIndex >= 0 {
 		t = parseTypeFromCP(b, rec.TypeCpIndex)
 	}
 
 	return &BIRVariableDcl{
-		Type:  *t,
+		Type:  t,
 		Name:  name,
 		Scope: VAR_SCOPE_FUNCTION,
 		Kind:  kind,
@@ -1268,20 +1204,16 @@ func parseOperand(b *Bir, op *Bir_Operand) *BIROperand {
 		return nil
 	}
 
-	fmt.Printf("[LOADER] IgnoredVariable: %d, IgnoredTypeCpIndex: %d\n", op.IgnoredVariable, op.IgnoredTypeCpIndex)
-
 	// Check if variable is ignored
 	if op.IgnoredVariable != 0 {
 		// Ignored variable - create a minimal variable declaration
-		var ignoredType *minimalBType
-		fmt.Printf("[LOADER] Ignored Operand, IgnoredTypeCpIndex: %d\n", op.IgnoredTypeCpIndex)
+		var ignoredType ast.BType
 		if op.IgnoredTypeCpIndex >= 0 {
 			ignoredType = parseTypeFromCP(b, op.IgnoredTypeCpIndex)
-			fmt.Printf("[LOADER] Parsed Ignored Operand Type: %+v\n", ignoredType)
 		}
 		// Create a minimal variable for ignored operands
 		ignoredVar := &BIRVariableDcl{
-			Type:  *ignoredType,
+			Type:  ignoredType,
 			Name:  model.Name("_"),
 			Scope: VAR_SCOPE_FUNCTION,
 			Kind:  VAR_KIND_LOCAL,
@@ -1296,33 +1228,23 @@ func parseOperand(b *Bir, op *Bir_Operand) *BIROperand {
 		return nil
 	}
 
-	var varType *minimalBType
+	var varType model.ValueType
 	varName := model.Name(cpString(b, op.Variable.VariableDclNameCpIndex))
 	kind := VarKind(op.Variable.Kind)
 	scope := VarScope(op.Variable.Scope)
-
-	fmt.Printf("[LOADER] Operand Variable: %s, Kind: %d, Scope: %d\n", varName.Value(), kind, scope)
 
 	// For global/constant variables, get type from GlobalOrConstantVariable
 	if op.Variable.Kind == 5 || op.Variable.Kind == 7 {
 		if op.Variable.GlobalOrConstantVariable != nil {
 			if op.Variable.GlobalOrConstantVariable.TypeCpIndex >= 0 {
-				fmt.Printf("[LOADER] Global/Constant Operand: %s, TypeCpIndex: %d\n", varName.Value(), op.Variable.GlobalOrConstantVariable.TypeCpIndex)
 				varType = parseTypeFromCP(b, op.Variable.GlobalOrConstantVariable.TypeCpIndex)
-				fmt.Printf("[LOADER] Parsed Global/Constant Operand Type: %+v\n", varType)
 			}
 		}
 	}
 
-	// print varType
-	fmt.Printf("[LOADER] Operand VarType for %s: %+v\n", varName.Value(), varType)
-	if varType == nil {
-		varType = &minimalBType{}
-	}
-
 	// Create variable declaration
 	varDcl := &BIRVariableDcl{
-		Type:  *varType,
+		Type:  varType,
 		Name:  varName,
 		Scope: scope,
 		Kind:  kind,

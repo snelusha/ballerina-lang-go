@@ -1,10 +1,11 @@
-package bir
+package birutils
 
 import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
 
+	"ballerina-lang-go/ast"
 	"ballerina-lang-go/model"
 )
 
@@ -47,7 +48,7 @@ type (
 		VersionCPIndex    int32
 	}
 	ShapeCPEntry struct {
-		Shape *minimalBType
+		Shape ast.BType
 	}
 )
 
@@ -79,16 +80,6 @@ func (e *ShapeCPEntry) EntryType() CPEntryType {
 	return CP_ENTRY_SHAPE
 }
 
-var (
-	_ CPEntry = &IntegerCPEntry{}
-	_ CPEntry = &FloatCPEntry{}
-	_ CPEntry = &BooleanCPEntry{}
-	_ CPEntry = &StringCPEntry{}
-	_ CPEntry = &PackageCPEntry{}
-	_ CPEntry = &ByteCPEntry{}
-	_ CPEntry = &ShapeCPEntry{}
-)
-
 type ConstantPool struct {
 	entries  []CPEntry
 	entryMap map[string]int
@@ -113,7 +104,7 @@ func (cp *ConstantPool) EntryKey(entry CPEntry) string {
 		if e.Shape == nil {
 			return "shape:nil"
 		}
-		return fmt.Sprintf("shape:t%d:n%s:f%d", e.Shape.GetTag(), e.Shape.GetName(), e.Shape.GetFlags())
+		return fmt.Sprintf("shape:t%d:n%s:f%d", e.Shape.BTypeGetTag(), e.Shape.BTypeGetName(), e.Shape.BTypeGetFlags())
 	default:
 		panic("unknown CPEntry type")
 	}
@@ -174,10 +165,10 @@ func (cp *ConstantPool) AddByteCPEntry(value byte) int32 {
 	return cp.AddEntry(&ByteCPEntry{Value: value})
 }
 
-func (cp *ConstantPool) AddShapeCPEntry(shape *minimalBType) int32 {
+func (cp *ConstantPool) AddShapeCPEntry(shape ast.BType) int32 {
 	// Pre-add the name to the constant pool before adding the shape
 	// This ensures the CP doesn't grow during serialization
-	name := shape.name.Value()
+	name := string(shape.BTypeGetName())
 	cp.AddStringCPEntry(&name)
 	return cp.AddEntry(&ShapeCPEntry{Shape: shape})
 }
@@ -223,21 +214,19 @@ func (cp *ConstantPool) WriteCPEntry(buf *bytes.Buffer, entry CPEntry) error {
 		}
 		return binary.Write(buf, binary.BigEndian, int32(e.VersionCPIndex))
 	case *ShapeCPEntry:
+		// TODO: Move this serialization logic into BType
 		typeBuf := &bytes.Buffer{}
 
-		// tag
-		if err := binary.Write(typeBuf, binary.BigEndian, uint8(e.Shape.tag)); err != nil {
+		if err := binary.Write(typeBuf, binary.BigEndian, uint8(e.Shape.BTypeGetTag())); err != nil {
 			return err
 		}
 
-		// name
-		name := e.Shape.name.Value()
+		name := string(e.Shape.BTypeGetName())
 		if err := binary.Write(typeBuf, binary.BigEndian, cp.AddStringCPEntry(&name)); err != nil {
 			return err
 		}
 
-		// flags
-		if err := binary.Write(typeBuf, binary.BigEndian, e.Shape.flags); err != nil {
+		if err := binary.Write(typeBuf, binary.BigEndian, e.Shape.BTypeGetFlags()); err != nil {
 			return err
 		}
 
@@ -254,11 +243,6 @@ func (cp *ConstantPool) WriteCPEntry(buf *bytes.Buffer, entry CPEntry) error {
 func (cp *ConstantPool) Serialize() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
-	fmt.Printf("[CP] Serializing %d entries\n", len(cp.entries))
-	for i, entry := range cp.entries {
-		fmt.Printf("[CP] Entry %d: %T\n", i, entry)
-	}
-
 	if err := binary.Write(buf, binary.BigEndian, int32(-1)); err != nil {
 		return nil, err
 	}
@@ -273,6 +257,5 @@ func (cp *ConstantPool) Serialize() ([]byte, error) {
 	entryCount := int32(len(cp.entries))
 	binary.BigEndian.PutUint32(bytes[0:4], uint32(entryCount))
 
-	fmt.Printf("[CP] Total serialized size: %d bytes\n", len(bytes))
 	return bytes, nil
 }
