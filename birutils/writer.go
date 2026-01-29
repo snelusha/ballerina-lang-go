@@ -27,31 +27,31 @@ func NewBIRWriter(pkg *bir.BIRPackage) *BIRWriter {
 	}
 }
 
-func (w *BIRWriter) Serialize() ([]byte, error) {
+func (bw *BIRWriter) Serialize() ([]byte, error) {
 	birbuf := &bytes.Buffer{}
 
 	// Write the package details
-	if err := w.writeInt32(birbuf, w.cp.AddPackageCPEntry(w.pkg.PackageID)); err != nil {
+	if err := bw.writeInt32(birbuf, bw.cp.AddPackageCPEntry(bw.pkg.PackageID)); err != nil {
 		return nil, err
 	}
 
 	// Write import module declarations
-	if err := w.writeImportModuleDecls(birbuf); err != nil {
+	if err := bw.writeImportModuleDecls(birbuf); err != nil {
 		return nil, err
 	}
 
 	// Write constants
-	if err := w.writeConstants(birbuf); err != nil {
+	if err := bw.writeConstants(birbuf); err != nil {
 		return nil, err
 	}
 
 	// Write global vars
-	if err := w.writeGlobalVars(birbuf); err != nil {
+	if err := bw.writeGlobalVars(birbuf); err != nil {
 		return nil, err
 	}
 
 	// Write functions
-	if err := w.writeFunctions(birbuf); err != nil {
+	if err := bw.writeFunctions(birbuf); err != nil {
 		return nil, err
 	}
 
@@ -62,11 +62,11 @@ func (w *BIRWriter) Serialize() ([]byte, error) {
 		return nil, err
 	}
 
-	if err := w.writeInt32(buf, int32(BIR_VERSION)); err != nil {
+	if err := bw.writeInt32(buf, int32(BIR_VERSION)); err != nil {
 		return nil, err
 	}
 
-	cpBytes, err := w.cp.Serialize()
+	cpBytes, err := bw.cp.Serialize()
 	if err != nil {
 		return nil, err
 	}
@@ -82,26 +82,26 @@ func (w *BIRWriter) Serialize() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (w *BIRWriter) writeImportModuleDecls(buf *bytes.Buffer) error {
-	if err := w.writeInt32(buf, int32(len(w.pkg.ImportModules))); err != nil {
+func (bw *BIRWriter) writeImportModuleDecls(buf *bytes.Buffer) error {
+	if err := bw.writeInt32(buf, int32(len(bw.pkg.ImportModules))); err != nil {
 		return err
 	}
-	for _, imp := range w.pkg.ImportModules {
+	for _, imp := range bw.pkg.ImportModules {
 		OrgName := imp.PackageID.OrgName.Value()
 		PkgName := imp.PackageID.PkgName.Value()
 		ModuleName := imp.PackageID.Name.Value()
 		Version := imp.PackageID.Version.Value()
 
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&OrgName)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&OrgName)); err != nil {
 			return err
 		}
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&PkgName)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&PkgName)); err != nil {
 			return err
 		}
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&ModuleName)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&ModuleName)); err != nil {
 			return err
 		}
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&Version)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&Version)); err != nil {
 			return err
 		}
 	}
@@ -109,13 +109,13 @@ func (w *BIRWriter) writeImportModuleDecls(buf *bytes.Buffer) error {
 	return nil
 }
 
-func (w *BIRWriter) writeConstants(buf *bytes.Buffer) error {
-	if err := w.writeInt32(buf, int32(len(w.pkg.Constants))); err != nil {
+func (bw *BIRWriter) writeConstants(buf *bytes.Buffer) error {
+	if err := bw.writeInt32(buf, int32(len(bw.pkg.Constants))); err != nil {
 		return err
 	}
 
-	for _, c := range w.pkg.Constants {
-		if err := w.writeConstant(buf, &c); err != nil {
+	for _, c := range bw.pkg.Constants {
+		if err := bw.writeConstant(buf, &c); err != nil {
 			return err
 		}
 	}
@@ -123,125 +123,125 @@ func (w *BIRWriter) writeConstants(buf *bytes.Buffer) error {
 	return nil
 }
 
-func (w *BIRWriter) writeConstant(buf *bytes.Buffer, constant *bir.BIRConstant) error {
+func (bw *BIRWriter) writeConstant(buf *bytes.Buffer, constant *bir.BIRConstant) error {
 	name := constant.Name.Value()
-	if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&name)); err != nil {
+	if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&name)); err != nil {
 		return err
 	}
 
-	if err := w.writeInt64(buf, constant.Flags); err != nil {
+	if err := bw.writeInt64(buf, constant.Flags); err != nil {
 		return err
 	}
 
-	if err := w.writeUInt8(buf, uint8(constant.Origin)); err != nil {
+	if err := bw.writeUInt8(buf, uint8(constant.Origin)); err != nil {
 		return err
 	}
 
-	constantType, err := w.castToBType(constant.Type)
+	constantType, err := bw.castToBType(constant.Type)
 	if err != nil {
 		return err
 	}
-	err = w.writeType(buf, constantType)
+	err = bw.writeType(buf, constantType)
 	if err != nil {
 		return err
 	}
 
 	birbuf := &bytes.Buffer{}
-	constValueType, err := w.castToBType(constant.ConstValue.Type)
+	constValueType, err := bw.castToBType(constant.ConstValue.Type)
 	if err != nil {
 		return err
 	}
-	err = w.writeType(birbuf, constValueType)
+	err = bw.writeType(birbuf, constValueType)
 	if err != nil {
 		return err
 	}
-	err = w.writeConstValue(birbuf, &constant.ConstValue)
+	err = bw.writeConstValue(birbuf, &constant.ConstValue)
 	if err != nil {
 		return err
 	}
 
-	if err := w.writeInt64(buf, int64(birbuf.Len())); err != nil {
+	if err := bw.writeInt64(buf, int64(birbuf.Len())); err != nil {
 		return err
 	}
 	_, err = buf.Write(birbuf.Bytes())
 	return err
 }
 
-func (w *BIRWriter) writeType(buf *bytes.Buffer, t ast.BType) error {
-	idx := w.cp.AddShapeCPEntry(t)
-	return w.writeInt32(buf, idx)
+func (bw *BIRWriter) writeType(buf *bytes.Buffer, t ast.BType) error {
+	idx := bw.cp.AddShapeCPEntry(t)
+	return bw.writeInt32(buf, idx)
 }
 
-func (w *BIRWriter) writeConstValue(buf *bytes.Buffer, cv *bir.ConstValue) error {
-	bType, err := w.castToBType(cv.Type)
+func (bw *BIRWriter) writeConstValue(buf *bytes.Buffer, cv *bir.ConstValue) error {
+	bType, err := bw.castToBType(cv.Type)
 	if err != nil {
 		return err
 	}
 	switch model.TypeTags(bType.BTypeGetTag()) {
 	case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
-		if err := w.writeInt32(buf, w.cp.AddIntegerCPEntry(cv.Value.(int64))); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddIntegerCPEntry(cv.Value.(int64))); err != nil {
 			return err
 		}
 	case model.TypeTags_BYTE:
-		if err := w.writeInt32(buf, w.cp.AddByteCPEntry(cv.Value.(byte))); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddByteCPEntry(cv.Value.(byte))); err != nil {
 			return err
 		}
 	case model.TypeTags_FLOAT:
-		if err := w.writeInt32(buf, w.cp.AddFloatCPEntry(cv.Value.(float64))); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddFloatCPEntry(cv.Value.(float64))); err != nil {
 			return err
 		}
 	case model.TypeTags_STRING, model.TypeTags_CHAR_STRING, model.TypeTags_DECIMAL:
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(cv.Value.(*string))); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(cv.Value.(*string))); err != nil {
 			return err
 		}
 	case model.TypeTags_BOOLEAN:
-		if err := w.writeInt32(buf, w.cp.AddBooleanCPEntry(cv.Value.(bool))); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddBooleanCPEntry(cv.Value.(bool))); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (w *BIRWriter) writeGlobalVars(buf *bytes.Buffer) error {
-	if err := w.writeInt32(buf, int32(len(w.pkg.GlobalVars))); err != nil {
+func (bw *BIRWriter) writeGlobalVars(buf *bytes.Buffer) error {
+	if err := bw.writeInt32(buf, int32(len(bw.pkg.GlobalVars))); err != nil {
 		return err
 	}
 
-	for _, gv := range w.pkg.GlobalVars {
-		if err := w.writeUInt8(buf, uint8(gv.Kind)); err != nil {
+	for _, gv := range bw.pkg.GlobalVars {
+		if err := bw.writeUInt8(buf, uint8(gv.Kind)); err != nil {
 			return err
 		}
 
 		name := gv.Name.Value()
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&name)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&name)); err != nil {
 			return err
 		}
 
-		if err := w.writeInt64(buf, gv.Flags); err != nil {
+		if err := bw.writeInt64(buf, gv.Flags); err != nil {
 			return err
 		}
 
-		if err := w.writeUInt8(buf, uint8(gv.Origin)); err != nil {
+		if err := bw.writeUInt8(buf, uint8(gv.Origin)); err != nil {
 			return err
 		}
 
-		gvType, err := w.castToBType(gv.Type)
+		gvType, err := bw.castToBType(gv.Type)
 		if err != nil {
 			return err
 		}
-		w.writeType(buf, gvType)
+		bw.writeType(buf, gvType)
 	}
 
 	return nil
 }
 
-func (w *BIRWriter) writeFunctions(buf *bytes.Buffer) error {
-	if err := w.writeInt32(buf, int32(len(w.pkg.Functions))); err != nil {
+func (bw *BIRWriter) writeFunctions(buf *bytes.Buffer) error {
+	if err := bw.writeInt32(buf, int32(len(bw.pkg.Functions))); err != nil {
 		return err
 	}
 
-	for _, fn := range w.pkg.Functions {
-		if err := w.writeFunction(buf, &fn); err != nil {
+	for _, fn := range bw.pkg.Functions {
+		if err := bw.writeFunction(buf, &fn); err != nil {
 			return err
 		}
 	}
@@ -249,85 +249,85 @@ func (w *BIRWriter) writeFunctions(buf *bytes.Buffer) error {
 	return nil
 }
 
-func (w *BIRWriter) writeFunction(buf *bytes.Buffer, fn *bir.BIRFunction) error {
+func (bw *BIRWriter) writeFunction(buf *bytes.Buffer, fn *bir.BIRFunction) error {
 	name := fn.Name.Value()
-	if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&name)); err != nil {
+	if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&name)); err != nil {
 		return err
 	}
 
 	originalName := fn.OriginalName.Value()
-	if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&originalName)); err != nil {
+	if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&originalName)); err != nil {
 		return err
 	}
 
-	if err := w.writeInt64(buf, fn.Flags); err != nil {
+	if err := bw.writeInt64(buf, fn.Flags); err != nil {
 		return err
 	}
 
-	if err := w.writeUInt8(buf, uint8(fn.Origin)); err != nil {
+	if err := bw.writeUInt8(buf, uint8(fn.Origin)); err != nil {
 		return err
 	}
 
-	if err := w.writeInt32(buf, int32(len(fn.RequiredParams))); err != nil {
+	if err := bw.writeInt32(buf, int32(len(fn.RequiredParams))); err != nil {
 		return err
 	}
 	for _, requiredParam := range fn.RequiredParams {
 		name := requiredParam.Name.Value()
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&name)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&name)); err != nil {
 			return err
 		}
-		if err := w.writeInt64(buf, requiredParam.Flags); err != nil {
+		if err := bw.writeInt64(buf, requiredParam.Flags); err != nil {
 			return err
 		}
 	}
 
 	birbuf := &bytes.Buffer{}
 
-	if err := w.writeInt32(birbuf, int32(fn.ArgsCount)); err != nil {
+	if err := bw.writeInt32(birbuf, int32(fn.ArgsCount)); err != nil {
 		return err
 	}
-	if err := w.writeBool(birbuf, fn.ReturnVariable != nil); err != nil {
+	if err := bw.writeBool(birbuf, fn.ReturnVariable != nil); err != nil {
 		return err
 	}
 	if fn.ReturnVariable != nil {
-		if err := w.writeUInt8(birbuf, uint8(fn.ReturnVariable.Kind)); err != nil {
+		if err := bw.writeUInt8(birbuf, uint8(fn.ReturnVariable.Kind)); err != nil {
 			return err
 		}
 
-		retVarType, err := w.castToBType(fn.ReturnVariable.Type)
+		retVarType, err := bw.castToBType(fn.ReturnVariable.Type)
 		if err != nil {
 			return err
 		}
-		err = w.writeType(birbuf, retVarType)
+		err = bw.writeType(birbuf, retVarType)
 		if err != nil {
 			return err
 		}
 		returnVarName := fn.ReturnVariable.Name.Value()
-		if err := w.writeInt32(birbuf, w.cp.AddStringCPEntry(&returnVarName)); err != nil {
+		if err := bw.writeInt32(birbuf, bw.cp.AddStringCPEntry(&returnVarName)); err != nil {
 			return err
 		}
 	}
 
-	if err := w.writeInt32(birbuf, int32(len(fn.LocalVars))); err != nil {
+	if err := bw.writeInt32(birbuf, int32(len(fn.LocalVars))); err != nil {
 		return err
 	}
 	for _, localVar := range fn.LocalVars {
-		if err := w.writeLocalVar(birbuf, &localVar); err != nil {
+		if err := bw.writeLocalVar(birbuf, &localVar); err != nil {
 			return err
 		}
 	}
 
-	if err := w.writeInt32(birbuf, int32(len(fn.BasicBlocks))); err != nil {
+	if err := bw.writeInt32(birbuf, int32(len(fn.BasicBlocks))); err != nil {
 		return err
 	}
 
 	for _, bb := range fn.BasicBlocks {
-		if err := w.writeBasicBlock(birbuf, &bb); err != nil {
+		if err := bw.writeBasicBlock(birbuf, &bb); err != nil {
 			return err
 		}
 	}
 
-	if err := w.writeInt64(buf, int64(birbuf.Len())); err != nil {
+	if err := bw.writeInt64(buf, int64(birbuf.Len())); err != nil {
 		return err
 	}
 	_, err := buf.Write(birbuf.Bytes())
@@ -335,31 +335,31 @@ func (w *BIRWriter) writeFunction(buf *bytes.Buffer, fn *bir.BIRFunction) error 
 	return err
 }
 
-func (w *BIRWriter) writeLocalVar(buf *bytes.Buffer, localVar *bir.BIRVariableDcl) error {
-	if err := w.writeUInt8(buf, uint8(localVar.Kind)); err != nil {
+func (bw *BIRWriter) writeLocalVar(buf *bytes.Buffer, localVar *bir.BIRVariableDcl) error {
+	if err := bw.writeUInt8(buf, uint8(localVar.Kind)); err != nil {
 		return err
 	}
 
-	localVarType, err := w.castToBType(localVar.Type)
+	localVarType, err := bw.castToBType(localVar.Type)
 	if err != nil {
 		return err
 	}
-	if err := w.writeType(buf, localVarType); err != nil {
+	if err := bw.writeType(buf, localVarType); err != nil {
 		return err
 	}
 	localVarName := localVar.Name.Value()
-	if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&localVarName)); err != nil {
+	if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&localVarName)); err != nil {
 		return err
 	}
 
 	if localVar.Kind == bir.VAR_KIND_ARG {
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&localVar.MetaVarName)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&localVar.MetaVarName)); err != nil {
 			return err
 		}
 	}
 
 	if localVar.Kind == bir.VAR_KIND_LOCAL {
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&localVar.MetaVarName)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&localVar.MetaVarName)); err != nil {
 			return err
 		}
 
@@ -367,7 +367,7 @@ func (w *BIRWriter) writeLocalVar(buf *bytes.Buffer, localVar *bir.BIRVariableDc
 		if localVar.EndBB != nil {
 			endBBId = localVar.EndBB.Id.Value()
 		}
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&endBBId)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&endBBId)); err != nil {
 			return err
 		}
 
@@ -375,32 +375,32 @@ func (w *BIRWriter) writeLocalVar(buf *bytes.Buffer, localVar *bir.BIRVariableDc
 		if localVar.StartBB != nil {
 			startBBId = localVar.StartBB.Id.Value()
 		}
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&startBBId)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&startBBId)); err != nil {
 			return err
 		}
 
-		if err := w.writeInt32(buf, int32(localVar.InsOffset)); err != nil {
+		if err := bw.writeInt32(buf, int32(localVar.InsOffset)); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (w *BIRWriter) writeBasicBlock(buf *bytes.Buffer, bb *bir.BIRBasicBlock) error {
+func (bw *BIRWriter) writeBasicBlock(buf *bytes.Buffer, bb *bir.BIRBasicBlock) error {
 	id := bb.Id.Value()
-	if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&id)); err != nil {
+	if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&id)); err != nil {
 		return err
 	}
 	// TODO: Adding the terminator instruction as well! Why?
-	if err := w.writeInt32(buf, int32(len(bb.Instructions))); err != nil {
+	if err := bw.writeInt32(buf, int32(len(bb.Instructions))); err != nil {
 		return err
 	}
 
 	for _, instr := range bb.Instructions {
-		if err := w.writeUInt8(buf, uint8(instr.GetKind())); err != nil {
+		if err := bw.writeUInt8(buf, uint8(instr.GetKind())); err != nil {
 			return err
 		}
-		if err := w.writeInstruction(buf, instr); err != nil {
+		if err := bw.writeInstruction(buf, instr); err != nil {
 			return err
 		}
 	}
@@ -409,75 +409,75 @@ func (w *BIRWriter) writeBasicBlock(buf *bytes.Buffer, bb *bir.BIRBasicBlock) er
 		panic(fmt.Sprintf("Basic block without a terminator %s", bb.Id.Value()))
 	}
 
-	if err := w.writeUInt8(buf, uint8(bb.Terminator.GetKind())); err != nil {
+	if err := bw.writeUInt8(buf, uint8(bb.Terminator.GetKind())); err != nil {
 		return err
 	}
 
-	return w.writeTerminator(buf, bb.Terminator)
+	return bw.writeTerminator(buf, bb.Terminator)
 }
 
-func (w *BIRWriter) writeTerminator(buf *bytes.Buffer, term bir.BIRTerminator) error {
+func (bw *BIRWriter) writeTerminator(buf *bytes.Buffer, term bir.BIRTerminator) error {
 	switch term := term.(type) {
 	case *bir.Goto:
 		fmt.Println("Writing GOTO")
 		id := term.ThenBB.Id.Value()
 		fmt.Println("	" + id)
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&id)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&id)); err != nil {
 			return err
 		}
 	case *bir.Branch:
 		fmt.Println("Writing BRANCH")
-		if err := w.writeOperand(buf, term.Op); err != nil {
+		if err := bw.writeOperand(buf, term.Op); err != nil {
 			return err
 		}
 
 		trueId := term.TrueBB.Id.Value()
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&trueId)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&trueId)); err != nil {
 			return err
 		}
 		falseId := term.FalseBB.Id.Value()
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&falseId)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&falseId)); err != nil {
 			return err
 		}
 	case *bir.Call:
 		fmt.Println("Writing CALL")
-		if err := w.writeBool(buf, term.IsVirtual); err != nil {
+		if err := bw.writeBool(buf, term.IsVirtual); err != nil {
 			return err
 		}
-		pkgIdx := w.cp.AddPackageCPEntry(term.CalleePkg)
-		if err := w.writeInt32(buf, pkgIdx); err != nil {
+		pkgIdx := bw.cp.AddPackageCPEntry(term.CalleePkg)
+		if err := bw.writeInt32(buf, pkgIdx); err != nil {
 			return err
 		}
 		callName := term.Name.Value()
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&callName)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&callName)); err != nil {
 			return err
 		}
 
-		if err := w.writeInt32(buf, int32(len(term.Args))); err != nil {
+		if err := bw.writeInt32(buf, int32(len(term.Args))); err != nil {
 			return err
 		}
 
 		for _, arg := range term.Args {
-			if err := w.writeOperand(buf, &arg); err != nil {
+			if err := bw.writeOperand(buf, &arg); err != nil {
 				return err
 			}
 		}
 
 		if term.LhsOp != nil {
-			if err := w.writeUInt8(buf, uint8(1)); err != nil {
+			if err := bw.writeUInt8(buf, uint8(1)); err != nil {
 				return err
 			}
-			if err := w.writeOperand(buf, term.LhsOp); err != nil {
+			if err := bw.writeOperand(buf, term.LhsOp); err != nil {
 				return err
 			}
 		} else {
-			if err := w.writeUInt8(buf, uint8(0)); err != nil {
+			if err := bw.writeUInt8(buf, uint8(0)); err != nil {
 				return err
 			}
 		}
 
 		thenBBId := term.ThenBB.Id.Value()
-		if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&thenBBId)); err != nil {
+		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&thenBBId)); err != nil {
 			return err
 		}
 
@@ -489,125 +489,125 @@ func (w *BIRWriter) writeTerminator(buf *bytes.Buffer, term bir.BIRTerminator) e
 	return nil
 }
 
-func (w *BIRWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstruction) error {
+func (bw *BIRWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstruction) error {
 	switch instr := instr.(type) {
 	case *bir.Move:
-		if err := w.writeOperand(buf, instr.RhsOp); err != nil {
+		if err := bw.writeOperand(buf, instr.RhsOp); err != nil {
 			return err
 		}
-		return w.writeOperand(buf, instr.LhsOp)
+		return bw.writeOperand(buf, instr.LhsOp)
 	case *bir.BinaryOp:
-		if err := w.writeOperand(buf, &instr.RhsOp1); err != nil {
+		if err := bw.writeOperand(buf, &instr.RhsOp1); err != nil {
 			return err
 		}
-		if err := w.writeOperand(buf, &instr.RhsOp2); err != nil {
+		if err := bw.writeOperand(buf, &instr.RhsOp2); err != nil {
 			return err
 		}
-		return w.writeOperand(buf, instr.LhsOp)
+		return bw.writeOperand(buf, instr.LhsOp)
 	case *bir.UnaryOp:
-		if err := w.writeOperand(buf, instr.RhsOp); err != nil {
+		if err := bw.writeOperand(buf, instr.RhsOp); err != nil {
 			return err
 		}
-		return w.writeOperand(buf, instr.LhsOp)
+		return bw.writeOperand(buf, instr.LhsOp)
 	case *bir.ConstantLoad:
-		instrTypeCast, err := w.castToBType(instr.Type)
+		instrTypeCast, err := bw.castToBType(instr.Type)
 		if err != nil {
 			return err
 		}
-		if err := w.writeType(buf, instrTypeCast); err != nil {
+		if err := bw.writeType(buf, instrTypeCast); err != nil {
 			return err
 		}
-		if err := w.writeOperand(buf, instr.LhsOp); err != nil {
+		if err := bw.writeOperand(buf, instr.LhsOp); err != nil {
 			return err
 		}
 
 		switch model.TypeTags(instrTypeCast.BTypeGetTag()) {
 		case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
-			if err := w.writeInt32(buf, w.cp.AddIntegerCPEntry(instr.Value.(int64))); err != nil {
+			if err := bw.writeInt32(buf, bw.cp.AddIntegerCPEntry(instr.Value.(int64))); err != nil {
 				return err
 			}
 		case model.TypeTags_BYTE:
-			if err := w.writeInt32(buf, w.cp.AddByteCPEntry(instr.Value.(byte))); err != nil {
+			if err := bw.writeInt32(buf, bw.cp.AddByteCPEntry(instr.Value.(byte))); err != nil {
 				return err
 			}
 		case model.TypeTags_FLOAT:
-			if err := w.writeInt32(buf, w.cp.AddFloatCPEntry(instr.Value.(float64))); err != nil {
+			if err := bw.writeInt32(buf, bw.cp.AddFloatCPEntry(instr.Value.(float64))); err != nil {
 				return err
 			}
 		case model.TypeTags_STRING, model.TypeTags_CHAR_STRING, model.TypeTags_DECIMAL:
 			val := instr.Value.(string)
-			if err := w.writeInt32(buf, w.cp.AddStringCPEntry(&val)); err != nil {
+			if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(&val)); err != nil {
 				return err
 			}
 		case model.TypeTags_BOOLEAN:
-			if err := w.writeInt32(buf, w.cp.AddBooleanCPEntry(instr.Value.(bool))); err != nil {
+			if err := bw.writeInt32(buf, bw.cp.AddBooleanCPEntry(instr.Value.(bool))); err != nil {
 				return err
 			}
 		}
 
 	case *bir.FieldAccess:
-		// fmt.Println("Writing FieldAccess instruction")
+		panic("FieldAccess not implemented")
 	case *bir.NewArray:
-		// fmt.Println("Writing NewArray instruction")
+		panic("NewArray not implemented")
 	}
 	return nil
 }
 
-func (w *BIRWriter) writeOperand(buf *bytes.Buffer, op *bir.BIROperand) error {
+func (bw *BIRWriter) writeOperand(buf *bytes.Buffer, op *bir.BIROperand) error {
 	if op.VariableDcl.IgnoreVariable {
-		if err := w.writeBool(buf, true); err != nil {
+		if err := bw.writeBool(buf, true); err != nil {
 			return err
 		}
 
-		opType, err := w.castToBType(op.VariableDcl.Type)
+		opType, err := bw.castToBType(op.VariableDcl.Type)
 		if err != nil {
 			return err
 		}
-		return w.writeType(buf, opType)
+		return bw.writeType(buf, opType)
 	}
 
-	if err := w.writeBool(buf, false); err != nil {
+	if err := bw.writeBool(buf, false); err != nil {
 		return err
 	}
-	if err := w.writeUInt8(buf, uint8(op.VariableDcl.Kind)); err != nil {
+	if err := bw.writeUInt8(buf, uint8(op.VariableDcl.Kind)); err != nil {
 		return err
 	}
 
-	if err := w.writeUInt8(buf, uint8(op.VariableDcl.Scope)); err != nil {
+	if err := bw.writeUInt8(buf, uint8(op.VariableDcl.Scope)); err != nil {
 		return err
 	}
 
 	varName := op.VariableDcl.Name.Value()
-	nameIdx := w.cp.AddStringCPEntry(&varName)
+	nameIdx := bw.cp.AddStringCPEntry(&varName)
 
-	return w.writeInt32(buf, nameIdx)
+	return bw.writeInt32(buf, nameIdx)
 }
 
-func (w *BIRWriter) writeInt8(buf *bytes.Buffer, val int8) error {
+func (bw *BIRWriter) writeInt8(buf *bytes.Buffer, val int8) error {
 	return binary.Write(buf, binary.BigEndian, val)
 }
 
-func (w *BIRWriter) writeUInt8(buf *bytes.Buffer, val uint8) error {
+func (bw *BIRWriter) writeUInt8(buf *bytes.Buffer, val uint8) error {
 	return binary.Write(buf, binary.BigEndian, val)
 }
 
-func (w *BIRWriter) writeInt32(buf *bytes.Buffer, val int32) error {
+func (bw *BIRWriter) writeInt32(buf *bytes.Buffer, val int32) error {
 	return binary.Write(buf, binary.BigEndian, val)
 }
 
-func (w *BIRWriter) writeInt64(buf *bytes.Buffer, val int64) error {
+func (bw *BIRWriter) writeInt64(buf *bytes.Buffer, val int64) error {
 	return binary.Write(buf, binary.BigEndian, val)
 }
 
-func (w *BIRWriter) writeFloat64(buf *bytes.Buffer, val float64) error {
+func (bw *BIRWriter) writeFloat64(buf *bytes.Buffer, val float64) error {
 	return binary.Write(buf, binary.BigEndian, val)
 }
 
-func (w *BIRWriter) writeBool(buf *bytes.Buffer, val bool) error {
+func (bw *BIRWriter) writeBool(buf *bytes.Buffer, val bool) error {
 	return binary.Write(buf, binary.BigEndian, val)
 }
 
-func (w *BIRWriter) castToBType(t any) (ast.BType, error) {
+func (bw *BIRWriter) castToBType(t any) (ast.BType, error) {
 	bType, ok := t.(ast.BType)
 	if !ok {
 		return nil, fmt.Errorf("expected ast.BType, got %T", t)
