@@ -96,6 +96,7 @@ func testWriteReadRoundTrip(t *testing.T, birFile string) {
 	}
 
 	prettyPrinter := bir.PrettyPrinter{}
+	_ = prettyPrinter
 
 	transformFunctions := func(fns []bir.BIRFunction) []bir.BIRFunction {
 		var transformedFns []bir.BIRFunction
@@ -107,6 +108,7 @@ func testWriteReadRoundTrip(t *testing.T, birFile string) {
 				Origin:         f.Origin,
 				ReturnVariable: f.ReturnVariable,
 				LocalVars:      f.LocalVars,
+				BasicBlocks:    f.BasicBlocks,
 			})
 		}
 		return transformedFns
@@ -119,12 +121,16 @@ func testWriteReadRoundTrip(t *testing.T, birFile string) {
 		GlobalVars:    pkg.GlobalVars,
 		Functions:     transformFunctions(pkg.Functions),
 	}
+	_ = mPkg
 
-	orgPkgStr := prettyPrinter.Print(*mPkg)
+	orgPkgStr := prettyPrinter.Print(*pkg)
 	loadedOrgPkgStr := prettyPrinter.Print(*loadedPkg)
+	// //
+	_ = orgPkgStr
+	_ = loadedOrgPkgStr
 
 	fmt.Println(orgPkgStr)
-	fmt.Println("-----")
+	// fmt.Println("-----")
 	fmt.Println(loadedOrgPkgStr)
 
 	if orgPkgStr != loadedOrgPkgStr {
@@ -239,11 +245,9 @@ func testWriteReadRoundTrip(t *testing.T, birFile string) {
 			for rpi, rp := range fn.RequiredParams {
 				loadedRp := loadedFn.RequiredParams[rpi]
 				if rp.Name.Value() != loadedRp.Name.Value() {
-					t.Logf("Expected: %s, Got: %s", rp.Name.Value(), loadedRp.Name.Value())
 					t.Errorf("mismatch in required param name %d of function %d after round-trip for %s", rpi, i, birFile)
 				}
 				if rp.Flags != loadedRp.Flags {
-					t.Logf("Expected: %d, Got: %d", rp.Flags, loadedRp.Flags)
 					t.Errorf("mismatch in required param flags %d of function %d after round-trip for %s", rpi, i, birFile)
 				}
 			}
@@ -269,6 +273,47 @@ func testWriteReadRoundTrip(t *testing.T, birFile string) {
 				if fn.ReturnVariable.Name.Value() != loadedFn.ReturnVariable.Name.Value() {
 					t.Errorf("mismatch in return variable name of function %d after round-trip for %s", i, birFile)
 				}
+			}
+
+			for j, localVar := range fn.LocalVars {
+				loadedLocalVar := loadedFn.LocalVars[j]
+				if localVar.Kind != loadedLocalVar.Kind {
+					t.Errorf("mismatch in local variable kind %d of function %d after round-trip for %s", j, i, birFile)
+				}
+				if localVar.Name.Value() != loadedLocalVar.Name.Value() {
+					t.Errorf("mismatch in local variable name %d of function %d after round-trip for %s", j, i, birFile)
+				}
+
+				localVarType := localVar.Type.(ast.BType)
+				loadedLocalVarType := loadedLocalVar.Type.(ast.BType)
+
+				if localVarType.BTypeGetTag() != loadedLocalVarType.BTypeGetTag() {
+					t.Errorf("mismatch in local variable type tag %d of function %d after round-trip for %s", j, i, birFile)
+				}
+				if string(localVarType.BTypeGetName()) != string(loadedLocalVarType.BTypeGetName()) {
+					t.Errorf("mismatch in local variable type name %d of function %d after round-trip for %s", j, i, birFile)
+				}
+				if localVarType.BTypeGetFlags() != loadedLocalVarType.BTypeGetFlags() {
+					t.Errorf("mismatch in local variable type flags %d of function %d after round-trip for %s", j, i, birFile)
+				}
+
+				if localVar.MetaVarName != loadedLocalVar.MetaVarName {
+					t.Errorf("mismatch in local variable meta var name %d of function %d after round-trip for %s", j, i, birFile)
+				}
+			}
+
+			if len(fn.BasicBlocks) != len(loadedFn.BasicBlocks) {
+				t.Errorf("mismatch in number of basic blocks of function %d after round-trip for %s", i, birFile)
+			}
+
+			for k, bb := range fn.BasicBlocks {
+				loadedBb := loadedFn.BasicBlocks[k]
+				if bb.Id.Value() != loadedBb.Id.Value() {
+					t.Errorf("mismatch in basic block name %d of function %d after round-trip for %s", k, i, birFile)
+				}
+				// if len(bb.Instructions) != len(loadedBb.Instructions) {
+				// 	t.Errorf("mismatch in number of instructions in basic block %d of function %d after round-trip for %s", k, i, birFile)
+				// }
 			}
 		}
 	}

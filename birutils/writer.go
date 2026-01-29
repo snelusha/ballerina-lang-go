@@ -258,13 +258,11 @@ func (w *BIRWriter) writeFunction(buf *bytes.Buffer, fn *bir.BIRFunction) error 
 
 	// TODO: Type
 
-	fmt.Printf("[WRITER] REQUIRED PARAMS COUNT: %d IN FUNCTION: %s\n", len(fn.RequiredParams), name)
 	if err := binary.Write(buf, binary.BigEndian, int32(len(fn.RequiredParams))); err != nil {
 		return err
 	}
 	for _, requiredParam := range fn.RequiredParams {
 		name := requiredParam.Name.Value()
-		fmt.Printf("[WRITER] REQUIRED PARAM NAME: %s\n", name)
 		if err := binary.Write(buf, binary.BigEndian, w.cp.AddStringCPEntry(&name)); err != nil {
 			return err
 		}
@@ -272,7 +270,6 @@ func (w *BIRWriter) writeFunction(buf *bytes.Buffer, fn *bir.BIRFunction) error 
 			return err
 		}
 	}
-	fmt.Println()
 
 	birbuf := &bytes.Buffer{}
 
@@ -296,62 +293,167 @@ func (w *BIRWriter) writeFunction(buf *bytes.Buffer, fn *bir.BIRFunction) error 
 		}
 	}
 
-	// fmt.Printf("[WRITER] LOCAL VARS COUNT: %d\n", len(fn.LocalVars))
-	//
-	// if err := binary.Write(birbuf, binary.BigEndian, int32(len(fn.LocalVars))); err != nil {
-	// 	return err
-	// }
-	// for _, localVar := range fn.LocalVars {
-	// 	_ = localVar // To avoid unused variable error
+	if err := binary.Write(birbuf, binary.BigEndian, int32(len(fn.LocalVars))); err != nil {
+		return err
+	}
+	for _, localVar := range fn.LocalVars {
+		if err := binary.Write(birbuf, binary.BigEndian, localVar.Kind); err != nil {
+			return err
+		}
+		if err := w.writeType(birbuf, localVar.Type.(ast.BType)); err != nil {
+			return err
+		}
+		localVarName := localVar.Name.Value()
+		if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&localVarName)); err != nil {
+			return err
+		}
 
-	// if err := binary.Write(birbuf, binary.BigEndian, localVar.Kind); err != nil {
-	// 	return err
-	// }
-	// if err := w.writeType(birbuf, localVar.Type.(ast.BType)); err != nil {
-	// 	return err
-	// }
-	// localVarName := localVar.Name.Value()
-	// if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&localVarName)); err != nil {
-	// 	return err
-	// }
+		if localVar.Kind == bir.VAR_KIND_ARG {
+			if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&localVar.MetaVarName)); err != nil {
+				return err
+			}
+		}
 
-	// if localVar.Kind == bir.VAR_KIND_ARG {
-	// 	fmt.Printf("[WRITER] KIND ARG\n")
-	// 	if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&localVar.MetaVarName)); err != nil {
-	// 		return err
-	// 	}
-	// }
+		if localVar.Kind == bir.VAR_KIND_LOCAL {
+			if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&localVar.MetaVarName)); err != nil {
+				return err
+			}
 
-	// if localVar.Kind == bir.VAR_KIND_LOCAL {
-	//
-	// 	fmt.Printf("[WRITER] KIND LOCAL\n")
-	// 	if err := binary.Write(birbuf, binary.BigEndian, localVar.MetaVarName); err != nil {
-	// 		return err
-	// 	}
-	//
-	// 	if localVar.EndBB != nil {
-	// 		fmt.Printf("[WRITER] END BB NOT NIL\n")
-	// 		endBBId := localVar.EndBB.Id.Value()
-	// 		if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&endBBId)); err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	//
-	// 	if localVar.StartBB != nil {
-	// 		fmt.Printf("[WRITER] START BB NOT NIL\n")
-	// 		startBBId := localVar.StartBB.Id.Value()
-	// 		if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&startBBId)); err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	//
-	// 	fmt.Printf("[WRITER] INS OFFSET: %d\n", localVar.InsOffset)
-	//
-	// 	if err := binary.Write(birbuf, binary.BigEndian, int32(localVar.InsOffset)); err != nil {
-	// 		return err
-	// 	}
-	// }
-	// }
+			if localVar.EndBB != nil {
+				endBBId := localVar.EndBB.Id.Value()
+				if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&endBBId)); err != nil {
+					return err
+				}
+			} else {
+				endBBId := ""
+				if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&endBBId)); err != nil {
+					return err
+				}
+			}
+
+			if localVar.StartBB != nil {
+				startBBId := localVar.StartBB.Id.Value()
+				if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&startBBId)); err != nil {
+					return err
+				}
+			} else {
+				startBBId := ""
+				if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&startBBId)); err != nil {
+					return err
+				}
+			}
+
+			if err := binary.Write(birbuf, binary.BigEndian, int32(localVar.InsOffset)); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	// basic blocks
+	if err := binary.Write(birbuf, binary.BigEndian, int32(len(fn.BasicBlocks))); err != nil {
+		return err
+	}
+
+	for _, bb := range fn.BasicBlocks {
+		id := bb.Id.Value()
+		if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&id)); err != nil {
+			return err
+		}
+		// Adding the terminator instruction as well
+		if err := binary.Write(birbuf, binary.BigEndian, int32(len(bb.Instructions))); err != nil {
+			return err
+		}
+
+		for _, instr := range bb.Instructions {
+			if err := binary.Write(birbuf, binary.BigEndian, instr.GetKind()); err != nil {
+				return err
+			}
+			if err := w.writeInstruction(birbuf, instr); err != nil {
+				return err
+			}
+		}
+
+		if bb.Terminator == nil {
+			panic(fmt.Sprintf("Basic block without a terminator %s", bb.Id.Value()))
+		}
+
+		if err := binary.Write(birbuf, binary.BigEndian, bb.Terminator.GetKind()); err != nil {
+			return err
+		}
+		// FIXME: Write terminator
+
+		switch term := bb.Terminator.(type) {
+		case *bir.Goto:
+			fmt.Println("Writing GOTO")
+			id := term.ThenBB.Id.Value()
+			fmt.Println("	" + id)
+			if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&id)); err != nil {
+				return err
+			}
+		case *bir.Branch:
+			fmt.Println("Writing BRANCH")
+			if err := w.writeOperand(birbuf, term.Op); err != nil {
+				return err
+			}
+
+			trueId := term.TrueBB.Id.Value()
+			if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&trueId)); err != nil {
+				return err
+			}
+			falseId := term.FalseBB.Id.Value()
+			if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&falseId)); err != nil {
+				return err
+			}
+		case *bir.Call:
+			fmt.Println("Writing CALL")
+			if err := binary.Write(birbuf, binary.BigEndian, term.IsVirtual); err != nil {
+				return err
+			}
+			pkgIdx := w.cp.AddPackageCPEntry(term.CalleePkg)
+			if err := binary.Write(birbuf, binary.BigEndian, pkgIdx); err != nil {
+				return err
+			}
+			callName := term.Name.Value()
+			if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&callName)); err != nil {
+				return err
+			}
+
+			if err := binary.Write(birbuf, binary.BigEndian, int32(len(term.Args))); err != nil {
+				return err
+			}
+
+			for _, arg := range term.Args {
+				if err := w.writeOperand(birbuf, &arg); err != nil {
+					return err
+				}
+			}
+
+			if term.LhsOp != nil {
+				if err := binary.Write(birbuf, binary.BigEndian, uint8(1)); err != nil {
+					return err
+				}
+				if err := w.writeOperand(birbuf, term.LhsOp); err != nil {
+					return err
+				}
+			} else {
+				if err := binary.Write(birbuf, binary.BigEndian, uint8(0)); err != nil {
+					return err
+				}
+			}
+
+			thenBBId := term.ThenBB.Id.Value()
+			if err := binary.Write(birbuf, binary.BigEndian, w.cp.AddStringCPEntry(&thenBBId)); err != nil {
+				return err
+			}
+
+		case *bir.Return:
+			fmt.Println("Writing RETURN")
+		default:
+			fmt.Printf("Done with %T", bb.Terminator)
+			panic("yeah!")
+		}
+	}
 
 	if err := binary.Write(buf, binary.BigEndian, int64(birbuf.Len())); err != nil {
 		return err
@@ -359,4 +461,94 @@ func (w *BIRWriter) writeFunction(buf *bytes.Buffer, fn *bir.BIRFunction) error 
 	_, err := buf.Write(birbuf.Bytes())
 
 	return err
+}
+
+func (w *BIRWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstruction) error {
+	switch instr := instr.(type) {
+	case *bir.Move:
+		if err := w.writeOperand(buf, instr.RhsOp); err != nil {
+			return err
+		}
+		return w.writeOperand(buf, instr.LhsOp)
+	case *bir.BinaryOp:
+		if err := w.writeOperand(buf, &instr.RhsOp1); err != nil {
+			return err
+		}
+		if err := w.writeOperand(buf, &instr.RhsOp2); err != nil {
+			return err
+		}
+		return w.writeOperand(buf, instr.LhsOp)
+	case *bir.UnaryOp:
+		if err := w.writeOperand(buf, instr.RhsOp); err != nil {
+			return err
+		}
+		return w.writeOperand(buf, instr.LhsOp)
+	case *bir.ConstantLoad:
+		if err := w.writeType(buf, instr.Type.(ast.BType)); err != nil {
+			return err
+		}
+		if err := w.writeOperand(buf, instr.LhsOp); err != nil {
+			return err
+		}
+
+		instrType, ok := instr.Type.(ast.BType)
+		if !ok {
+			return fmt.Errorf("unsupported constant load type: %T", instr.Type)
+		}
+
+		switch model.TypeTags(instrType.BTypeGetTag()) {
+		case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
+			if err := binary.Write(buf, binary.BigEndian, w.cp.AddIntegerCPEntry(instr.Value.(int64))); err != nil {
+				return err
+			}
+		case model.TypeTags_BYTE:
+			if err := binary.Write(buf, binary.BigEndian, w.cp.AddByteCPEntry(instr.Value.(byte))); err != nil {
+				return err
+			}
+		case model.TypeTags_FLOAT:
+			if err := binary.Write(buf, binary.BigEndian, w.cp.AddFloatCPEntry(instr.Value.(float64))); err != nil {
+				return err
+			}
+		case model.TypeTags_STRING, model.TypeTags_CHAR_STRING, model.TypeTags_DECIMAL:
+			val := instr.Value.(string)
+			if err := binary.Write(buf, binary.BigEndian, w.cp.AddStringCPEntry(&val)); err != nil {
+				return err
+			}
+		case model.TypeTags_BOOLEAN:
+			if err := binary.Write(buf, binary.BigEndian, w.cp.AddBooleanCPEntry(instr.Value.(bool))); err != nil {
+				return err
+			}
+		}
+
+	case *bir.FieldAccess:
+		// fmt.Println("Writing FieldAccess instruction")
+	case *bir.NewArray:
+		// fmt.Println("Writing NewArray instruction")
+	}
+	return nil
+}
+
+func (w *BIRWriter) writeOperand(buf *bytes.Buffer, op *bir.BIROperand) error {
+	if op.VariableDcl.IgnoreVariable {
+		if err := binary.Write(buf, binary.BigEndian, true); err != nil {
+			return err
+		}
+		return w.writeType(buf, op.VariableDcl.Type.(ast.BType))
+	}
+
+	if err := binary.Write(buf, binary.BigEndian, false); err != nil {
+		return err
+	}
+	if err := binary.Write(buf, binary.BigEndian, op.VariableDcl.Kind); err != nil {
+		return err
+	}
+
+	if err := binary.Write(buf, binary.BigEndian, op.VariableDcl.Scope); err != nil {
+		return err
+	}
+
+	varName := op.VariableDcl.Name.Value()
+	nameIdx := w.cp.AddStringCPEntry(&varName)
+
+	return binary.Write(buf, binary.BigEndian, nameIdx)
 }
