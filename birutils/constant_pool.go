@@ -146,8 +146,6 @@ func (cp *ConstantPool) AddStringCPEntry(value *string) int32 {
 }
 
 func (cp *ConstantPool) AddPackageCPEntry(pkg *model.PackageID) int32 {
-	// TODO: Handle empty pkg
-
 	OrgName := pkg.OrgName.Value()
 	PkgName := pkg.PkgName.Value()
 	ModuleName := pkg.Name.Value()
@@ -166,8 +164,6 @@ func (cp *ConstantPool) AddByteCPEntry(value byte) int32 {
 }
 
 func (cp *ConstantPool) AddShapeCPEntry(shape ast.BType) int32 {
-	// Pre-add the name to the constant pool before adding the shape
-	// This ensures the CP doesn't grow during serialization
 	name := string(shape.BTypeGetName())
 	cp.AddStringCPEntry(&name)
 	return cp.AddEntry(&ShapeCPEntry{Shape: shape})
@@ -175,62 +171,62 @@ func (cp *ConstantPool) AddShapeCPEntry(shape ast.BType) int32 {
 
 func (cp *ConstantPool) WriteCPEntry(buf *bytes.Buffer, entry CPEntry) error {
 	entryType := entry.EntryType()
-	if err := binary.Write(buf, binary.BigEndian, int8(entryType)); err != nil {
+	if err := cp.writeInt8(buf, int8(entryType)); err != nil {
 		return err
 	}
 
 	switch e := entry.(type) {
 	case *IntegerCPEntry:
-		return binary.Write(buf, binary.BigEndian, e.Value)
+		return cp.writeInt64(buf, e.Value)
 	case *FloatCPEntry:
-		return binary.Write(buf, binary.BigEndian, e.Value)
+		return cp.writeFloat64(buf, e.Value)
 	case *BooleanCPEntry:
 		var b byte
 		if e.Value {
 			b = 1
 		}
-		return binary.Write(buf, binary.BigEndian, uint8(b))
+		return cp.writeUInt8(buf, uint8(b))
 	case *StringCPEntry:
 		if e.Value == nil {
-			return binary.Write(buf, binary.BigEndian, int32(-1))
+			return cp.writeInt32(buf, int32(-1))
 		}
 		strBytes := []byte(*e.Value)
-		if err := binary.Write(buf, binary.BigEndian, int32(len(strBytes))); err != nil {
+		if err := cp.writeInt32(buf, int32(len(strBytes))); err != nil {
 			return err
 		}
 		_, err := buf.Write(strBytes)
 		return err
 	case *ByteCPEntry:
-		return binary.Write(buf, binary.BigEndian, int32(e.Value))
+		return cp.writeInt32(buf, int32(e.Value))
 	case *PackageCPEntry:
-		if err := binary.Write(buf, binary.BigEndian, int32(e.OrgNameCPIndex)); err != nil {
+		if err := cp.writeInt32(buf, int32(e.OrgNameCPIndex)); err != nil {
 			return err
 		}
-		if err := binary.Write(buf, binary.BigEndian, int32(e.PkgNameCPIndex)); err != nil {
+		if err := cp.writeInt32(buf, int32(e.PkgNameCPIndex)); err != nil {
 			return err
 		}
-		if err := binary.Write(buf, binary.BigEndian, int32(e.ModuleNameCPIndex)); err != nil {
+		if err := cp.writeInt32(buf, int32(e.ModuleNameCPIndex)); err != nil {
 			return err
 		}
-		return binary.Write(buf, binary.BigEndian, int32(e.VersionCPIndex))
+		return cp.writeInt32(buf, int32(e.VersionCPIndex))
 	case *ShapeCPEntry:
 		// TODO: Move this serialization logic into BType
 		typeBuf := &bytes.Buffer{}
 
-		if err := binary.Write(typeBuf, binary.BigEndian, uint8(e.Shape.BTypeGetTag())); err != nil {
+		if err := cp.writeUInt8(typeBuf, uint8(e.Shape.BTypeGetTag())); err != nil {
 			return err
 		}
 
 		name := string(e.Shape.BTypeGetName())
-		if err := binary.Write(typeBuf, binary.BigEndian, cp.AddStringCPEntry(&name)); err != nil {
+		if err := cp.writeInt32(typeBuf, cp.AddStringCPEntry(&name)); err != nil {
 			return err
 		}
 
-		if err := binary.Write(typeBuf, binary.BigEndian, e.Shape.BTypeGetFlags()); err != nil {
+		if err := cp.writeUInt64(typeBuf, e.Shape.BTypeGetFlags()); err != nil {
 			return err
 		}
 
-		if err := binary.Write(buf, binary.BigEndian, int32(typeBuf.Len())); err != nil {
+		if err := cp.writeInt32(buf, int32(typeBuf.Len())); err != nil {
 			return err
 		}
 		_, err := buf.Write(typeBuf.Bytes())
@@ -243,7 +239,7 @@ func (cp *ConstantPool) WriteCPEntry(buf *bytes.Buffer, entry CPEntry) error {
 func (cp *ConstantPool) Serialize() ([]byte, error) {
 	buf := &bytes.Buffer{}
 
-	if err := binary.Write(buf, binary.BigEndian, int32(-1)); err != nil {
+	if err := cp.writeInt32(buf, int32(-1)); err != nil {
 		return nil, err
 	}
 
@@ -258,4 +254,28 @@ func (cp *ConstantPool) Serialize() ([]byte, error) {
 	binary.BigEndian.PutUint32(bytes[0:4], uint32(entryCount))
 
 	return bytes, nil
+}
+
+func (cp *ConstantPool) writeInt8(buf *bytes.Buffer, val int8) error {
+	return binary.Write(buf, binary.BigEndian, val)
+}
+
+func (cp *ConstantPool) writeUInt8(buf *bytes.Buffer, val uint8) error {
+	return binary.Write(buf, binary.BigEndian, val)
+}
+
+func (cp *ConstantPool) writeInt32(buf *bytes.Buffer, val int32) error {
+	return binary.Write(buf, binary.BigEndian, val)
+}
+
+func (cp *ConstantPool) writeInt64(buf *bytes.Buffer, val int64) error {
+	return binary.Write(buf, binary.BigEndian, val)
+}
+
+func (cp *ConstantPool) writeUInt64(buf *bytes.Buffer, val uint64) error {
+	return binary.Write(buf, binary.BigEndian, val)
+}
+
+func (cp *ConstantPool) writeFloat64(buf *bytes.Buffer, val float64) error {
+	return binary.Write(buf, binary.BigEndian, val)
 }
