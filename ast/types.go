@@ -47,16 +47,15 @@ type ObjectType interface {
 type BType interface {
 	model.Type
 	BTypeGetTag() model.TypeTags
-	BTypesetTag(tag model.TypeTags)
+	bTypeSetTag(tag model.TypeTags)
 	BTypeGetTSymbol() *BTypeSymbol
-	BTypeSetTSymbol(tsymbol *BTypeSymbol)
+	bTypeSetTSymbol(tsymbol *BTypeSymbol)
 	BTypeGetName() model.Name
-	BTypeSetName(name model.Name)
+	bTypeSetName(name model.Name)
 	BTypeGetFlags() uint64
-	BTypeSetFlags(flags uint64)
+	bTypeSetFlags(flags uint64)
 
-	// FIXME: Move ConstantPool out of bir package
-	// Serialize(cp *birutils.ConstantPool) ([]byte, error)
+	// TODO: Add serialize method later
 }
 
 type (
@@ -277,7 +276,7 @@ func (this *BObjectType) IsNullable() bool {
 	return false
 }
 
-func (this *BLangTypeBase) BTypesetTag(tag model.TypeTags) {
+func (this *BLangTypeBase) bTypeSetTag(tag model.TypeTags) {
 	this.tags = tag
 }
 
@@ -289,7 +288,7 @@ func (this *BLangTypeBase) BTypeGetTSymbol() *BTypeSymbol {
 	return this.tsymbol
 }
 
-func (this *BLangTypeBase) BTypeSetTSymbol(tsymbol *BTypeSymbol) {
+func (this *BLangTypeBase) bTypeSetTSymbol(tsymbol *BTypeSymbol) {
 	this.tsymbol = tsymbol
 }
 
@@ -297,7 +296,7 @@ func (this *BLangTypeBase) BTypeGetName() model.Name {
 	return this.name
 }
 
-func (this *BLangTypeBase) BTypeSetName(name model.Name) {
+func (this *BLangTypeBase) bTypeSetName(name model.Name) {
 	this.name = name
 }
 
@@ -305,13 +304,9 @@ func (this *BLangTypeBase) BTypeGetFlags() uint64 {
 	return this.flags
 }
 
-func (this *BLangTypeBase) BTypeSetFlags(flags uint64) {
+func (this *BLangTypeBase) bTypeSetFlags(flags uint64) {
 	this.flags = flags
 }
-
-// func (this *BLangTypeBase) Serialize(cp *birutils.ConstantPool) ([]byte, error) {
-// 	panic("BLangTypeBase.Serialize() not implemented")
-// }
 
 func NewBType(tag model.TypeTags, tsymbol *BTypeSymbol, name model.Name, flags uint64) BType {
 	return &BTypeImpl{
@@ -326,7 +321,7 @@ func (this *BTypeImpl) BTypeGetTag() model.TypeTags {
 	return this.tag
 }
 
-func (this *BTypeImpl) BTypesetTag(tag model.TypeTags) {
+func (this *BTypeImpl) bTypeSetTag(tag model.TypeTags) {
 	this.tag = tag
 }
 
@@ -334,7 +329,7 @@ func (this *BTypeImpl) BTypeGetTSymbol() *BTypeSymbol {
 	return this.tSymbol
 }
 
-func (this *BTypeImpl) BTypeSetTSymbol(tsymbol *BTypeSymbol) {
+func (this *BTypeImpl) bTypeSetTSymbol(tsymbol *BTypeSymbol) {
 	this.tSymbol = tsymbol
 }
 
@@ -342,7 +337,7 @@ func (this *BTypeImpl) BTypeGetName() model.Name {
 	return this.name
 }
 
-func (this *BTypeImpl) BTypeSetName(name model.Name) {
+func (this *BTypeImpl) bTypeSetName(name model.Name) {
 	this.name = name
 }
 
@@ -350,28 +345,9 @@ func (this *BTypeImpl) BTypeGetFlags() uint64 {
 	return this.flags
 }
 
-func (this *BTypeImpl) BTypeSetFlags(flags uint64) {
+func (this *BTypeImpl) bTypeSetFlags(flags uint64) {
 	this.flags = flags
 }
-
-// func (this *BTypeImpl) Serialize(cp *birutils.ConstantPool) ([]byte, error) {
-// 	buf := &bytes.Buffer{}
-//
-// 	if err := binary.Write(buf, binary.BigEndian, uint8(this.tag)); err != nil {
-// 		return nil, err
-// 	}
-//
-// 	name := string(this.name.Value())
-// 	if err := binary.Write(buf, binary.BigEndian, cp.AddStringCPEntry(&name)); err != nil {
-// 		return nil, err
-// 	}
-//
-// 	if err := binary.Write(buf, binary.BigEndian, int64(this.flags)); err != nil {
-// 		return nil, err
-// 	}
-//
-// 	return buf.Bytes(), nil
-// }
 
 func (this *BTypeImpl) GetTypeKind() model.TypeKind {
 	return typeTagToTypeKind(this.tag)
