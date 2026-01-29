@@ -72,6 +72,9 @@ func (br *BIRReader) readPackage() (*bir.BIRPackage, error) {
 	}
 
 	functions, err := br.readFunctions()
+	if err != nil {
+		return nil, fmt.Errorf("reading functions: %w", err)
+	}
 
 	return &bir.BIRPackage{
 		PackageID:     pkgID,

@@ -137,13 +137,21 @@ func (w *BIRWriter) writeConstant(buf *bytes.Buffer, constant *bir.BIRConstant) 
 		return err
 	}
 
-	err := w.writeType(buf, constant.Type.(ast.BType))
+	constantType, err := w.castToBType(constant.Type)
+	if err != nil {
+		return err
+	}
+	err = w.writeType(buf, constantType)
 	if err != nil {
 		return err
 	}
 
 	birbuf := &bytes.Buffer{}
-	err = w.writeType(birbuf, constant.ConstValue.Type.(ast.BType))
+	constValueType, err := w.castToBType(constant.ConstValue.Type)
+	if err != nil {
+		return err
+	}
+	err = w.writeType(birbuf, constValueType)
 	if err != nil {
 		return err
 	}
@@ -165,9 +173,9 @@ func (w *BIRWriter) writeType(buf *bytes.Buffer, t ast.BType) error {
 }
 
 func (w *BIRWriter) writeConstValue(buf *bytes.Buffer, cv *bir.ConstValue) error {
-	bType, ok := cv.Type.(ast.BType)
-	if !ok {
-		return fmt.Errorf("unsupported const value type: %T", cv.Type)
+	bType, err := w.castToBType(cv.Type)
+	if err != nil {
+		return err
 	}
 	switch model.TypeTags(bType.BTypeGetTag()) {
 	case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
@@ -217,7 +225,11 @@ func (w *BIRWriter) writeGlobalVars(buf *bytes.Buffer) error {
 			return err
 		}
 
-		w.writeType(buf, gv.Type.(ast.BType))
+		gvType, err := w.castToBType(gv.Type)
+		if err != nil {
+			return err
+		}
+		w.writeType(buf, gvType)
 	}
 
 	return nil
@@ -281,7 +293,12 @@ func (w *BIRWriter) writeFunction(buf *bytes.Buffer, fn *bir.BIRFunction) error 
 		if err := w.writeUInt8(birbuf, uint8(fn.ReturnVariable.Kind)); err != nil {
 			return err
 		}
-		err := w.writeType(birbuf, fn.ReturnVariable.Type.(ast.BType))
+
+		retVarType, err := w.castToBType(fn.ReturnVariable.Type)
+		if err != nil {
+			return err
+		}
+		err = w.writeType(birbuf, retVarType)
 		if err != nil {
 			return err
 		}
@@ -322,7 +339,12 @@ func (w *BIRWriter) writeLocalVar(buf *bytes.Buffer, localVar *bir.BIRVariableDc
 	if err := w.writeUInt8(buf, uint8(localVar.Kind)); err != nil {
 		return err
 	}
-	if err := w.writeType(buf, localVar.Type.(ast.BType)); err != nil {
+
+	localVarType, err := w.castToBType(localVar.Type)
+	if err != nil {
+		return err
+	}
+	if err := w.writeType(buf, localVarType); err != nil {
 		return err
 	}
 	localVarName := localVar.Name.Value()
@@ -488,19 +510,18 @@ func (w *BIRWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstruction
 		}
 		return w.writeOperand(buf, instr.LhsOp)
 	case *bir.ConstantLoad:
-		if err := w.writeType(buf, instr.Type.(ast.BType)); err != nil {
+		instrTypeCast, err := w.castToBType(instr.Type)
+		if err != nil {
+			return err
+		}
+		if err := w.writeType(buf, instrTypeCast); err != nil {
 			return err
 		}
 		if err := w.writeOperand(buf, instr.LhsOp); err != nil {
 			return err
 		}
 
-		instrType, ok := instr.Type.(ast.BType)
-		if !ok {
-			return fmt.Errorf("unsupported constant load type: %T", instr.Type)
-		}
-
-		switch model.TypeTags(instrType.BTypeGetTag()) {
+		switch model.TypeTags(instrTypeCast.BTypeGetTag()) {
 		case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
 			if err := w.writeInt32(buf, w.cp.AddIntegerCPEntry(instr.Value.(int64))); err != nil {
 				return err
@@ -537,7 +558,12 @@ func (w *BIRWriter) writeOperand(buf *bytes.Buffer, op *bir.BIROperand) error {
 		if err := w.writeBool(buf, true); err != nil {
 			return err
 		}
-		return w.writeType(buf, op.VariableDcl.Type.(ast.BType))
+
+		opType, err := w.castToBType(op.VariableDcl.Type)
+		if err != nil {
+			return err
+		}
+		return w.writeType(buf, opType)
 	}
 
 	if err := w.writeBool(buf, false); err != nil {
@@ -579,4 +605,12 @@ func (w *BIRWriter) writeFloat64(buf *bytes.Buffer, val float64) error {
 
 func (w *BIRWriter) writeBool(buf *bytes.Buffer, val bool) error {
 	return binary.Write(buf, binary.BigEndian, val)
+}
+
+func (w *BIRWriter) castToBType(t any) (ast.BType, error) {
+	bType, ok := t.(ast.BType)
+	if !ok {
+		return nil, fmt.Errorf("expected ast.BType, got %T", t)
+	}
+	return bType, nil
 }
