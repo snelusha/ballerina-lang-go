@@ -36,7 +36,7 @@ type (
 		Value bool
 	}
 	StringCPEntry struct {
-		Value *string
+		Value string
 	}
 	ByteCPEntry struct {
 		Value byte
@@ -94,7 +94,7 @@ func (cp *ConstantPool) EntryKey(entry CPEntry) string {
 	case *BooleanCPEntry:
 		return fmt.Sprintf("bool:%v", e.Value)
 	case *StringCPEntry:
-		return fmt.Sprintf("str:%s", *e.Value)
+		return fmt.Sprintf("str:%s", e.Value)
 	case *PackageCPEntry:
 		return fmt.Sprintf("pkg:%d:%d:%d:%d", e.OrgNameCPIndex, e.PkgNameCPIndex, e.ModuleNameCPIndex, e.VersionCPIndex)
 	case *ByteCPEntry:
@@ -141,21 +141,16 @@ func (cp *ConstantPool) AddBooleanCPEntry(value bool) int32 {
 	return cp.AddEntry(&BooleanCPEntry{Value: value})
 }
 
-func (cp *ConstantPool) AddStringCPEntry(value *string) int32 {
+func (cp *ConstantPool) AddStringCPEntry(value string) int32 {
 	return cp.AddEntry(&StringCPEntry{Value: value})
 }
 
 func (cp *ConstantPool) AddPackageCPEntry(pkg *model.PackageID) int32 {
-	OrgName := pkg.OrgName.Value()
-	PkgName := pkg.PkgName.Value()
-	ModuleName := pkg.Name.Value()
-	Version := pkg.Version.Value()
-
 	return cp.AddEntry(&PackageCPEntry{
-		OrgNameCPIndex:    cp.AddStringCPEntry(&OrgName),
-		PkgNameCPIndex:    cp.AddStringCPEntry(&PkgName),
-		ModuleNameCPIndex: cp.AddStringCPEntry(&ModuleName),
-		VersionCPIndex:    cp.AddStringCPEntry(&Version),
+		OrgNameCPIndex:    cp.AddStringCPEntry(pkg.OrgName.Value()),
+		PkgNameCPIndex:    cp.AddStringCPEntry(pkg.PkgName.Value()),
+		ModuleNameCPIndex: cp.AddStringCPEntry(pkg.Name.Value()),
+		VersionCPIndex:    cp.AddStringCPEntry(pkg.Version.Value()),
 	})
 }
 
@@ -165,7 +160,7 @@ func (cp *ConstantPool) AddByteCPEntry(value byte) int32 {
 
 func (cp *ConstantPool) AddShapeCPEntry(shape ast.BType) int32 {
 	name := string(shape.BTypeGetName())
-	cp.AddStringCPEntry(&name)
+	cp.AddStringCPEntry(name)
 	return cp.AddEntry(&ShapeCPEntry{Shape: shape})
 }
 
@@ -187,10 +182,7 @@ func (cp *ConstantPool) WriteCPEntry(buf *bytes.Buffer, entry CPEntry) error {
 		}
 		return cp.writeUInt8(buf, uint8(b))
 	case *StringCPEntry:
-		if e.Value == nil {
-			return cp.writeInt32(buf, int32(-1))
-		}
-		strBytes := []byte(*e.Value)
+		strBytes := []byte(e.Value)
 		if err := cp.writeInt32(buf, int32(len(strBytes))); err != nil {
 			return err
 		}
@@ -210,7 +202,6 @@ func (cp *ConstantPool) WriteCPEntry(buf *bytes.Buffer, entry CPEntry) error {
 		}
 		return cp.writeInt32(buf, int32(e.VersionCPIndex))
 	case *ShapeCPEntry:
-		// TODO: Move this serialization logic into BType
 		typeBuf := &bytes.Buffer{}
 
 		if err := cp.writeUInt8(typeBuf, uint8(e.Shape.BTypeGetTag())); err != nil {
@@ -218,7 +209,7 @@ func (cp *ConstantPool) WriteCPEntry(buf *bytes.Buffer, entry CPEntry) error {
 		}
 
 		name := string(e.Shape.BTypeGetName())
-		if err := cp.writeInt32(typeBuf, cp.AddStringCPEntry(&name)); err != nil {
+		if err := cp.writeInt32(typeBuf, cp.AddStringCPEntry(name)); err != nil {
 			return err
 		}
 
