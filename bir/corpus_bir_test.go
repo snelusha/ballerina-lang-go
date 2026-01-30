@@ -14,16 +14,19 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package bir
+package bir_test
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"ballerina-lang-go/ast"
+	"ballerina-lang-go/bir"
+	"ballerina-lang-go/birutils"
 	debugcommon "ballerina-lang-go/common"
 	"ballerina-lang-go/context"
 	"ballerina-lang-go/parser"
@@ -138,7 +141,7 @@ func testBIRPackageLoading(t *testing.T, birFile string, baseDir string) {
 	}
 	defer file.Close()
 	cx := context.NewCompilerContext()
-	pkg, err := LoadBIRPackageFromReader(cx, file)
+	pkg, err := bir.LoadBIRPackageFromReader(cx, file)
 	if err != nil {
 		t.Errorf("error loading BIR package from %s: %v", birFile, err)
 		return
@@ -150,7 +153,7 @@ func testBIRPackageLoading(t *testing.T, birFile string, baseDir string) {
 	}
 
 	// Convert to text using PrettyPrinter
-	prettyPrinter := PrettyPrinter{}
+	prettyPrinter := bir.PrettyPrinter{}
 	actualText := prettyPrinter.Print(*pkg)
 
 	// Generate expected file path
@@ -324,7 +327,7 @@ func testBIRGeneration(t *testing.T, balFile string) {
 	pkg := ast.ToPackage(compilationUnit)
 
 	// Step 4: Generate BIR package
-	birPkg := GenBir(cx, pkg)
+	birPkg := bir.GenBir(cx, pkg)
 
 	// Validate result
 	if birPkg == nil {
@@ -333,8 +336,24 @@ func testBIRGeneration(t *testing.T, balFile string) {
 	}
 
 	// Pretty print BIR output
-	prettyPrinter := PrettyPrinter{}
+	prettyPrinter := bir.PrettyPrinter{}
 	actualBIR := prettyPrinter.Print(*birPkg)
+
+	writer := birutils.NewBIRWriter(birPkg)
+	serializedPkg, err := writer.Serialize()
+	if err != nil {
+		t.Errorf("error serializing BIR package from %s: %v", balFile, err)
+		return
+	}
+
+	reader := birutils.NewBIRReader(serializedPkg)
+	reLoadedPkg, err := reader.LoadBIRPackage()
+	if err != nil {
+		t.Errorf("error loading BIR package from %s: %v", balFile, err)
+		return
+	}
+
+	reLoadedPkgText := prettyPrinter.Print(*reLoadedPkg)
 
 	// If update flag is set, check if update is needed and update if necessary
 	expectedPath := expectedBIRPath(balFile)
@@ -347,6 +366,12 @@ func testBIRGeneration(t *testing.T, balFile string) {
 
 	// Read expected BIR text file
 	expectedText := getExpectedBIRText(t, balFile)
+
+	if actualBIR != reLoadedPkgText {
+		diff := getBIRDiff(reLoadedPkgText, actualBIR)
+		fmt.Println(diff)
+		return
+	}
 
 	// Compare BIR text strings exactly
 	if actualBIR != expectedText {
