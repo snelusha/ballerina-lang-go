@@ -31,7 +31,11 @@ func (bw *BIRWriter) Serialize() ([]byte, error) {
 	birbuf := &bytes.Buffer{}
 
 	// Write the package details
-	if err := bw.writeInt32(birbuf, bw.cp.AddPackageCPEntry(bw.pkg.PackageID)); err != nil {
+	pkgIDIdx := int32(-1)
+	if bw.pkg.PackageID != nil {
+		pkgIDIdx = bw.cp.AddPackageCPEntry(bw.pkg.PackageID)
+	}
+	if err := bw.writeInt32(birbuf, pkgIDIdx); err != nil {
 		return nil, err
 	}
 
@@ -162,38 +166,134 @@ func (bw *BIRWriter) writeConstant(buf *bytes.Buffer, constant *bir.BIRConstant)
 }
 
 func (bw *BIRWriter) writeType(buf *bytes.Buffer, t ast.BType) error {
+	if t == nil {
+		return bw.writeInt32(buf, -1)
+	}
 	idx := bw.cp.AddShapeCPEntry(t)
 	return bw.writeInt32(buf, idx)
 }
 
 func (bw *BIRWriter) writeConstValue(buf *bytes.Buffer, cv *bir.ConstValue) error {
-	bType, err := bw.castToBType(cv.Type)
+	var tag model.TypeTags
+	bType, _ := bw.castToBType(cv.Type)
+	if bType != nil {
+		tag = model.TypeTags(bType.BTypeGetTag())
+	} else {
+		var err error
+		tag, err = bw.inferTag(cv.Value)
+		if err != nil {
+			return err
+		}
+	}
+
+	valIdx, err := bw.addValueToCP(tag, cv.Value)
 	if err != nil {
 		return err
 	}
-	switch model.TypeTags(bType.BTypeGetTag()) {
-	case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
-		if err := bw.writeInt32(buf, bw.cp.AddIntegerCPEntry(cv.Value.(int64))); err != nil {
-			return err
+	return bw.writeInt32(buf, valIdx)
+}
+
+func (bw *BIRWriter) inferTag(value any) (model.TypeTags, error) {
+	switch v := value.(type) {
+	case bir.ConstValue:
+		if v.Type != nil {
+			bType, _ := bw.castToBType(v.Type)
+			if bType != nil {
+				return model.TypeTags(bType.BTypeGetTag()), nil
+			}
 		}
-	case model.TypeTags_BYTE:
-		if err := bw.writeInt32(buf, bw.cp.AddByteCPEntry(cv.Value.(byte))); err != nil {
-			return err
-		}
-	case model.TypeTags_FLOAT:
-		if err := bw.writeInt32(buf, bw.cp.AddFloatCPEntry(cv.Value.(float64))); err != nil {
-			return err
-		}
-	case model.TypeTags_STRING, model.TypeTags_CHAR_STRING, model.TypeTags_DECIMAL:
-		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(*cv.Value.(*string))); err != nil {
-			return err
-		}
-	case model.TypeTags_BOOLEAN:
-		if err := bw.writeInt32(buf, bw.cp.AddBooleanCPEntry(cv.Value.(bool))); err != nil {
-			return err
-		}
+		return bw.inferTag(v.Value)
+	case int, int64, int32, int16, int8:
+		return model.TypeTags_INT, nil
+	case float64, float32:
+		return model.TypeTags_FLOAT, nil
+	case string, *string:
+		return model.TypeTags_STRING, nil
+	case bool:
+		return model.TypeTags_BOOLEAN, nil
+	case byte:
+		return model.TypeTags_BYTE, nil
+	case nil:
+		return model.TypeTags_NIL, nil
+	default:
+		return 0, fmt.Errorf("cannot infer tag for value %v (%T)", value, value)
 	}
-	return nil
+}
+
+func (bw *BIRWriter) addValueToCP(tag model.TypeTags, value any) (int32, error) {
+	if cv, ok := value.(bir.ConstValue); ok {
+		return bw.addValueToCP(tag, cv.Value)
+	}
+
+	switch tag {
+	case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
+		var val int64
+		switch v := value.(type) {
+		case int64:
+			val = v
+		case int:
+			val = int64(v)
+		case int32:
+			val = int64(v)
+		case int16:
+			val = int64(v)
+		case int8:
+			val = int64(v)
+		default:
+			return 0, fmt.Errorf("expected integer for tag %v, got %T", tag, value)
+		}
+		return bw.cp.AddIntegerCPEntry(val), nil
+	case model.TypeTags_BYTE:
+		var val byte
+		switch v := value.(type) {
+		case byte:
+			val = v
+		case int:
+			val = byte(v)
+		case int32:
+			val = byte(v)
+		default:
+			return 0, fmt.Errorf("expected byte for tag %v, got %T", tag, value)
+		}
+		return bw.cp.AddByteCPEntry(val), nil
+	case model.TypeTags_FLOAT:
+		var val float64
+		switch v := value.(type) {
+		case float64:
+			val = v
+		case float32:
+			val = float64(v)
+		default:
+			return 0, fmt.Errorf("expected float for tag %v, got %T", tag, value)
+		}
+		return bw.cp.AddFloatCPEntry(val), nil
+	case model.TypeTags_STRING, model.TypeTags_CHAR_STRING, model.TypeTags_DECIMAL:
+		var val string
+		switch v := value.(type) {
+		case string:
+			val = v
+		case *string:
+			if v != nil {
+				val = *v
+			} else {
+				val = ""
+			}
+		default:
+			return 0, fmt.Errorf("expected string for tag %v, got %T", tag, value)
+		}
+		return bw.cp.AddStringCPEntry(val), nil
+	case model.TypeTags_BOOLEAN:
+		var val bool
+		switch v := value.(type) {
+		case bool:
+			val = v
+		default:
+			return 0, fmt.Errorf("expected boolean for tag %v, got %T", tag, value)
+		}
+		return bw.cp.AddBooleanCPEntry(val), nil
+	default:
+		return 0, fmt.Errorf("unsupported tag for constant value: %v", tag)
+	}
 }
 
 func (bw *BIRWriter) writeGlobalVars(buf *bytes.Buffer) error {
@@ -427,7 +527,10 @@ func (bw *BIRWriter) writeTerminator(buf *bytes.Buffer, term bir.BIRTerminator) 
 		if err := bw.writeBool(buf, term.IsVirtual); err != nil {
 			return err
 		}
-		pkgIdx := bw.cp.AddPackageCPEntry(term.CalleePkg)
+		pkgIdx := int32(-1)
+		if term.CalleePkg != nil {
+			pkgIdx = bw.cp.AddPackageCPEntry(term.CalleePkg)
+		}
 		if err := bw.writeInt32(buf, pkgIdx); err != nil {
 			return err
 		}
@@ -491,10 +594,7 @@ func (bw *BIRWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstructio
 		}
 		return bw.writeOperand(buf, instr.LhsOp)
 	case *bir.ConstantLoad:
-		instrTypeCast, err := bw.castToBType(instr.Type)
-		if err != nil {
-			return err
-		}
+		instrTypeCast, _ := bw.castToBType(instr.Type)
 		if err := bw.writeType(buf, instrTypeCast); err != nil {
 			return err
 		}
@@ -502,28 +602,23 @@ func (bw *BIRWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstructio
 			return err
 		}
 
-		switch model.TypeTags(instrTypeCast.BTypeGetTag()) {
-		case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
-			if err := bw.writeInt32(buf, bw.cp.AddIntegerCPEntry(instr.Value.(int64))); err != nil {
+		var tag model.TypeTags
+		if instrTypeCast != nil {
+			tag = model.TypeTags(instrTypeCast.BTypeGetTag())
+		} else {
+			var err error
+			tag, err = bw.inferTag(instr.Value)
+			if err != nil {
 				return err
 			}
-		case model.TypeTags_BYTE:
-			if err := bw.writeInt32(buf, bw.cp.AddByteCPEntry(instr.Value.(byte))); err != nil {
-				return err
-			}
-		case model.TypeTags_FLOAT:
-			if err := bw.writeInt32(buf, bw.cp.AddFloatCPEntry(instr.Value.(float64))); err != nil {
-				return err
-			}
-		case model.TypeTags_STRING, model.TypeTags_CHAR_STRING, model.TypeTags_DECIMAL:
-			val := instr.Value.(string)
-			if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(val)); err != nil {
-				return err
-			}
-		case model.TypeTags_BOOLEAN:
-			if err := bw.writeInt32(buf, bw.cp.AddBooleanCPEntry(instr.Value.(bool))); err != nil {
-				return err
-			}
+		}
+
+		valIdx, err := bw.addValueToCP(tag, instr.Value)
+		if err != nil {
+			return err
+		}
+		if err := bw.writeInt32(buf, valIdx); err != nil {
+			return err
 		}
 
 	case *bir.FieldAccess:
@@ -535,6 +630,20 @@ func (bw *BIRWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstructio
 }
 
 func (bw *BIRWriter) writeOperand(buf *bytes.Buffer, op *bir.BIROperand) error {
+	if op == nil || op.VariableDcl == nil {
+		// Should not happen based on current bir-gen, but let's be safe
+		if err := bw.writeBool(buf, false); err != nil {
+			return err
+		}
+		if err := bw.writeUInt8(buf, uint8(bir.VAR_KIND_TEMP)); err != nil {
+			return err
+		}
+		if err := bw.writeUInt8(buf, uint8(bir.VAR_SCOPE_FUNCTION)); err != nil {
+			return err
+		}
+		return bw.writeInt32(buf, bw.cp.AddStringCPEntry(""))
+	}
+
 	if op.VariableDcl.IgnoreVariable {
 		if err := bw.writeBool(buf, true); err != nil {
 			return err
@@ -587,6 +696,9 @@ func (bw *BIRWriter) writeBool(buf *bytes.Buffer, val bool) error {
 }
 
 func (bw *BIRWriter) castToBType(t any) (ast.BType, error) {
+	if t == nil {
+		return nil, nil
+	}
 	bType, ok := t.(ast.BType)
 	if !ok {
 		return nil, fmt.Errorf("expected ast.BType, got %T", t)
