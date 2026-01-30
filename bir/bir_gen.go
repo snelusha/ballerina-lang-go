@@ -159,6 +159,7 @@ func TransformImportModule(ctx *Context, ast ast.BLangImportPackage) *BIRImportM
 		PackageID: &model.PackageID{
 			OrgName: &orgName,
 			PkgName: &pkgName,
+			Name:    &pkgName,
 			Version: &version,
 		},
 	}
