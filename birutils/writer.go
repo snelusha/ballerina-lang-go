@@ -601,19 +601,29 @@ func (bw *BIRWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstructio
 			return err
 		}
 
+		isWrapped := false
+		var tagValue any = instr.Value
+		if cv, ok := instr.Value.(bir.ConstValue); ok {
+			isWrapped = true
+			tagValue = cv.Value
+		}
+
 		var tag model.TypeTags
 		if instrTypeCast != nil {
 			tag = model.TypeTags(instrTypeCast.BTypeGetTag())
 		} else {
 			var err error
-			tag, err = bw.inferTag(instr.Value)
+			tag, err = bw.inferTag(tagValue)
 			if err != nil {
 				return err
 			}
 		}
 
-		valIdx, err := bw.addValueToCP(tag, instr.Value)
+		valIdx, err := bw.addValueToCP(tag, tagValue)
 		if err != nil {
+			return err
+		}
+		if err := bw.writeBool(buf, isWrapped); err != nil {
 			return err
 		}
 		if err := bw.writeInt32(buf, valIdx); err != nil {
@@ -621,7 +631,8 @@ func (bw *BIRWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstructio
 		}
 
 	case *bir.FieldAccess:
-		panic("FieldAccess not implemented")
+		// panic("FieldAccess not implemented")
+		return fmt.Errorf("FieldAccess not implemented")
 	case *bir.NewArray:
 		panic("NewArray not implemented")
 	}

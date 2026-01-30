@@ -889,53 +889,42 @@ func (br *BIRReader) readInstruction() (bir.BIRInstruction, error) {
 			return nil, err
 		}
 
+		isWrapped, err := br.readBool()
+		if err != nil {
+			return nil, err
+		}
+
+		valueIdx, err := br.readInt32()
+		if err != nil {
+			return nil, err
+		}
+
 		var value any
 		if constLoadType != nil {
 			switch constLoadType.BTypeGetTag() {
 			case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
-				valueIdx, err := br.readInt32()
-				if err != nil {
-					return nil, err
-				}
 				value = br.getIntegerFromCP(int(valueIdx))
 			case model.TypeTags_BYTE:
-				valueIdx, err := br.readInt32()
-				if err != nil {
-					return nil, err
-				}
 				value = br.getByteFromCP(int(valueIdx))
 			case model.TypeTags_FLOAT:
-				valueIdx, err := br.readInt32()
-				if err != nil {
-					return nil, err
-				}
 				value = br.getFloatFromCP(int(valueIdx))
 			case model.TypeTags_STRING, model.TypeTags_CHAR_STRING, model.TypeTags_DECIMAL:
-				valueIdx, err := br.readInt32()
-				if err != nil {
-					return nil, err
-				}
 				value = br.getStringFromCP(int(valueIdx))
 			case model.TypeTags_BOOLEAN:
-				valueIdx, err := br.readInt32()
-				if err != nil {
-					return nil, err
-				}
 				value = br.getBooleanFromCP(int(valueIdx))
 			default:
-				valueIdx, err := br.readInt32()
-				if err != nil {
-					return nil, err
-				}
 				value = br.cp[int(valueIdx)]
 			}
 		} else {
 			// Type info missing, read from CP and infer
-			valueIdx, err := br.readInt32()
-			if err != nil {
-				return nil, err
-			}
 			value = br.cp[int(valueIdx)]
+		}
+
+		if isWrapped {
+			value = bir.ConstValue{
+				Type:  nil,
+				Value: value,
+			}
 		}
 
 		return &bir.ConstantLoad{
