@@ -14,6 +14,7 @@ type BIRReader struct {
 	r      *bytes.Reader
 	cp     []any
 	varMap map[string]*bir.BIRVariableDcl
+	bbMap  map[string]*bir.BIRBasicBlock
 }
 
 func NewBIRReader(data []byte) *BIRReader {
@@ -612,6 +613,8 @@ func (br *BIRReader) readFunction() (*bir.BIRFunction, error) {
 	}
 
 	br.varMap = make(map[string]*bir.BIRVariableDcl)
+	br.bbMap = make(map[string]*bir.BIRBasicBlock)
+
 	hasReturnVar, err := br.readBool()
 	if err != nil {
 		return nil, err
@@ -667,6 +670,45 @@ func (br *BIRReader) readFunction() (*bir.BIRFunction, error) {
 			return nil, err
 		}
 		basicBlocks[j] = *block
+		br.bbMap[block.Id.Value()] = &basicBlocks[j]
+	}
+
+	// Fix up pointers
+	for j := range basicBlocks {
+		bb := &basicBlocks[j]
+		if bb.Terminator != nil {
+			switch t := bb.Terminator.(type) {
+			case *bir.Goto:
+				if target, ok := br.bbMap[t.ThenBB.Id.Value()]; ok {
+					t.ThenBB = target
+				}
+			case *bir.Branch:
+				if target, ok := br.bbMap[t.TrueBB.Id.Value()]; ok {
+					t.TrueBB = target
+				}
+				if target, ok := br.bbMap[t.FalseBB.Id.Value()]; ok {
+					t.FalseBB = target
+				}
+			case *bir.Call:
+				if target, ok := br.bbMap[t.ThenBB.Id.Value()]; ok {
+					t.ThenBB = target
+				}
+			}
+		}
+	}
+
+	for j := range localVars {
+		lv := &localVars[j]
+		if lv.StartBB != nil {
+			if target, ok := br.bbMap[lv.StartBB.Id.Value()]; ok {
+				lv.StartBB = target
+			}
+		}
+		if lv.EndBB != nil {
+			if target, ok := br.bbMap[lv.EndBB.Id.Value()]; ok {
+				lv.EndBB = target
+			}
+		}
 	}
 
 	return &bir.BIRFunction{
@@ -913,6 +955,11 @@ func (br *BIRReader) readTerminator() (bir.BIRTerminator, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if terminatorKind == 0 {
+		return nil, nil
+	}
+
 	termInstructionKind := bir.InstructionKind(terminatorKind)
 
 	switch termInstructionKind {
