@@ -631,10 +631,31 @@ func (bw *BIRWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstructio
 		}
 
 	case *bir.FieldAccess:
-		// panic("FieldAccess not implemented")
-		return fmt.Errorf("FieldAccess not implemented")
+		// TODO: MAP_LOAD and ARRAY_LOAD
+		if err := bw.writeOperand(buf, instr.LhsOp); err != nil {
+			return err
+		}
+		if err := bw.writeOperand(buf, instr.KeyOp); err != nil {
+			return err
+		}
+		if err := bw.writeOperand(buf, instr.RhsOp); err != nil {
+			return err
+		}
 	case *bir.NewArray:
-		panic("NewArray not implemented")
+		arrayType, err := bw.castToBType(instr.Type)
+		if err != nil {
+			return err
+		}
+		if err := bw.writeType(buf, arrayType); err != nil {
+			return err
+		}
+
+		if err := bw.writeOperand(buf, instr.LhsOp); err != nil {
+			return err
+		}
+		if err := bw.writeOperand(buf, instr.SizeOp); err != nil {
+			return err
+		}
 	}
 	return nil
 }

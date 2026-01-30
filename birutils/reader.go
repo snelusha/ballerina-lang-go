@@ -303,19 +303,18 @@ func (r *BIRReader) getTypeFromCP(index int) ast.BType {
 	return nil
 }
 
-func (r *BIRReader) getIntegerFromCP(index int) int64 {
+func (r *BIRReader) getIntegerFromCP(index int) any {
 	if index < 0 || index >= len(r.cp) {
-		return 0
+		return int64(0)
 	}
-	switch v := r.cp[index].(type) {
-	case int64:
-		return v
-	case int32:
-		return int64(v)
-	case int:
-		return int64(v)
+	v := r.cp[index]
+	if val, ok := v.(int64); ok {
+		if val == -1 {
+			return int(-1)
+		}
+		return val
 	}
-	return 0
+	return v
 }
 
 func (r *BIRReader) getByteFromCP(index int) uint8 {
@@ -917,7 +916,7 @@ func (br *BIRReader) readInstruction() (bir.BIRInstruction, error) {
 			}
 		} else {
 			// Type info missing, read from CP and infer
-			value = br.cp[int(valueIdx)]
+			value = br.getIntegerFromCP(int(valueIdx))
 		}
 
 		if isWrapped {
@@ -933,6 +932,49 @@ func (br *BIRReader) readInstruction() (bir.BIRInstruction, error) {
 			},
 			Type:  constLoadType,
 			Value: value,
+		}, nil
+	case bir.INSTRUCTION_KIND_MAP_STORE, bir.INSTRUCTION_KIND_MAP_LOAD, bir.INSTRUCTION_KIND_ARRAY_STORE, bir.INSTRUCTION_KIND_ARRAY_LOAD:
+		lhsOp, err := br.readOperand()
+		if err != nil {
+			return nil, err
+		}
+		keyOp, err := br.readOperand()
+		if err != nil {
+			return nil, err
+		}
+		rhsOp, err := br.readOperand()
+		if err != nil {
+			return nil, err
+		}
+		return &bir.FieldAccess{
+			BIRInstructionBase: bir.BIRInstructionBase{
+				LhsOp: lhsOp,
+			},
+			Kind:  instructionKind,
+			KeyOp: keyOp,
+			RhsOp: rhsOp,
+		}, nil
+	case bir.INSTRUCTION_KIND_NEW_ARRAY:
+		typeIdx, err := br.readInt32()
+		if err != nil {
+			return nil, err
+		}
+		t := br.getTypeFromCP(int(typeIdx))
+
+		lhsOp, err := br.readOperand()
+		if err != nil {
+			return nil, err
+		}
+		sizeOp, err := br.readOperand()
+		if err != nil {
+			return nil, err
+		}
+		return &bir.NewArray{
+			BIRInstructionBase: bir.BIRInstructionBase{
+				LhsOp: lhsOp,
+			},
+			Type:   t,
+			SizeOp: sizeOp,
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported instruction kind: %d", instructionKind)

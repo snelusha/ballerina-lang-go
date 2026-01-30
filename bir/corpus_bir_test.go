@@ -286,10 +286,10 @@ func testBIRGeneration(t *testing.T, balFile string) {
 		t.Skipf("Skipping %s", balFile)
 		return
 	}
-	if strings.HasSuffix(balFile, "assign8-v.bal") {
-		t.Skipf("Skipping %s due to known issue with FieldAccess", balFile)
-		return
-	}
+	// if strings.HasSuffix(balFile, "assign8-v.bal") {
+	// 	t.Skipf("Skipping %s due to known issue with FieldAccess", balFile)
+	// 	return
+	// }
 
 	// Catch panics during BIR generation
 	defer func() {
