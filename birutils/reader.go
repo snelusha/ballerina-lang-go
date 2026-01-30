@@ -11,8 +11,9 @@ import (
 )
 
 type BIRReader struct {
-	r  *bytes.Reader
-	cp []any
+	r      *bytes.Reader
+	cp     []any
+	varMap map[string]*bir.BIRVariableDcl
 }
 
 func NewBIRReader(data []byte) *BIRReader {
@@ -260,8 +261,7 @@ func (br *BIRReader) readConstantPoolEntry(tag int8, i int) error {
 
 		t := ast.NewBType(model.TypeTags(tag), nil, name, uint64(flags))
 
-		// FIXME: Revisit this
-		br.cp[i] = *t.(*ast.BTypeImpl)
+		br.cp[i] = t
 	default:
 		return fmt.Errorf("unknown CP tag: %d", tag)
 	}
@@ -290,11 +290,14 @@ func (r *BIRReader) getPackageFromCP(index int) *model.PackageID {
 }
 
 func (r *BIRReader) getTypeFromCP(index int) ast.BType {
+	if index == -1 {
+		return nil
+	}
 	if index < 0 || index >= len(r.cp) {
 		return nil
 	}
-	if t, ok := r.cp[index].(ast.BTypeImpl); ok {
-		return &t
+	if t, ok := r.cp[index].(ast.BType); ok {
+		return t
 	}
 	return nil
 }
@@ -303,8 +306,13 @@ func (r *BIRReader) getIntegerFromCP(index int) int64 {
 	if index < 0 || index >= len(r.cp) {
 		return 0
 	}
-	if val, ok := r.cp[index].(int64); ok {
-		return val
+	switch v := r.cp[index].(type) {
+	case int64:
+		return v
+	case int32:
+		return int64(v)
+	case int:
+		return int64(v)
 	}
 	return 0
 }
@@ -313,8 +321,13 @@ func (r *BIRReader) getByteFromCP(index int) uint8 {
 	if index < 0 || index >= len(r.cp) {
 		return 0
 	}
-	if val, ok := r.cp[index].(uint8); ok {
-		return val
+	switch v := r.cp[index].(type) {
+	case uint8:
+		return v
+	case int32:
+		return uint8(v)
+	case int:
+		return uint8(v)
 	}
 	return 0
 }
@@ -323,8 +336,11 @@ func (r *BIRReader) getFloatFromCP(index int) float64 {
 	if index < 0 || index >= len(r.cp) {
 		return 0
 	}
-	if val, ok := r.cp[index].(float64); ok {
-		return val
+	switch v := r.cp[index].(type) {
+	case float64:
+		return v
+	case float32:
+		return float64(v)
 	}
 	return 0
 }
@@ -432,16 +448,35 @@ func (br *BIRReader) readConstants() ([]bir.BIRConstant, error) {
 		}
 
 		cv := br.getTypeFromCP(int(cTypeIdx))
-		switch model.TypeTags(cv.BTypeGetTag()) {
-		case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
+		var value any
+		if cv != nil {
+			switch model.TypeTags(cv.BTypeGetTag()) {
+			case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
+				valueIdx, err := br.readInt32()
+				if err != nil {
+					return nil, err
+				}
+				value = br.getIntegerFromCP(int(valueIdx))
+			default:
+				// Fallback for other types if they ever appear in constants
+				valueIdx, err := br.readInt32()
+				if err != nil {
+					return nil, err
+				}
+				value = br.cp[int(valueIdx)]
+			}
+		} else {
+			// Type is nil, read value from CP directly
 			valueIdx, err := br.readInt32()
 			if err != nil {
 				return nil, err
 			}
-			constant.ConstValue = bir.ConstValue{
-				Type:  cv,
-				Value: br.getIntegerFromCP(int(valueIdx)),
-			}
+			value = br.cp[int(valueIdx)]
+		}
+
+		constant.ConstValue = bir.ConstValue{
+			Type:  cv,
+			Value: value,
 		}
 
 		constants[i] = constant
@@ -576,6 +611,7 @@ func (br *BIRReader) readFunction() (*bir.BIRFunction, error) {
 		return nil, err
 	}
 
+	br.varMap = make(map[string]*bir.BIRVariableDcl)
 	hasReturnVar, err := br.readBool()
 	if err != nil {
 		return nil, err
@@ -604,6 +640,7 @@ func (br *BIRReader) readFunction() (*bir.BIRFunction, error) {
 			Name: returnVarName,
 			Type: returnVarType,
 		}
+		br.varMap[returnVarName.Value()] = returnVar
 	}
 
 	localVarCount, err := br.readInt32()
@@ -701,6 +738,7 @@ func (br *BIRReader) readLocalVar() (*bir.BIRVariableDcl, error) {
 		}
 		localVar.InsOffset = int(insOffset)
 	}
+	br.varMap[name.Value()] = localVar
 	return localVar, nil
 }
 
@@ -810,37 +848,52 @@ func (br *BIRReader) readInstruction() (bir.BIRInstruction, error) {
 		}
 
 		var value any
-		switch constLoadType.BTypeGetTag() {
-		case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
+		if constLoadType != nil {
+			switch constLoadType.BTypeGetTag() {
+			case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
+				valueIdx, err := br.readInt32()
+				if err != nil {
+					return nil, err
+				}
+				value = br.getIntegerFromCP(int(valueIdx))
+			case model.TypeTags_BYTE:
+				valueIdx, err := br.readInt32()
+				if err != nil {
+					return nil, err
+				}
+				value = br.getByteFromCP(int(valueIdx))
+			case model.TypeTags_FLOAT:
+				valueIdx, err := br.readInt32()
+				if err != nil {
+					return nil, err
+				}
+				value = br.getFloatFromCP(int(valueIdx))
+			case model.TypeTags_STRING, model.TypeTags_CHAR_STRING, model.TypeTags_DECIMAL:
+				valueIdx, err := br.readInt32()
+				if err != nil {
+					return nil, err
+				}
+				value = br.getStringFromCP(int(valueIdx))
+			case model.TypeTags_BOOLEAN:
+				valueIdx, err := br.readInt32()
+				if err != nil {
+					return nil, err
+				}
+				value = br.getBooleanFromCP(int(valueIdx))
+			default:
+				valueIdx, err := br.readInt32()
+				if err != nil {
+					return nil, err
+				}
+				value = br.cp[int(valueIdx)]
+			}
+		} else {
+			// Type info missing, read from CP and infer
 			valueIdx, err := br.readInt32()
 			if err != nil {
 				return nil, err
 			}
-			value = br.getIntegerFromCP(int(valueIdx))
-		case model.TypeTags_BYTE:
-			valueIdx, err := br.readInt32()
-			if err != nil {
-				return nil, err
-			}
-			value = br.getByteFromCP(int(valueIdx))
-		case model.TypeTags_FLOAT:
-			valueIdx, err := br.readInt32()
-			if err != nil {
-				return nil, err
-			}
-			value = br.getFloatFromCP(int(valueIdx))
-		case model.TypeTags_STRING, model.TypeTags_CHAR_STRING, model.TypeTags_DECIMAL:
-			valueIdx, err := br.readInt32()
-			if err != nil {
-				return nil, err
-			}
-			value = br.getStringFromCP(int(valueIdx))
-		case model.TypeTags_BOOLEAN:
-			valueIdx, err := br.readInt32()
-			if err != nil {
-				return nil, err
-			}
-			value = br.getBooleanFromCP(int(valueIdx))
+			value = br.cp[int(valueIdx)]
 		}
 
 		return &bir.ConstantLoad{
@@ -1012,11 +1065,17 @@ func (br *BIRReader) readOperand() (*bir.BIROperand, error) {
 	}
 	name := model.Name(br.getStringFromCP(int(nameIdx)))
 
-	return &bir.BIROperand{
-		VariableDcl: &bir.BIRVariableDcl{
+	varDcl, ok := br.varMap[name.Value()]
+	if !ok {
+		varDcl = &bir.BIRVariableDcl{
 			Kind:  bir.VarKind(varKind),
 			Scope: bir.VarScope(scope),
 			Name:  name,
-		},
+		}
+		// Don't put in map yet, as it might be a global or just a reference we haven't seen the formal decl for
+	}
+
+	return &bir.BIROperand{
+		VariableDcl: varDcl,
 	}, nil
 }
