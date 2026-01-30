@@ -493,9 +493,8 @@ func (bw *BIRWriter) writeBasicBlock(buf *bytes.Buffer, bb *bir.BIRBasicBlock) e
 	}
 
 	if bb.Terminator == nil {
-		panic(fmt.Sprintf("Basic block without a terminator %s", bb.Id.Value()))
+		return bw.writeUInt8(buf, 0)
 	}
-
 	if err := bw.writeUInt8(buf, uint8(bb.Terminator.GetKind())); err != nil {
 		return err
 	}
