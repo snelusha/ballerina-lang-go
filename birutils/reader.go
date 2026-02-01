@@ -449,30 +449,12 @@ func (br *BIRReader) readConstants() ([]bir.BIRConstant, error) {
 
 		cv := br.getTypeFromCP(int(cTypeIdx))
 		var value any
-		if cv != nil {
-			switch model.TypeTags(cv.BTypeGetTag()) {
-			case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
-				valueIdx, err := br.readInt32()
-				if err != nil {
-					return nil, err
-				}
-				value = br.getIntegerFromCP(int(valueIdx))
-			default:
-				// Fallback for other types if they ever appear in constants
-				valueIdx, err := br.readInt32()
-				if err != nil {
-					return nil, err
-				}
-				value = br.cp[int(valueIdx)]
-			}
-		} else {
-			// Type is nil, read value from CP directly
-			valueIdx, err := br.readInt32()
-			if err != nil {
-				return nil, err
-			}
-			value = br.cp[int(valueIdx)]
+		// Type is nil, read value from CP directly
+		valueIdx, err := br.readInt32()
+		if err != nil {
+			return nil, err
 		}
+		value = br.cp[int(valueIdx)]
 
 		constant.ConstValue = bir.ConstValue{
 			Type:  cv,
@@ -899,25 +881,8 @@ func (br *BIRReader) readInstruction() (bir.BIRInstruction, error) {
 		}
 
 		var value any
-		if constLoadType != nil {
-			switch constLoadType.BTypeGetTag() {
-			case model.TypeTags_INT, model.TypeTags_SIGNED32_INT, model.TypeTags_SIGNED16_INT, model.TypeTags_SIGNED8_INT, model.TypeTags_UNSIGNED32_INT, model.TypeTags_UNSIGNED16_INT, model.TypeTags_UNSIGNED8_INT:
-				value = br.getIntegerFromCP(int(valueIdx))
-			case model.TypeTags_BYTE:
-				value = br.getByteFromCP(int(valueIdx))
-			case model.TypeTags_FLOAT:
-				value = br.getFloatFromCP(int(valueIdx))
-			case model.TypeTags_STRING, model.TypeTags_CHAR_STRING, model.TypeTags_DECIMAL:
-				value = br.getStringFromCP(int(valueIdx))
-			case model.TypeTags_BOOLEAN:
-				value = br.getBooleanFromCP(int(valueIdx))
-			default:
-				value = br.cp[int(valueIdx)]
-			}
-		} else {
-			// Type info missing, read from CP and infer
-			value = br.getIntegerFromCP(int(valueIdx))
-		}
+		// Type info missing, read from CP and infer
+		value = br.getIntegerFromCP(int(valueIdx))
 
 		if isWrapped {
 			value = bir.ConstValue{

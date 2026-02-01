@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"ballerina-lang-go/ast"
 	"ballerina-lang-go/bir"
 	"ballerina-lang-go/model"
 )
@@ -135,21 +134,13 @@ func (bw *BIRWriter) writeConstant(buf *bytes.Buffer, constant *bir.BIRConstant)
 		return err
 	}
 
-	constantType, err := bw.castToBType(constant.Type)
-	if err != nil {
-		return err
-	}
-	err = bw.writeType(buf, constantType)
+	err := bw.writeType(buf, constant.Type)
 	if err != nil {
 		return err
 	}
 
 	birbuf := &bytes.Buffer{}
-	constValueType, err := bw.castToBType(constant.ConstValue.Type)
-	if err != nil {
-		return err
-	}
-	err = bw.writeType(birbuf, constValueType)
+	err = bw.writeType(birbuf, constant.ConstValue.Type)
 	if err != nil {
 		return err
 	}
@@ -165,25 +156,14 @@ func (bw *BIRWriter) writeConstant(buf *bytes.Buffer, constant *bir.BIRConstant)
 	return err
 }
 
-func (bw *BIRWriter) writeType(buf *bytes.Buffer, t ast.BType) error {
-	if t == nil {
-		return bw.writeInt32(buf, -1)
-	}
-	idx := bw.cp.AddShapeCPEntry(t)
-	return bw.writeInt32(buf, idx)
+func (bw *BIRWriter) writeType(buf *bytes.Buffer, t any) error {
+	return bw.writeInt32(buf, -1)
 }
 
 func (bw *BIRWriter) writeConstValue(buf *bytes.Buffer, cv *bir.ConstValue) error {
-	var tag model.TypeTags
-	bType, _ := bw.castToBType(cv.Type)
-	if bType != nil {
-		tag = model.TypeTags(bType.BTypeGetTag())
-	} else {
-		var err error
-		tag, err = bw.inferTag(cv.Value)
-		if err != nil {
-			return err
-		}
+	tag, err := bw.inferTag(cv.Value)
+	if err != nil {
+		return err
 	}
 
 	valIdx, err := bw.addValueToCP(tag, cv.Value)
@@ -196,12 +176,6 @@ func (bw *BIRWriter) writeConstValue(buf *bytes.Buffer, cv *bir.ConstValue) erro
 func (bw *BIRWriter) inferTag(value any) (model.TypeTags, error) {
 	switch v := value.(type) {
 	case bir.ConstValue:
-		if v.Type != nil {
-			bType, _ := bw.castToBType(v.Type)
-			if bType != nil {
-				return model.TypeTags(bType.BTypeGetTag()), nil
-			}
-		}
 		return bw.inferTag(v.Value)
 	case int, int64, int32, int16, int8:
 		return model.TypeTags_INT, nil
@@ -318,11 +292,7 @@ func (bw *BIRWriter) writeGlobalVars(buf *bytes.Buffer) error {
 			return err
 		}
 
-		gvType, err := bw.castToBType(gv.Type)
-		if err != nil {
-			return err
-		}
-		bw.writeType(buf, gvType)
+		bw.writeType(buf, gv.Type)
 	}
 
 	return nil
@@ -384,11 +354,7 @@ func (bw *BIRWriter) writeFunction(buf *bytes.Buffer, fn *bir.BIRFunction) error
 			return err
 		}
 
-		retVarType, err := bw.castToBType(fn.ReturnVariable.Type)
-		if err != nil {
-			return err
-		}
-		err = bw.writeType(birbuf, retVarType)
+		err := bw.writeType(birbuf, fn.ReturnVariable.Type)
 		if err != nil {
 			return err
 		}
@@ -429,11 +395,7 @@ func (bw *BIRWriter) writeLocalVar(buf *bytes.Buffer, localVar *bir.BIRVariableD
 		return err
 	}
 
-	localVarType, err := bw.castToBType(localVar.Type)
-	if err != nil {
-		return err
-	}
-	if err := bw.writeType(buf, localVarType); err != nil {
+	if err := bw.writeType(buf, localVar.Type); err != nil {
 		return err
 	}
 	if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(localVar.Name.Value())); err != nil {
@@ -593,8 +555,7 @@ func (bw *BIRWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstructio
 		}
 		return bw.writeOperand(buf, instr.LhsOp)
 	case *bir.ConstantLoad:
-		instrTypeCast, _ := bw.castToBType(instr.Type)
-		if err := bw.writeType(buf, instrTypeCast); err != nil {
+		if err := bw.writeType(buf, instr.Type); err != nil {
 			return err
 		}
 		if err := bw.writeOperand(buf, instr.LhsOp); err != nil {
@@ -608,15 +569,9 @@ func (bw *BIRWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstructio
 			tagValue = cv.Value
 		}
 
-		var tag model.TypeTags
-		if instrTypeCast != nil {
-			tag = model.TypeTags(instrTypeCast.BTypeGetTag())
-		} else {
-			var err error
-			tag, err = bw.inferTag(tagValue)
-			if err != nil {
-				return err
-			}
+		tag, err := bw.inferTag(tagValue)
+		if err != nil {
+			return err
 		}
 
 		valIdx, err := bw.addValueToCP(tag, tagValue)
@@ -642,11 +597,7 @@ func (bw *BIRWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstructio
 			return err
 		}
 	case *bir.NewArray:
-		arrayType, err := bw.castToBType(instr.Type)
-		if err != nil {
-			return err
-		}
-		if err := bw.writeType(buf, arrayType); err != nil {
+		if err := bw.writeType(buf, instr.Type); err != nil {
 			return err
 		}
 
@@ -680,11 +631,7 @@ func (bw *BIRWriter) writeOperand(buf *bytes.Buffer, op *bir.BIROperand) error {
 			return err
 		}
 
-		opType, err := bw.castToBType(op.VariableDcl.Type)
-		if err != nil {
-			return err
-		}
-		return bw.writeType(buf, opType)
+		return bw.writeType(buf, op.VariableDcl.Type)
 	}
 
 	if err := bw.writeBool(buf, false); err != nil {
@@ -724,15 +671,4 @@ func (bw *BIRWriter) writeFloat64(buf *bytes.Buffer, val float64) error {
 
 func (bw *BIRWriter) writeBool(buf *bytes.Buffer, val bool) error {
 	return binary.Write(buf, binary.BigEndian, val)
-}
-
-func (bw *BIRWriter) castToBType(t any) (ast.BType, error) {
-	if t == nil {
-		return nil, nil
-	}
-	bType, ok := t.(ast.BType)
-	if !ok {
-		return nil, fmt.Errorf("expected ast.BType, got %T", t)
-	}
-	return bType, nil
 }
