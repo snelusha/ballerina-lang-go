@@ -881,8 +881,13 @@ func (br *BIRReader) readInstruction() (bir.BIRInstruction, error) {
 		}
 
 		var value any
-		// Type info missing, read from CP and infer
-		value = br.getIntegerFromCP(int(valueIdx))
+		// Check if this is a NIL value (index -1)
+		if valueIdx == -1 {
+			value = nil
+		} else {
+			// Type info missing, read from CP and infer
+			value = br.getIntegerFromCP(int(valueIdx))
+		}
 
 		if isWrapped {
 			value = bir.ConstValue{

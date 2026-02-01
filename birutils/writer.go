@@ -265,7 +265,12 @@ func (bw *BIRWriter) addValueToCP(tag model.TypeTags, value any) (int32, error) 
 			return 0, fmt.Errorf("expected boolean for tag %v, got %T", tag, value)
 		}
 		return bw.cp.AddBooleanCPEntry(val), nil
+	case model.TypeTags_NIL:
+		// NIL values don't need to be added to the constant pool
+		// Return -1 as the index for nil values
+		return -1, nil
 	default:
+		fmt.Println("Unsupported tag:", tag)
 		return 0, fmt.Errorf("unsupported tag for constant value: %v", tag)
 	}
 }
