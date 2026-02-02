@@ -1,4 +1,4 @@
-package birutils
+package birserializer
 
 import (
 	"bytes"
@@ -11,19 +11,23 @@ import (
 )
 
 type BIRReader struct {
-	r      *bytes.Reader
-	cp     []any
-	varMap map[string]*bir.BIRVariableDcl
-	bbMap  map[string]*bir.BIRBasicBlock
+	r  *bytes.Reader
+	cp []any
 }
 
-func NewBIRReader(data []byte) *BIRReader {
-	return &BIRReader{
-		r: bytes.NewReader(data),
-	}
+func NewBIRReader() *BIRReader {
+	return &BIRReader{}
 }
 
-func (br *BIRReader) LoadBIRPackage() (*bir.BIRPackage, error) {
+func Unmarshal(data []byte) (*bir.BIRPackage, error) {
+	return NewBIRReader().deserialize(data)
+}
+
+func (br *BIRReader) deserialize(data []byte) (*bir.BIRPackage, error) {
+	// Initialize reader state for reuse
+	br.r = bytes.NewReader(data)
+	br.cp = nil
+
 	return br.readPackage()
 }
 
@@ -593,8 +597,9 @@ func (br *BIRReader) readFunction() (*bir.BIRFunction, error) {
 		return nil, err
 	}
 
-	br.varMap = make(map[string]*bir.BIRVariableDcl)
-	br.bbMap = make(map[string]*bir.BIRBasicBlock)
+	// Create local maps for variable and basic block lookups
+	varMap := make(map[string]*bir.BIRVariableDcl)
+	bbMap := make(map[string]*bir.BIRBasicBlock)
 
 	hasReturnVar, err := br.readBool()
 	if err != nil {
@@ -624,7 +629,7 @@ func (br *BIRReader) readFunction() (*bir.BIRFunction, error) {
 			Name: returnVarName,
 			Type: returnVarType,
 		}
-		br.varMap[returnVarName.Value()] = returnVar
+		varMap[returnVarName.Value()] = returnVar
 	}
 
 	localVarCount, err := br.readInt32()
@@ -633,7 +638,7 @@ func (br *BIRReader) readFunction() (*bir.BIRFunction, error) {
 	}
 	localVars := make([]bir.BIRVariableDcl, localVarCount)
 	for j := 0; j < int(localVarCount); j++ {
-		localVar, err := br.readLocalVar()
+		localVar, err := br.readLocalVar(varMap)
 		if err != nil {
 			return nil, err
 		}
@@ -646,12 +651,12 @@ func (br *BIRReader) readFunction() (*bir.BIRFunction, error) {
 	}
 	basicBlocks := make([]bir.BIRBasicBlock, basicBlockCount)
 	for j := 0; j < int(basicBlockCount); j++ {
-		block, err := br.readBasicBlock()
+		block, err := br.readBasicBlock(varMap)
 		if err != nil {
 			return nil, err
 		}
 		basicBlocks[j] = *block
-		br.bbMap[block.Id.Value()] = &basicBlocks[j]
+		bbMap[block.Id.Value()] = &basicBlocks[j]
 	}
 
 	// Fix up pointers
@@ -660,18 +665,18 @@ func (br *BIRReader) readFunction() (*bir.BIRFunction, error) {
 		if bb.Terminator != nil {
 			switch t := bb.Terminator.(type) {
 			case *bir.Goto:
-				if target, ok := br.bbMap[t.ThenBB.Id.Value()]; ok {
+				if target, ok := bbMap[t.ThenBB.Id.Value()]; ok {
 					t.ThenBB = target
 				}
 			case *bir.Branch:
-				if target, ok := br.bbMap[t.TrueBB.Id.Value()]; ok {
+				if target, ok := bbMap[t.TrueBB.Id.Value()]; ok {
 					t.TrueBB = target
 				}
-				if target, ok := br.bbMap[t.FalseBB.Id.Value()]; ok {
+				if target, ok := bbMap[t.FalseBB.Id.Value()]; ok {
 					t.FalseBB = target
 				}
 			case *bir.Call:
-				if target, ok := br.bbMap[t.ThenBB.Id.Value()]; ok {
+				if target, ok := bbMap[t.ThenBB.Id.Value()]; ok {
 					t.ThenBB = target
 				}
 			}
@@ -681,12 +686,12 @@ func (br *BIRReader) readFunction() (*bir.BIRFunction, error) {
 	for j := range localVars {
 		lv := &localVars[j]
 		if lv.StartBB != nil {
-			if target, ok := br.bbMap[lv.StartBB.Id.Value()]; ok {
+			if target, ok := bbMap[lv.StartBB.Id.Value()]; ok {
 				lv.StartBB = target
 			}
 		}
 		if lv.EndBB != nil {
-			if target, ok := br.bbMap[lv.EndBB.Id.Value()]; ok {
+			if target, ok := bbMap[lv.EndBB.Id.Value()]; ok {
 				lv.EndBB = target
 			}
 		}
@@ -705,7 +710,7 @@ func (br *BIRReader) readFunction() (*bir.BIRFunction, error) {
 	}, nil
 }
 
-func (br *BIRReader) readLocalVar() (*bir.BIRVariableDcl, error) {
+func (br *BIRReader) readLocalVar(varMap map[string]*bir.BIRVariableDcl) (*bir.BIRVariableDcl, error) {
 	kind, err := br.readUInt8()
 	if err != nil {
 		return nil, err
@@ -761,11 +766,11 @@ func (br *BIRReader) readLocalVar() (*bir.BIRVariableDcl, error) {
 		}
 		localVar.InsOffset = int(insOffset)
 	}
-	br.varMap[name.Value()] = localVar
+	varMap[name.Value()] = localVar
 	return localVar, nil
 }
 
-func (br *BIRReader) readBasicBlock() (*bir.BIRBasicBlock, error) {
+func (br *BIRReader) readBasicBlock(varMap map[string]*bir.BIRVariableDcl) (*bir.BIRBasicBlock, error) {
 	idIdx, err := br.readInt32()
 	if err != nil {
 		return nil, err
@@ -779,14 +784,14 @@ func (br *BIRReader) readBasicBlock() (*bir.BIRBasicBlock, error) {
 
 	instructions := make([]bir.BIRInstruction, instructionCount)
 	for k := 0; k < int(instructionCount); k++ {
-		ins, err := br.readInstruction()
+		ins, err := br.readInstruction(varMap)
 		if err != nil {
 			return nil, err
 		}
 		instructions[k] = ins
 	}
 
-	term, err := br.readTerminator()
+	term, err := br.readTerminator(varMap)
 	if err != nil {
 		return nil, err
 	}
@@ -798,7 +803,7 @@ func (br *BIRReader) readBasicBlock() (*bir.BIRBasicBlock, error) {
 	}, nil
 }
 
-func (br *BIRReader) readInstruction() (bir.BIRInstruction, error) {
+func (br *BIRReader) readInstruction(varMap map[string]*bir.BIRVariableDcl) (bir.BIRInstruction, error) {
 	insKind, err := br.readUInt8()
 	if err != nil {
 		return nil, err
@@ -807,11 +812,11 @@ func (br *BIRReader) readInstruction() (bir.BIRInstruction, error) {
 
 	switch instructionKind {
 	case bir.INSTRUCTION_KIND_MOVE:
-		rhsOp, err := br.readOperand()
+		rhsOp, err := br.readOperand(varMap)
 		if err != nil {
 			return nil, err
 		}
-		lhsOp, err := br.readOperand()
+		lhsOp, err := br.readOperand(varMap)
 		if err != nil {
 			return nil, err
 		}
@@ -822,15 +827,15 @@ func (br *BIRReader) readInstruction() (bir.BIRInstruction, error) {
 			RhsOp: rhsOp,
 		}, nil
 	case bir.INSTRUCTION_KIND_ADD, bir.INSTRUCTION_KIND_SUB, bir.INSTRUCTION_KIND_MUL, bir.INSTRUCTION_KIND_DIV, bir.INSTRUCTION_KIND_MOD, bir.INSTRUCTION_KIND_EQUAL, bir.INSTRUCTION_KIND_NOT_EQUAL, bir.INSTRUCTION_KIND_GREATER_THAN, bir.INSTRUCTION_KIND_GREATER_EQUAL, bir.INSTRUCTION_KIND_LESS_THAN, bir.INSTRUCTION_KIND_LESS_EQUAL, bir.INSTRUCTION_KIND_AND, bir.INSTRUCTION_KIND_OR, bir.INSTRUCTION_KIND_REF_EQUAL, bir.INSTRUCTION_KIND_REF_NOT_EQUAL, bir.INSTRUCTION_KIND_CLOSED_RANGE, bir.INSTRUCTION_KIND_HALF_OPEN_RANGE, bir.INSTRUCTION_KIND_ANNOT_ACCESS, bir.INSTRUCTION_KIND_BITWISE_AND, bir.INSTRUCTION_KIND_BITWISE_OR, bir.INSTRUCTION_KIND_BITWISE_XOR, bir.INSTRUCTION_KIND_BITWISE_LEFT_SHIFT, bir.INSTRUCTION_KIND_BITWISE_RIGHT_SHIFT, bir.INSTRUCTION_KIND_BITWISE_UNSIGNED_RIGHT_SHIFT:
-		rhsOp1, err := br.readOperand()
+		rhsOp1, err := br.readOperand(varMap)
 		if err != nil {
 			return nil, err
 		}
-		rhsOp2, err := br.readOperand()
+		rhsOp2, err := br.readOperand(varMap)
 		if err != nil {
 			return nil, err
 		}
-		lhsOp, err := br.readOperand()
+		lhsOp, err := br.readOperand(varMap)
 		if err != nil {
 			return nil, err
 		}
@@ -843,11 +848,11 @@ func (br *BIRReader) readInstruction() (bir.BIRInstruction, error) {
 			RhsOp2: *rhsOp2,
 		}, nil
 	case bir.INSTRUCTION_KIND_TYPEOF, bir.INSTRUCTION_KIND_NOT, bir.INSTRUCTION_KIND_NEGATE:
-		rhsOp, err := br.readOperand()
+		rhsOp, err := br.readOperand(varMap)
 		if err != nil {
 			return nil, err
 		}
-		lhsOp, err := br.readOperand()
+		lhsOp, err := br.readOperand(varMap)
 		if err != nil {
 			return nil, err
 		}
@@ -865,7 +870,7 @@ func (br *BIRReader) readInstruction() (bir.BIRInstruction, error) {
 		}
 		constLoadType := br.getTypeFromCP(int(constLoadTypeIdx))
 
-		lhsOp, err := br.readOperand()
+		lhsOp, err := br.readOperand(varMap)
 		if err != nil {
 			return nil, err
 		}
@@ -904,15 +909,15 @@ func (br *BIRReader) readInstruction() (bir.BIRInstruction, error) {
 			Value: value,
 		}, nil
 	case bir.INSTRUCTION_KIND_MAP_STORE, bir.INSTRUCTION_KIND_MAP_LOAD, bir.INSTRUCTION_KIND_ARRAY_STORE, bir.INSTRUCTION_KIND_ARRAY_LOAD:
-		lhsOp, err := br.readOperand()
+		lhsOp, err := br.readOperand(varMap)
 		if err != nil {
 			return nil, err
 		}
-		keyOp, err := br.readOperand()
+		keyOp, err := br.readOperand(varMap)
 		if err != nil {
 			return nil, err
 		}
-		rhsOp, err := br.readOperand()
+		rhsOp, err := br.readOperand(varMap)
 		if err != nil {
 			return nil, err
 		}
@@ -931,11 +936,11 @@ func (br *BIRReader) readInstruction() (bir.BIRInstruction, error) {
 		}
 		t := br.getTypeFromCP(int(typeIdx))
 
-		lhsOp, err := br.readOperand()
+		lhsOp, err := br.readOperand(varMap)
 		if err != nil {
 			return nil, err
 		}
-		sizeOp, err := br.readOperand()
+		sizeOp, err := br.readOperand(varMap)
 		if err != nil {
 			return nil, err
 		}
@@ -951,7 +956,7 @@ func (br *BIRReader) readInstruction() (bir.BIRInstruction, error) {
 	}
 }
 
-func (br *BIRReader) readTerminator() (bir.BIRTerminator, error) {
+func (br *BIRReader) readTerminator(varMap map[string]*bir.BIRVariableDcl) (bir.BIRTerminator, error) {
 	terminatorKind, err := br.readUInt8()
 	if err != nil {
 		return nil, err
@@ -980,7 +985,7 @@ func (br *BIRReader) readTerminator() (bir.BIRTerminator, error) {
 			},
 		}, nil
 	case bir.INSTRUCTION_KIND_BRANCH:
-		op, err := br.readOperand()
+		op, err := br.readOperand(varMap)
 		if err != nil {
 			return nil, err
 		}
@@ -1031,7 +1036,7 @@ func (br *BIRReader) readTerminator() (bir.BIRTerminator, error) {
 
 		args := make([]bir.BIROperand, argsCount)
 		for k := 0; k < int(argsCount); k++ {
-			arg, err := br.readOperand()
+			arg, err := br.readOperand(varMap)
 			if err != nil {
 				return nil, err
 			}
@@ -1045,7 +1050,7 @@ func (br *BIRReader) readTerminator() (bir.BIRTerminator, error) {
 
 		var lhsOp *bir.BIROperand
 		if lshOpExists {
-			op, err := br.readOperand()
+			op, err := br.readOperand(varMap)
 			if err != nil {
 				return nil, err
 			}
@@ -1078,7 +1083,7 @@ func (br *BIRReader) readTerminator() (bir.BIRTerminator, error) {
 	}
 }
 
-func (br *BIRReader) readOperand() (*bir.BIROperand, error) {
+func (br *BIRReader) readOperand(varMap map[string]*bir.BIRVariableDcl) (*bir.BIROperand, error) {
 	ignoreVariable, err := br.readBool()
 	if err != nil {
 		return nil, err
@@ -1113,7 +1118,7 @@ func (br *BIRReader) readOperand() (*bir.BIROperand, error) {
 	}
 	name := model.Name(br.getStringFromCP(int(nameIdx)))
 
-	varDcl, ok := br.varMap[name.Value()]
+	varDcl, ok := varMap[name.Value()]
 	if !ok {
 		varDcl = &bir.BIRVariableDcl{
 			Kind:  bir.VarKind(varKind),

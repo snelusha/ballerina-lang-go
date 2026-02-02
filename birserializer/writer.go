@@ -1,4 +1,4 @@
-package birutils
+package birserializer
 
 import (
 	"bytes"
@@ -15,46 +15,53 @@ const (
 )
 
 type BIRWriter struct {
-	cp  *ConstantPool
-	pkg *bir.BIRPackage
+	cp *ConstantPool
 }
 
-func NewBIRWriter(pkg *bir.BIRPackage) *BIRWriter {
+func NewBIRWriter() *BIRWriter {
 	return &BIRWriter{
-		cp:  NewConstantPool(),
-		pkg: pkg,
+		cp: NewConstantPool(),
 	}
 }
 
-func (bw *BIRWriter) Serialize() ([]byte, error) {
+// Marshal returns the BIR encoding of pkg.
+// This is a convenience function that creates a new BIRWriter and calls Serialize.
+func Marshal(pkg *bir.BIRPackage) ([]byte, error) {
+	return NewBIRWriter().serialize(pkg)
+}
+
+func (bw *BIRWriter) serialize(pkg *bir.BIRPackage) ([]byte, error) {
+	// Reset constant pool for reuse
+	bw.cp = NewConstantPool()
+
 	birbuf := &bytes.Buffer{}
 
 	// Write the package details
 	pkgIDIdx := int32(-1)
-	if bw.pkg.PackageID != nil {
-		pkgIDIdx = bw.cp.AddPackageCPEntry(bw.pkg.PackageID)
+	if pkg.PackageID != nil {
+		pkgIDIdx = bw.cp.AddPackageCPEntry(pkg.PackageID)
 	}
 	if err := bw.writeInt32(birbuf, pkgIDIdx); err != nil {
 		return nil, err
 	}
 
 	// Write import module declarations
-	if err := bw.writeImportModuleDecls(birbuf); err != nil {
+	if err := bw.writeImportModuleDecls(birbuf, pkg); err != nil {
 		return nil, err
 	}
 
 	// Write constants
-	if err := bw.writeConstants(birbuf); err != nil {
+	if err := bw.writeConstants(birbuf, pkg); err != nil {
 		return nil, err
 	}
 
 	// Write global vars
-	if err := bw.writeGlobalVars(birbuf); err != nil {
+	if err := bw.writeGlobalVars(birbuf, pkg); err != nil {
 		return nil, err
 	}
 
 	// Write functions
-	if err := bw.writeFunctions(birbuf); err != nil {
+	if err := bw.writeFunctions(birbuf, pkg); err != nil {
 		return nil, err
 	}
 
@@ -85,11 +92,11 @@ func (bw *BIRWriter) Serialize() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (bw *BIRWriter) writeImportModuleDecls(buf *bytes.Buffer) error {
-	if err := bw.writeInt32(buf, int32(len(bw.pkg.ImportModules))); err != nil {
+func (bw *BIRWriter) writeImportModuleDecls(buf *bytes.Buffer, pkg *bir.BIRPackage) error {
+	if err := bw.writeInt32(buf, int32(len(pkg.ImportModules))); err != nil {
 		return err
 	}
-	for _, imp := range bw.pkg.ImportModules {
+	for _, imp := range pkg.ImportModules {
 		if err := bw.writeInt32(buf, bw.cp.AddStringCPEntry(imp.PackageID.OrgName.Value())); err != nil {
 			return err
 		}
@@ -107,12 +114,12 @@ func (bw *BIRWriter) writeImportModuleDecls(buf *bytes.Buffer) error {
 	return nil
 }
 
-func (bw *BIRWriter) writeConstants(buf *bytes.Buffer) error {
-	if err := bw.writeInt32(buf, int32(len(bw.pkg.Constants))); err != nil {
+func (bw *BIRWriter) writeConstants(buf *bytes.Buffer, pkg *bir.BIRPackage) error {
+	if err := bw.writeInt32(buf, int32(len(pkg.Constants))); err != nil {
 		return err
 	}
 
-	for _, c := range bw.pkg.Constants {
+	for _, c := range pkg.Constants {
 		if err := bw.writeConstant(buf, &c); err != nil {
 			return err
 		}
@@ -275,12 +282,12 @@ func (bw *BIRWriter) addValueToCP(tag model.TypeTags, value any) (int32, error) 
 	}
 }
 
-func (bw *BIRWriter) writeGlobalVars(buf *bytes.Buffer) error {
-	if err := bw.writeInt32(buf, int32(len(bw.pkg.GlobalVars))); err != nil {
+func (bw *BIRWriter) writeGlobalVars(buf *bytes.Buffer, pkg *bir.BIRPackage) error {
+	if err := bw.writeInt32(buf, int32(len(pkg.GlobalVars))); err != nil {
 		return err
 	}
 
-	for _, gv := range bw.pkg.GlobalVars {
+	for _, gv := range pkg.GlobalVars {
 		if err := bw.writeUInt8(buf, uint8(gv.Kind)); err != nil {
 			return err
 		}
@@ -303,12 +310,12 @@ func (bw *BIRWriter) writeGlobalVars(buf *bytes.Buffer) error {
 	return nil
 }
 
-func (bw *BIRWriter) writeFunctions(buf *bytes.Buffer) error {
-	if err := bw.writeInt32(buf, int32(len(bw.pkg.Functions))); err != nil {
+func (bw *BIRWriter) writeFunctions(buf *bytes.Buffer, pkg *bir.BIRPackage) error {
+	if err := bw.writeInt32(buf, int32(len(pkg.Functions))); err != nil {
 		return err
 	}
 
-	for _, fn := range bw.pkg.Functions {
+	for _, fn := range pkg.Functions {
 		if err := bw.writeFunction(buf, &fn); err != nil {
 			return err
 		}

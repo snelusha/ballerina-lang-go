@@ -1,4 +1,4 @@
-package birutils
+package birserializer
 
 import (
 	"bytes"
