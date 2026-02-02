@@ -341,7 +341,7 @@ func parseFile(t *testing.T, filePath string, baseDir string) {
 
 	lexer := NewLexer(reader, nil)
 
-	tokenReader := CreateTokenReader(*lexer, nil)
+	tokenReader := CreateTokenReader(lexer, nil)
 
 	ballerinaParser := NewBallerinaParserFromTokenReader(tokenReader, nil)
 

@@ -20,15 +20,25 @@ import (
 	"ballerina-lang-go/parser/tree"
 )
 
+// LexerInterface defines the interface that TokenReader needs from a lexer.
+// Note: Methods use pointer receivers, so implementations must be pointers.
+type LexerInterface interface {
+	NextToken() tree.STToken
+	StartMode(mode ParserMode)
+	SwitchMode(mode ParserMode)
+	EndMode()
+	GetCurrentMode() ParserMode
+}
+
 type TokenReader struct {
-	lexer             Lexer
+	lexer             LexerInterface
 	dbgContext        *debugcommon.DebugContext
 	currentToken      tree.STToken
 	tokenBuffer       tokenBuffer
 	currentTokenIndex int
 }
 
-func CreateTokenReader(lexer Lexer, dbgContext *debugcommon.DebugContext) *TokenReader {
+func CreateTokenReader(lexer LexerInterface, dbgContext *debugcommon.DebugContext) *TokenReader {
 	return &TokenReader{
 		lexer:             lexer,
 		dbgContext:        dbgContext,
