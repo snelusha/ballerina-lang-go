@@ -11545,7 +11545,11 @@ func (this *BallerinaParser) parseMarkdownDocumentation() tree.STNode {
 }
 
 func (this *BallerinaParser) parseDocumentationString(documentationStringToken tree.STToken) tree.STNode {
-	leadingTriviaList := this.getLeadingTriviaList(documentationStringToken.LeadingMinutiae())
+	// Don't pass leading trivia from the documentation string token to the DocumentationLexer.
+	// The leading trivia (like copyright comments) should stay with the documentation string token itself,
+	// not be attached to tokens inside the documentation content (like the hash token).
+	// The DocumentationLexer will process any leading trivia that's actually part of the documentation content.
+	leadingTriviaList := make([]tree.STNode, 0)
 	diagnostics := documentationStringToken.Diagnostics()
 	diagnosticsCopy := make([]tree.STNodeDiagnostic, len(diagnostics))
 	copy(diagnosticsCopy, diagnostics)

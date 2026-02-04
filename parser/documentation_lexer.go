@@ -29,7 +29,7 @@ var deprecatedChars = []rune{'D', 'e', 'p', 'r', 'e', 'c', 'a', 't', 'e', 'd'}
 // DocumentationLexer is a LL(k) lexer for documentation in ballerina.
 // It extends Lexer to handle documentation-specific tokenization modes.
 type DocumentationLexer struct {
-	Lexer // Embed by value, not pointer, to match TokenReader interface
+	*Lexer // Embed by value, not pointer, to match TokenReader interface
 	// Backtick mode to fall back.
 	// For code references, we switch to DOC_CODE_LINE_START_HASH,
 	// to capture the initial hash of the code line.
@@ -44,7 +44,7 @@ func NewDocumentationLexer(charReader text.CharReader, leadingTriviaList []tree.
 	lexerPtr.context.diagnostics = diagnostics
 	lexerPtr.StartMode(PARSER_MODE_DOC_LINE_START_HASH)
 	return &DocumentationLexer{
-		Lexer:                *lexerPtr, // Dereference to get value type
+		Lexer:                lexerPtr, // Dereference to get value type
 		previousBacktickMode: PARSER_MODE_DEFAULT_MODE,
 	}
 }
