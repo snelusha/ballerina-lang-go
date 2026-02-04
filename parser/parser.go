@@ -11545,11 +11545,35 @@ func (this *BallerinaParser) parseMarkdownDocumentation() tree.STNode {
 }
 
 func (this *BallerinaParser) parseDocumentationString(documentationStringToken tree.STToken) tree.STNode {
-	// Don't pass leading trivia from the documentation string token to the DocumentationLexer.
-	// The leading trivia (like copyright comments) should stay with the documentation string token itself,
-	// not be attached to tokens inside the documentation content (like the hash token).
-	// The DocumentationLexer will process any leading trivia that's actually part of the documentation content.
-	leadingTriviaList := make([]tree.STNode, 0)
+	// Pass leading trivia from the documentation string token to the DocumentationLexer.
+	// Filter out comments - only whitespace and newlines should be attached to hash tokens.
+	// However, if the leading trivia contains comments, the newlines are from copyright comments
+	// and should NOT be attached to hash tokens. Only newlines from blank lines between
+	// documentation strings (where there are no comments) should be attached.
+	allLeadingTrivia := this.getLeadingTriviaList(documentationStringToken.LeadingMinutiae())
+	hasComments := false
+	for _, trivia := range allLeadingTrivia {
+		if trivia.Kind() == common.COMMENT_MINUTIAE {
+			hasComments = true
+			break
+		}
+	}
+
+	leadingTriviaList := make([]tree.STNode, 0, len(allLeadingTrivia))
+	for _, trivia := range allLeadingTrivia {
+		kind := trivia.Kind()
+		if kind == common.WHITESPACE_MINUTIAE {
+			// Always include whitespace
+			leadingTriviaList = append(leadingTriviaList, trivia)
+		} else if kind == common.END_OF_LINE_MINUTIAE {
+			// Only include newlines if there are no comments (meaning they're from blank lines, not copyright)
+			if !hasComments {
+				leadingTriviaList = append(leadingTriviaList, trivia)
+			}
+		}
+		// Filter out comments
+	}
+
 	diagnostics := documentationStringToken.Diagnostics()
 	diagnosticsCopy := make([]tree.STNodeDiagnostic, len(diagnostics))
 	copy(diagnosticsCopy, diagnostics)
