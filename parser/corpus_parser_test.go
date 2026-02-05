@@ -17,14 +17,15 @@
 package parser
 
 import (
-	"ballerina-lang-go/parser/tree"
-	"ballerina-lang-go/tools/text"
 	"encoding/json"
 	"flag"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"ballerina-lang-go/parser/tree"
+	"ballerina-lang-go/tools/text"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
@@ -197,7 +198,7 @@ var documentationParserIgnoreList = []string{
 	"documentation/docerina_project/modules/world/world.bal",
 	"documentation/errors_project/errors.bal",
 	"documentation/markdown_annotation.bal",
-	"documentation/markdown_constant.bal",
+	// "documentation/markdown_constant.bal",
 	"documentation/markdown_doc_inline_triple.bal",
 	"documentation/markdown_doc_inline.bal",
 	"documentation/markdown_finite_types.bal",
