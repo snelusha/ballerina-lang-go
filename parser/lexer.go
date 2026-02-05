@@ -1091,8 +1091,11 @@ func (l *Lexer) processDocumentationString() tree.STToken {
 		break
 	}
 
-	leadingTrivia := l.getLeadingTrivia()
+	// FIXME: This is a hack to prevent the leading trivia from being accumulated.
+	_ = l.getLeadingTrivia() // Clear the list without using it
 	lexeme := l.getLexeme()
+
+	leadingTrivia := tree.CreateEmptyNodeList()  // No leading trivia for documentation strings
 	trailingTrivia := tree.CreateEmptyNodeList() // No trailing trivia
 	return tree.CreateLiteralValueToken(common.DOCUMENTATION_STRING, lexeme, leadingTrivia, trailingTrivia)
 }
