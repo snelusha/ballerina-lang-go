@@ -216,21 +216,21 @@ var documentationParserIgnoreList = []string{
 
 	// "documentation/markdown_multiline_documentation.bal",
 
-	"documentation/markdown_multiple.bal",        // FIXME
-	"documentation/markdown_native_function.bal", // FIXME
-	"documentation/markdown_negative.bal",        // FIXME
+	// "documentation/markdown_multiple.bal",        // FIXME
+	// "documentation/markdown_native_function.bal", // FIXME
+	// "documentation/markdown_negative.bal", // FIXME
 
 	// "documentation/markdown_object.bal",
 	// "documentation/markdown_on_disallowed_constructs.bal",
 	// "documentation/markdown_on_method_object_type_def.bal",
 	// "documentation/markdown_service.bal",
 
-	"documentation/markdown_type.bal", // FIXME
+	// "documentation/markdown_type.bal", // FIXME
 
 	// "documentation/markdown_with_lambda.bal",
 	// "documentation/multi_line_docs_project/main.bal",
 
-	"documentation/record_object_fields_project/main.bal", // FIXME
+	// "documentation/record_object_fields_project/main.bal", // FIXME
 
 	// "documentation/type_models_project/type_models.bal",
 
@@ -241,13 +241,13 @@ var documentationParserIgnoreList = []string{
 	// "jvm/largePackage/modules/records/bigRecord2.bal",
 	// "jvm/largePackage/modules/records/bigRecord3.bal",
 
-	"object/object_annotation.bal",             // FIXME
-	"object/object_doc_annotation.bal",         // FIXME
-	"object/object_documentation_negative.bal", // FIXME
+	// "object/object_annotation.bal",             // FIXME
+	// "object/object_doc_annotation.bal",         // FIXME
+	// "object/object_documentation_negative.bal", // FIXME
 
-	"record/record_annotation.bal",             // FIXME
-	"record/record_doc_annotation.bal",         // FIXME
-	"record/record_documentation_negative.bal", // FIXME
+	// "record/record_annotation.bal",             // FIXME
+	// "record/record_doc_annotation.bal",         // FIXME
+	// "record/record_documentation_negative.bal", // FIXME
 
 	// "runtime/api/types/modules/typeref/typeref.bal",
 

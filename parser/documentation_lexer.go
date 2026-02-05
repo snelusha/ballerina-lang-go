@@ -279,9 +279,9 @@ func (dl *DocumentationLexer) getDocLiteralToken(kind common.SyntaxKind) tree.ST
 func (dl *DocumentationLexer) getDocIdentifierToken() tree.STToken {
 	leadingTrivia := dl.getLeadingTrivia()
 	lexeme := dl.getLexeme()
-	trailingTrivia := dl.processTrailingTrivia()
-	dl.checkAndTerminateCurrentMode(trailingTrivia)
-	return tree.CreateIdentifierToken(lexeme, leadingTrivia, trailingTrivia)
+	// Trailing trivia should not be consumed for documentation identifiers.
+	// This is to avoid consuming whitespaces as trivia, which should be part of the documentation description.
+	return tree.CreateIdentifierToken(lexeme, leadingTrivia, tree.CreateEmptyNodeList())
 }
 
 // getDocSyntaxTokenWithoutTrivia creates a documentation syntax token without trailing trivia.
