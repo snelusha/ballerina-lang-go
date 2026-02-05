@@ -16,14 +16,15 @@
 package parser
 
 import (
+	"fmt"
+	"os"
+	"strings"
+
 	debugcommon "ballerina-lang-go/common"
 	"ballerina-lang-go/parser/common"
 	tree "ballerina-lang-go/parser/tree"
 	"ballerina-lang-go/tools/diagnostics"
 	"ballerina-lang-go/tools/text"
-	"fmt"
-	"os"
-	"strings"
 )
 
 type OperatorPrecedence uint8
@@ -11546,10 +11547,6 @@ func (this *BallerinaParser) parseMarkdownDocumentation() tree.STNode {
 
 func (this *BallerinaParser) parseDocumentationString(documentationStringToken tree.STToken) tree.STNode {
 	leadingTriviaList := this.getLeadingTriviaList(documentationStringToken.LeadingMinutiae())
-	for _, trivia := range leadingTriviaList {
-		fmt.Printf("trivia: %s\n", trivia.Kind().StrValue())
-	}
-
 	diagnostics := documentationStringToken.Diagnostics()
 
 	charReader := text.CharReaderFromText(documentationStringToken.Text())
@@ -12643,7 +12640,6 @@ func (this *BallerinaParser) parseBracketedListMember(isTypedBindingPattern bool
 
 	// we don't know which one
 	return expr
-
 }
 
 func (this *BallerinaParser) parseAsArrayTypeDesc(typeDesc tree.STNode, openBracket tree.STNode, member tree.STNode, context common.ParserRuleContext) tree.STNode {
