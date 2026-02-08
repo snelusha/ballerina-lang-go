@@ -24,6 +24,23 @@ import (
 	"fmt"
 )
 
+type birInvokableType struct {
+	paramTypes []model.Type
+	retType    model.Type
+}
+
+func (t *birInvokableType) GetParameterTypes() []model.Type {
+	return t.paramTypes
+}
+
+func (t *birInvokableType) GetReturnType() model.Type {
+	return t.retType
+}
+
+func (t *birInvokableType) GetTypeKind() model.TypeKind {
+	return model.TypeKind_FUNCTION
+}
+
 // Since BLangNodeVisitor is anyway deprecated in jBallerina, we'll try to do this more cleanly
 // TODO: may be we should have this in a separate package and keep BIR package clean (only definitions)
 
@@ -180,6 +197,7 @@ func TransformGlobalVariableDcl(ctx *Context, ast *ast.BLangSimpleVariable) *BIR
 	birVarDcl.OriginalName = originalName
 	birVarDcl.Scope = VAR_SCOPE_GLOBAL
 	birVarDcl.Kind = VAR_KIND_GLOBAL
+	birVarDcl.Type = ast.GetTypeData().TypeDescriptor.(model.ValueType)
 	birVarDcl.MetaVarName = name.Value()
 	return birVarDcl
 }
@@ -196,10 +214,18 @@ func TransformFunction(ctx *Context, astFunc *ast.BLangFunction) *BIRFunction {
 	birFunc.FunctionLookupKey = moduleKey + ":" + funcName.Value()
 	common.Assert(astFunc.Receiver == nil)
 	stmtCx := &stmtContext{birCx: ctx, varMap: make(map[string]*BIROperand)}
-	stmtCx.retVar = stmtCx.addLocalVar(model.Name("%0"), nil, VAR_KIND_RETURN)
+	retType := astFunc.ReturnTypeData.TypeDescriptor.(model.ValueType)
+	stmtCx.retVar = stmtCx.addLocalVar(model.Name("%0"), retType, VAR_KIND_RETURN)
+	var paramTypes []model.Type
 	for _, param := range astFunc.RequiredParams {
-		paramOperand := stmtCx.addLocalVar(model.Name(param.GetName().GetValue()), nil, VAR_KIND_ARG)
+		paramType := param.GetTypeData().TypeDescriptor.(model.ValueType)
+		paramOperand := stmtCx.addLocalVar(model.Name(param.GetName().GetValue()), paramType, VAR_KIND_ARG)
 		stmtCx.varMap[param.GetName().GetValue()] = paramOperand
+		paramTypes = append(paramTypes, paramType)
+	}
+	birFunc.Type = &birInvokableType{
+		paramTypes: paramTypes,
+		retType:    retType,
 	}
 	switch body := astFunc.Body.(type) {
 	case *ast.BLangBlockFunctionBody:
@@ -223,9 +249,12 @@ func TransformConstant(ctx *Context, c *ast.BLangConstant) *BIRConstant {
 	valueExpr := c.Expr
 	if literal, ok := valueExpr.(*ast.BLangLiteral); ok {
 		// FIXME: once we have constant propagation these should be propagated and no longer needed
+		ty := literal.GetTypeData().TypeDescriptor.(model.ValueType)
 		return &BIRConstant{
 			Name: model.Name(c.GetName().GetValue()),
+			Type: ty,
 			ConstValue: ConstValue{
+				Type:  ty,
 				Value: literal.Value,
 			},
 		}
@@ -395,7 +424,7 @@ func simpleVariableDefinition(ctx *stmtContext, bb *BIRBasicBlock, stmt *ast.BLa
 	curBB := exprResult.block
 	move := &Move{}
 	varName := model.Name(stmt.Var.GetName().GetValue())
-	move.LhsOp = ctx.addLocalVar(varName, nil, VAR_KIND_LOCAL)
+	move.LhsOp = ctx.addLocalVar(varName, stmt.Var.GetTypeData().TypeDescriptor.(model.ValueType), VAR_KIND_LOCAL)
 	ctx.varMap[varName.Value()] = move.LhsOp
 	move.RhsOp = exprResult.result
 	curBB.Instructions = append(curBB.Instructions, move)

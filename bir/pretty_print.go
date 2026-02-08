@@ -66,11 +66,26 @@ func (p *PrettyPrinter) Print(node BIRPackage) string {
 		p.write(p.PrintGlobalVar(globalVar))
 		p.write(";\n")
 	}
+	for _, constant := range node.Constants {
+		p.write(p.PrintConstant(constant))
+		p.write(";\n")
+	}
 	for _, function := range node.Functions {
 		p.PrintFunction(function)
 		p.write("\n")
 	}
 	return p.sb.String()
+}
+
+func (p *PrettyPrinter) PrintConstant(constant BIRConstant) string {
+	sb := strings.Builder{}
+	sb.WriteString("const ")
+	sb.WriteString(p.PrintType(constant.Type))
+	sb.WriteString(" ")
+	sb.WriteString(constant.Name.Value())
+	sb.WriteString(" = ")
+	sb.WriteString(fmt.Sprintf("%v", constant.ConstValue.Value))
+	return sb.String()
 }
 
 func (p *PrettyPrinter) PrintFunction(function BIRFunction) {

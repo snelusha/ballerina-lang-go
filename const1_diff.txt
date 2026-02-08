@@ -1,0 +1,31 @@
+=== RUN   TestBIRGeneration
+=== RUN   TestBIRGeneration/subset1/01-int/const1-v.bal
+=== PAUSE TestBIRGeneration/subset1/01-int/const1-v.bal
+=== CONT  TestBIRGeneration/subset1/01-int/const1-v.bal
+    corpus_bir_test.go:306: BIR text mismatch for /Users/sithi/sandbox/ballerina-mono/ballerina-lang-go/corpus/bal/subset1/01-int/const1-v.bal
+        Expected file: /Users/sithi/sandbox/ballerina-mono/ballerina-lang-go/corpus/bir/subset1/01-int/const1-v.txt
+        module $anon.. v 0.0.0;
+        import ballerina.io v 0.0.0;
+        main[31m<NIL[0m[32m() -[0m>[32m null[0m{
+          bb0 {
+            %1 = ConstantLoad 42
+            %2 = println(%1) -> bb1;
+          }
+          bb1 {
+            %3 = ConstantLoad 1
+            %4 = unknown %3;
+            %5 = println(%4) -> bb2;
+          }
+          bb2 {
+            %6 = ConstantLoad 0
+            %7 = println(%6) -> bb3;
+          }
+          bb3 {
+            return;
+          }
+        }
+--- FAIL: TestBIRGeneration (0.00s)
+    --- FAIL: TestBIRGeneration/subset1/01-int/const1-v.bal (0.00s)
+FAIL
+FAIL	ballerina-lang-go/bir	0.045s
+FAIL
