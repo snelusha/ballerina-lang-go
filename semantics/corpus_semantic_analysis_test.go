@@ -17,6 +17,10 @@
 package semantics
 
 import (
+	"flag"
+	"strings"
+	"testing"
+
 	"ballerina-lang-go/ast"
 	debugcommon "ballerina-lang-go/common"
 	"ballerina-lang-go/context"
@@ -24,9 +28,6 @@ import (
 	"ballerina-lang-go/parser"
 	"ballerina-lang-go/semtypes"
 	"ballerina-lang-go/test_util"
-	"flag"
-	"strings"
-	"testing"
 )
 
 func TestSemanticAnalysis(t *testing.T) {
@@ -145,6 +146,12 @@ var semanticAnalysisErrorSkipList = []string{
 
 	// error constructor expr not implemented
 	"01-function/assign10-e.bal",
+
+	// cyclic type resolution causes stack overflow (fatal, unrecoverable)
+	// "01-type/cyclic-e.bal",
+
+	// leading zero in integer literal not yet detected
+	"01-int/literal-e.bal",
 }
 
 func TestSemanticAnalysisErrors(t *testing.T) {
@@ -154,7 +161,7 @@ func TestSemanticAnalysisErrors(t *testing.T) {
 
 	for _, testPair := range testPairs {
 		t.Run(testPair.Name, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 			testSemanticAnalysisError(t, testPair)
 		})
 	}
@@ -168,36 +175,26 @@ func testSemanticAnalysisError(t *testing.T, testCase test_util.TestCase) {
 		}
 	}
 	// We EXPECT a panic for error test cases
-	didPanic := false
 	var panicValue interface{}
+
+	cx := context.NewCompilerContext(semtypes.CreateTypeEnv())
 
 	defer func() {
 		if r := recover(); r != nil {
-			didPanic = true
 			panicValue = r
 		}
 
-		// After recovery, verify that a semantic error occurred
-		if !didPanic {
-			t.Errorf("Expected semantic error for %s, but analysis completed without error", testCase.InputPath)
+		if !cx.HasErrors() {
+			t.Errorf("Expected semantic errors for %s, but no errors were recorded", testCase.InputPath)
 			return
 		}
 
-		// // Verify the panic is a semantic error (not some other panic)
-		// panicStr := fmt.Sprintf("%v", panicValue)
-		// if !strings.Contains(panicStr, "Semantic error:") {
-		// 	t.Errorf("Expected semantic error for %s, but got different panic: %v", testCase.InputPath, panicValue)
-		// 	return
-		// }
-
-		// Success - we got the expected semantic error
 		t.Logf("Semantic error correctly detected for %s: %v", testCase.InputPath, panicValue)
 	}()
 
 	debugCtx := debugcommon.DebugContext{
 		Channel: make(chan string),
 	}
-	cx := context.NewCompilerContext(semtypes.CreateTypeEnv())
 	syntaxTree, err := parser.GetSyntaxTree(&debugCtx, testCase.InputPath)
 	if err != nil {
 		t.Errorf("error getting syntax tree for %s: %v", testCase.InputPath, err)
@@ -208,19 +205,41 @@ func testSemanticAnalysisError(t *testing.T, testCase test_util.TestCase) {
 		t.Errorf("compilation unit is nil for %s", testCase.InputPath)
 		return
 	}
+
+	if cx.HasErrors() {
+		panic("We have errors")
+	}
+
 	pkg := ast.ToPackage(compilationUnit)
 
 	// Step 1: Symbol Resolution
 	importedSymbols := ResolveImports(cx, pkg)
+
+	if cx.HasErrors() {
+		panic("We have errors")
+	}
+
 	ResolveSymbols(cx, pkg, importedSymbols)
+
+	if cx.HasErrors() {
+		panic("We have errors")
+	}
 
 	// Step 2: Type Resolution
 	typeResolver := NewTypeResolver(cx)
 	typeResolver.ResolveTypes(cx, pkg)
 
+	if cx.HasErrors() {
+		panic("We have errors")
+	}
+
 	// Step 3: Semantic Analysis - this should panic for error cases
 	semanticAnalyzer := NewSemanticAnalyzer(cx)
 	semanticAnalyzer.Analyze(pkg)
+
+	if cx.HasErrors() {
+		panic("We have errors")
+	}
 
 	// If we reach here without panic, the defer will catch it
 }

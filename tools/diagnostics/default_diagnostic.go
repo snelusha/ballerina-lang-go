@@ -63,6 +63,10 @@ func (dd *defaultDiagnosticImpl) Properties() []DiagnosticProperty[any] {
 }
 
 func (dd *defaultDiagnosticImpl) String() string {
+	if dd.location == nil {
+		return fmt.Sprintf("%s %s", dd.diagnosticInfo.Severity().String(), dd.Message())
+	}
+
 	lineRange := dd.location.LineRange()
 	filePath := lineRange.FileName()
 

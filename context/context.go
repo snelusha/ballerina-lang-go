@@ -17,11 +17,12 @@
 package context
 
 import (
+	"fmt"
+	"strconv"
+
 	"ballerina-lang-go/model"
 	"ballerina-lang-go/semtypes"
 	"ballerina-lang-go/tools/diagnostics"
-	"fmt"
-	"strconv"
 )
 
 // TODO: consider moving type resolution env in to this
@@ -30,6 +31,7 @@ type CompilerContext struct {
 	packageInterner *model.PackageIDInterner
 	symbolSpaces    []*model.SymbolSpace
 	typeEnv         semtypes.Env
+	diagnostics     []diagnostics.Diagnostic
 }
 
 func (this *CompilerContext) NewSymbolSpace(packageId model.PackageID) *model.SymbolSpace {
@@ -101,6 +103,7 @@ func (this *CompilerContext) NewPackageID(orgName model.Name, nameComps []model.
 }
 
 func (this *CompilerContext) Unimplemented(message string, pos diagnostics.Location) {
+	fmt.Println("yeah!")
 	if pos != nil {
 		panic(fmt.Sprintf("Unimplemented: %s at %s", message, pos))
 	}
@@ -108,25 +111,55 @@ func (this *CompilerContext) Unimplemented(message string, pos diagnostics.Locat
 }
 
 func (this *CompilerContext) SemanticError(message string, pos diagnostics.Location) {
-	if pos != nil {
-		panic(fmt.Sprintf("Semantic error: %s at %s", message, pos))
-	}
-	panic(fmt.Sprintf("Semantic error: %s", message))
+	code := "SEMANTIC_ERROR"
+	diagnosticInfo := diagnostics.NewDiagnosticInfo(&code, message, diagnostics.Error)
+	diagnostic := diagnostics.CreateDiagnostic(diagnosticInfo, pos)
+	this.diagnostics = append(this.diagnostics, diagnostic)
 }
 
 // TODO: implement these properly
 func (this *CompilerContext) SyntaxError(message string, pos diagnostics.Location) {
-	if pos != nil {
-		panic(fmt.Sprintf("Syntax error: %s at %s", message, pos))
-	}
-	panic(fmt.Sprintf("Syntax error: %s", message))
+	code := "SYNTAX_ERROR"
+	diagnosticInfo := diagnostics.NewDiagnosticInfo(&code, message, diagnostics.Error)
+	diagnostic := diagnostics.CreateDiagnostic(diagnosticInfo, pos)
+	this.diagnostics = append(this.diagnostics, diagnostic)
 }
 
 func (this *CompilerContext) InternalError(message string, pos diagnostics.Location) {
+	fmt.Println("yeah!!!!!!")
 	if pos != nil {
-		panic(fmt.Sprintf("Internal error: %s at %s", message, pos))
+		panic(fmt.Sprintf("InternalError: %s at %s", message, pos))
 	}
-	panic(fmt.Sprintf("Internal error: %s", message))
+	panic(fmt.Sprintf("InternalError: %s", message))
+}
+
+func (this *CompilerContext) GetDiagnostics() []diagnostics.Diagnostic {
+	return this.diagnostics
+}
+
+// func (this *CompilerContext) HasErrors() bool {
+// 	return len(this.diagnostics) > 0
+// }
+
+func (this *CompilerContext) HasErrors() bool {
+	for _, diagnostic := range this.diagnostics {
+		if diagnostic.DiagnosticInfo().Severity() == diagnostics.Error {
+			return true
+		}
+	}
+	return false
+}
+
+func (this *CompilerContext) PrintDiagnostics() {
+	if this.diagnostics != nil {
+		fmt.Printf("\nDiagnostics:\n")
+	}
+	for _, diagnostic := range this.diagnostics {
+		fmt.Println(diagnostic.String())
+	}
+	if this.diagnostics != nil {
+		fmt.Printf("\n")
+	}
 }
 
 func NewCompilerContext(typeEnv semtypes.Env) *CompilerContext {
