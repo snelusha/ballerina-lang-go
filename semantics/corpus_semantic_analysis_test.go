@@ -206,40 +206,20 @@ func testSemanticAnalysisError(t *testing.T, testCase test_util.TestCase) {
 		return
 	}
 
-	if cx.HasErrors() {
-		panic("We have errors")
-	}
-
 	pkg := ast.ToPackage(compilationUnit)
 
 	// Step 1: Symbol Resolution
 	importedSymbols := ResolveImports(cx, pkg)
 
-	if cx.HasErrors() {
-		panic("We have errors")
-	}
-
 	ResolveSymbols(cx, pkg, importedSymbols)
-
-	if cx.HasErrors() {
-		panic("We have errors")
-	}
 
 	// Step 2: Type Resolution
 	typeResolver := NewTypeResolver(cx)
 	typeResolver.ResolveTypes(cx, pkg)
 
-	if cx.HasErrors() {
-		panic("We have errors")
-	}
-
 	// Step 3: Semantic Analysis - this should panic for error cases
 	semanticAnalyzer := NewSemanticAnalyzer(cx)
 	semanticAnalyzer.Analyze(pkg)
-
-	if cx.HasErrors() {
-		panic("We have errors")
-	}
 
 	// If we reach here without panic, the defer will catch it
 }
