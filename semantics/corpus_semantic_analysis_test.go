@@ -148,7 +148,7 @@ var semanticAnalysisErrorSkipList = []string{
 	"01-function/assign10-e.bal",
 
 	// leading zero in integer literal not yet detected
-	"01-int/literal-e.bal",
+	// "01-int/literal-e.bal",
 }
 
 func TestSemanticAnalysisErrors(t *testing.T) {

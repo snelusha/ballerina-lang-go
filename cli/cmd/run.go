@@ -150,12 +150,29 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("compilation failed: %w", err)
 	}
 
+	if cx.HasErrors() {
+		printErrors(cx)
+		return nil
+	}
+
 	compilationUnit := ast.GetCompilationUnit(cx, syntaxTree)
 	if runOpts.dumpAST {
 		prettyPrinter := ast.PrettyPrinter{}
 		fmt.Println(prettyPrinter.Print(compilationUnit))
 	}
+
+	if cx.HasErrors() {
+		printErrors(cx)
+		return nil
+	}
+
 	pkg := ast.ToPackage(compilationUnit)
+
+	if cx.HasErrors() {
+		printErrors(cx)
+		return nil
+	}
+
 	// Resolve symbols (imports) before type resolution
 	importedSymbols := semantics.ResolveImports(cx, pkg)
 	semantics.ResolveSymbols(cx, pkg, importedSymbols)
@@ -163,10 +180,10 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 	typeResolver := semantics.NewTypeResolver(cx)
 	typeResolver.ResolveTypes(cx, pkg)
 
-	if cx.HasErrors() {
-		printErrors(cx)
-		return nil
-	}
+	// if cx.HasErrors() {
+	// 	printErrors(cx)
+	// 	return nil
+	// }
 
 	// Run semantic analysis after type resolution
 	semanticAnalyzer := semantics.NewSemanticAnalyzer(cx)
@@ -219,24 +236,34 @@ func printDiagnostic(d diagnostics.Diagnostic) {
 	reset := "\033[0m"
 	red := "\033[31m"
 	yellow := "\033[33m"
-
 	cyan := "\033[36m"
+	bold := "\033[1m"
 
+	severity := d.DiagnosticInfo().Severity()
+	severityStr := strings.ToLower(severity.String())
 	severityColor := red
-	if d.DiagnosticInfo().Severity() == diagnostics.Warning {
+	if severity == diagnostics.Warning {
 		severityColor = yellow
 	}
 
-	// Print error message header
-	// format: error: file:line:col: message
-	fmt.Fprintf(os.Stderr, "%s%s: %s:%d:%d: %s%s\n",
-		severityColor,
-		d.DiagnosticInfo().Severity().String(),
-		fileName,
-		startLine+1, // Convert 0-based to 1-based for display
-		startCol+1,  // Convert 0-based to 1-based for display
-		d.Message(),
-		reset,
+	code := d.DiagnosticInfo().Code()
+	codeStr := ""
+	if code != "" {
+		codeStr = fmt.Sprintf("[%s]", code)
+	}
+
+	// 1. severity[CODE]: MESSAGE
+	fmt.Fprintf(os.Stderr, "%s%s%s%s%s: %s%s%s\n",
+		bold, severityColor, severityStr, codeStr, reset,
+		bold, d.Message(), reset,
+	)
+
+	lineNumStr := fmt.Sprintf("%d", startLine+1)
+	numWidth := len(lineNumStr)
+
+	// 2.  --> FILE:LINE:COL
+	fmt.Fprintf(os.Stderr, "%*s%s-->%s %s:%d:%d\n",
+		numWidth, "", cyan, reset, fileName, startLine+1, startCol+1,
 	)
 
 	// Print source snippet if available
@@ -246,14 +273,17 @@ func printDiagnostic(d diagnostics.Diagnostic) {
 			defer file.Close()
 			scanner := bufio.NewScanner(file)
 			currentLine := 0
+
+			fmt.Fprintf(os.Stderr, "%*s %s|%s\n", numWidth, "", cyan, reset)
+
 			for scanner.Scan() {
 				if currentLine == startLine {
 					lineContent := scanner.Text()
-					// Print the line of code
-					fmt.Fprintf(os.Stderr, "\t%s\n", lineContent)
 
-					// Print the pointer caret
-					// Adjust for tabs if necessary, simple implementation assumes spaces or single-width chars
+					// 3. LINE | CONTENT
+					fmt.Fprintf(os.Stderr, "%s%s %s| %s\n", cyan, lineNumStr, reset, lineContent)
+
+					// 4.   | POINTER
 					pointer := ""
 					for i := range startCol {
 						if len(lineContent) > i && lineContent[i] == '\t' {
@@ -263,11 +293,12 @@ func printDiagnostic(d diagnostics.Diagnostic) {
 						}
 					}
 					pointer += "^"
-					fmt.Fprintf(os.Stderr, "\t%s%s%s\n", cyan, pointer, reset)
+					fmt.Fprintf(os.Stderr, "%*s %s| %s%s%s\n", numWidth, "", cyan, severityColor, pointer, reset)
 					break
 				}
 				currentLine++
 			}
 		}
 	}
+	fmt.Fprintln(os.Stderr)
 }
