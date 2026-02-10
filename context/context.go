@@ -103,7 +103,6 @@ func (this *CompilerContext) NewPackageID(orgName model.Name, nameComps []model.
 }
 
 func (this *CompilerContext) Unimplemented(message string, pos diagnostics.Location) {
-	fmt.Println("yeah!")
 	if pos != nil {
 		panic(fmt.Sprintf("Unimplemented: %s at %s", message, pos))
 	}
@@ -126,28 +125,18 @@ func (this *CompilerContext) SyntaxError(message string, pos diagnostics.Locatio
 }
 
 func (this *CompilerContext) InternalError(message string, pos diagnostics.Location) {
-	fmt.Println("yeah!!!!!!")
 	if pos != nil {
-		panic(fmt.Sprintf("InternalError: %s at %s", message, pos))
+		panic(fmt.Sprintf("Internal error: %s at %s", message, pos))
 	}
-	panic(fmt.Sprintf("InternalError: %s", message))
+	panic(fmt.Sprintf("Internal error: %s", message))
 }
 
 func (this *CompilerContext) GetDiagnostics() []diagnostics.Diagnostic {
 	return this.diagnostics
 }
 
-// func (this *CompilerContext) HasErrors() bool {
-// 	return len(this.diagnostics) > 0
-// }
-
 func (this *CompilerContext) HasErrors() bool {
-	for _, diagnostic := range this.diagnostics {
-		if diagnostic.DiagnosticInfo().Severity() == diagnostics.Error {
-			return true
-		}
-	}
-	return false
+	return len(this.diagnostics) > 0
 }
 
 func (this *CompilerContext) PrintDiagnostics() {

@@ -147,9 +147,6 @@ var semanticAnalysisErrorSkipList = []string{
 	// error constructor expr not implemented
 	"01-function/assign10-e.bal",
 
-	// cyclic type resolution causes stack overflow (fatal, unrecoverable)
-	// "01-type/cyclic-e.bal",
-
 	// leading zero in integer literal not yet detected
 	"01-int/literal-e.bal",
 }
