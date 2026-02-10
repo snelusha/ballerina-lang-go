@@ -14809,6 +14809,8 @@ func GetSyntaxTree(debugCtx *debugcommon.DebugContext, fileName string) (*tree.S
 	rootNode := ballerinaParser.Parse().(*tree.STModulePart)
 
 	moduleNode := tree.CreateUnlinkedFacade[*tree.STModulePart, *tree.ModulePart](rootNode)
-	syntaxTree := tree.NewSyntaxTreeFromNodeTextDocumentStringBool(moduleNode, nil, fileName, false)
+	textDocument := text.TextDocumentFromText(string(content))
+	textDocument.Lines() // Populate line map
+	syntaxTree := tree.NewSyntaxTreeFromNodeTextDocumentStringBool(moduleNode, textDocument, fileName, false)
 	return &syntaxTree, nil
 }

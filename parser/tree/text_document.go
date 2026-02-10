@@ -16,4 +16,6 @@
 
 package tree
 
-type TextDocument interface{}
+import "ballerina-lang-go/tools/text"
+
+type TextDocument = text.TextDocument

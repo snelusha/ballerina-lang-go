@@ -41,6 +41,10 @@ func (this *SyntaxTree) ContainsModulePart() bool {
 	return this.RootNode.Kind() == common.MODULE_PART
 }
 
+func (this *SyntaxTree) TextDocument() TextDocument {
+	return this.textDocument
+}
+
 func (this *SyntaxTree) FilePath() string {
 	// migrated from SyntaxTree.java:85:5
 	return this.filePath

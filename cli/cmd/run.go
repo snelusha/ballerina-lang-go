@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -31,6 +32,7 @@ import (
 	"ballerina-lang-go/runtime"
 	"ballerina-lang-go/semantics"
 	"ballerina-lang-go/semtypes"
+	"ballerina-lang-go/tools/diagnostics"
 
 	"github.com/spf13/cobra"
 )
@@ -160,9 +162,21 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 	// Add type resolution step
 	typeResolver := semantics.NewTypeResolver(cx)
 	typeResolver.ResolveTypes(cx, pkg)
+
+	if cx.HasErrors() {
+		printErrors(cx)
+		return nil
+	}
+
 	// Run semantic analysis after type resolution
 	semanticAnalyzer := semantics.NewSemanticAnalyzer(cx)
 	semanticAnalyzer.Analyze(pkg)
+
+	if cx.HasErrors() {
+		printErrors(cx)
+		return nil
+	}
+
 	birPkg := bir.GenBir(cx, pkg)
 	if runOpts.dumpBIR {
 		prettyPrinter := bir.PrettyPrinter{}
@@ -183,4 +197,77 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	return nil
+}
+
+func printErrors(cx *context.CompilerContext) {
+	if cx.HasErrors() {
+		fmt.Fprintln(os.Stderr, "\nCompilation failed with the following errors:")
+		for _, diagnostic := range cx.GetDiagnostics() {
+			printDiagnostic(diagnostic)
+		}
+	}
+}
+
+func printDiagnostic(d diagnostics.Diagnostic) {
+	location := d.Location()
+	lineRange := location.LineRange()
+	fileName := lineRange.FileName()
+	startLine := lineRange.StartLine().Line()
+	startCol := lineRange.StartLine().Offset()
+
+	// Color codes
+	reset := "\033[0m"
+	red := "\033[31m"
+	yellow := "\033[33m"
+
+	cyan := "\033[36m"
+
+	severityColor := red
+	if d.DiagnosticInfo().Severity() == diagnostics.Warning {
+		severityColor = yellow
+	}
+
+	// Print error message header
+	// format: error: file:line:col: message
+	fmt.Fprintf(os.Stderr, "%s%s: %s:%d:%d: %s%s\n",
+		severityColor,
+		d.DiagnosticInfo().Severity().String(),
+		fileName,
+		startLine+1, // Convert 0-based to 1-based for display
+		startCol+1,  // Convert 0-based to 1-based for display
+		d.Message(),
+		reset,
+	)
+
+	// Print source snippet if available
+	if fileName != "" {
+		file, err := os.Open(fileName)
+		if err == nil {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			currentLine := 0
+			for scanner.Scan() {
+				if currentLine == startLine {
+					lineContent := scanner.Text()
+					// Print the line of code
+					fmt.Fprintf(os.Stderr, "\t%s\n", lineContent)
+
+					// Print the pointer caret
+					// Adjust for tabs if necessary, simple implementation assumes spaces or single-width chars
+					pointer := ""
+					for i := range startCol {
+						if len(lineContent) > i && lineContent[i] == '\t' {
+							pointer += "\t"
+						} else {
+							pointer += " "
+						}
+					}
+					pointer += "^"
+					fmt.Fprintf(os.Stderr, "\t%s%s%s\n", cyan, pointer, reset)
+					break
+				}
+				currentLine++
+			}
+		}
+	}
 }

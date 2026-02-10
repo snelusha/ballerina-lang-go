@@ -288,9 +288,33 @@ func (n *NodeBase) LineRange() LineRange {
 		return n.lineRange
 	}
 
-	_ = n.SyntaxTree()
-	// TODO: implement line range calculation
-	// This requires accessing the text document from the syntax tree
+	syntaxTree := n.SyntaxTree()
+	if syntaxTree == nil {
+		return n.lineRange
+	}
+
+	textDocument := syntaxTree.TextDocument()
+	if textDocument == nil {
+		return n.lineRange
+	}
+
+	textRange := n.TextRange()
+	startOffset := textRange.StartOffset
+	endOffset := textRange.EndOffset
+
+	startLinePos, err := textDocument.LinePositionFromTextPosition(startOffset)
+	if err != nil {
+		return n.lineRange
+	}
+	endLinePos, err := textDocument.LinePositionFromTextPosition(endOffset)
+	if err != nil {
+		return n.lineRange
+	}
+
+	n.lineRange = LineRange{
+		StartLine: LinePosition{Line: startLinePos.Line(), Column: startLinePos.Offset()},
+		EndLine:   LinePosition{Line: endLinePos.Line(), Column: endLinePos.Offset()},
+	}
 	return n.lineRange
 }
 
@@ -402,7 +426,17 @@ func (n *NonTerminalNodeBase) ChildInBucket(bucket int) Node {
 	if !IsSTNodePresent(internalChild) {
 		return nil
 	}
-	child = createFacade[Node](internalChild, n.position, n)
+
+	// Calculate child position by summing widths of preceding children
+	childPos := n.position
+	for i := 0; i < bucket; i++ {
+		sibling := n.internalNode.ChildInBucket(i)
+		if IsSTNodePresent(sibling) {
+			childPos += int(sibling.WidthWithMinutiae())
+		}
+	}
+
+	child = createFacade[Node](internalChild, childPos, n)
 	n.childBuckets[bucket] = child
 	return child
 

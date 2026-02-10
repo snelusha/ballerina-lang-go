@@ -158,7 +158,7 @@ func TestSemanticAnalysisErrors(t *testing.T) {
 
 	for _, testPair := range testPairs {
 		t.Run(testPair.Name, func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 			testSemanticAnalysisError(t, testPair)
 		})
 	}
@@ -171,22 +171,18 @@ func testSemanticAnalysisError(t *testing.T, testCase test_util.TestCase) {
 			return
 		}
 	}
-	// We EXPECT a panic for error test cases
-	var panicValue interface{}
 
 	cx := context.NewCompilerContext(semtypes.CreateTypeEnv())
 
 	defer func() {
-		if r := recover(); r != nil {
-			panicValue = r
-		}
+		recover()
 
 		if !cx.HasErrors() {
 			t.Errorf("Expected semantic errors for %s, but no errors were recorded", testCase.InputPath)
 			return
 		}
 
-		t.Logf("Semantic error correctly detected for %s: %v", testCase.InputPath, panicValue)
+		t.Logf("Semantic error correctly detected for %s", testCase.InputPath)
 	}()
 
 	debugCtx := debugcommon.DebugContext{
@@ -217,6 +213,4 @@ func testSemanticAnalysisError(t *testing.T, testCase test_util.TestCase) {
 	// Step 3: Semantic Analysis - this should panic for error cases
 	semanticAnalyzer := NewSemanticAnalyzer(cx)
 	semanticAnalyzer.Analyze(pkg)
-
-	// If we reach here without panic, the defer will catch it
 }

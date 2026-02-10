@@ -381,7 +381,7 @@ func setTypeDescriptorSymbol[T symbolResolver](resolver T, td model.TypeDescript
 			internalError(resolver, "Unsupported type descriptor", td.GetPosition())
 		}
 	}
-	return
+
 }
 
 func (ms *moduleSymbolResolver) Visit(node ast.BLangNode) ast.Visitor {

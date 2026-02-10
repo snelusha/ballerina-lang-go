@@ -484,7 +484,7 @@ func analyzeExpression[A analyzer](a A, expr ast.BLangExpression, expectedType s
 		ty := typeData.Type
 		ctx := a.tyCtx()
 		if !semtypes.IsSubtype(ctx, ty, expectedType) {
-			a.semanticErr("incompatible type for literal")
+			a.ctx().SemanticError("incompatible type for literal", expr.GetPosition())
 			return
 		}
 	case *ast.BLangNumericLiteral:
@@ -495,7 +495,7 @@ func analyzeExpression[A analyzer](a A, expr ast.BLangExpression, expectedType s
 		ty := typeData.Type
 		ctx := a.tyCtx()
 		if !semtypes.IsSubtype(ctx, ty, expectedType) {
-			a.semanticErr("incompatible type for literal")
+			a.ctx().SemanticError("incompatible type for literal", expr.GetPosition())
 			return
 		}
 
@@ -504,7 +504,7 @@ func analyzeExpression[A analyzer](a A, expr ast.BLangExpression, expectedType s
 		ty := a.ctx().SymbolType(expr.Symbol())
 		if expectedType != nil {
 			if !semtypes.IsSubtype(a.tyCtx(), ty, expectedType) {
-				a.semanticErr("incompatible type for variable reference")
+				a.ctx().SemanticError("incompatible type for variable reference", expr.GetPosition())
 				return
 			}
 		}
