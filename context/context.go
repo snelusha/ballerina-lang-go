@@ -17,8 +17,12 @@
 package context
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"os"
 	"strconv"
+	"strings"
 
 	"ballerina-lang-go/model"
 	"ballerina-lang-go/semtypes"
@@ -32,6 +36,7 @@ type CompilerContext struct {
 	symbolSpaces    []*model.SymbolSpace
 	typeEnv         semtypes.Env
 	diagnostics     []diagnostics.Diagnostic
+	diagWriter      io.Writer
 }
 
 func (this *CompilerContext) NewSymbolSpace(packageId model.PackageID) *model.SymbolSpace {
@@ -139,16 +144,102 @@ func (this *CompilerContext) HasErrors() bool {
 	return len(this.diagnostics) > 0
 }
 
+func (this *CompilerContext) SetDiagnosticWriter(w io.Writer) {
+	this.diagWriter = w
+}
+
+func (this *CompilerContext) getDiagWriter() io.Writer {
+	if this.diagWriter == nil {
+		return os.Stderr
+	}
+	return this.diagWriter
+}
+
 func (this *CompilerContext) PrintDiagnostics() {
-	if this.diagnostics != nil {
-		fmt.Printf("\nDiagnostics:\n")
+	if this.HasErrors() {
+		fmt.Fprintln(this.getDiagWriter(), "\nCompilation failed with the following errors:")
+		for _, diagnostic := range this.diagnostics {
+			this.printDiagnostic(diagnostic)
+		}
 	}
-	for _, diagnostic := range this.diagnostics {
-		fmt.Println(diagnostic.String())
+}
+
+func (this *CompilerContext) printDiagnostic(d diagnostics.Diagnostic) {
+	location := d.Location()
+	lineRange := location.LineRange()
+	fileName := lineRange.FileName()
+	startLine := lineRange.StartLine().Line()
+	startCol := lineRange.StartLine().Offset()
+
+	// Color codes
+	reset := "\033[0m"
+	red := "\033[31m"
+	yellow := "\033[33m"
+	cyan := "\033[36m"
+	bold := "\033[1m"
+
+	severity := d.DiagnosticInfo().Severity()
+	severityStr := strings.ToLower(severity.String())
+	severityColor := red
+	if severity == diagnostics.Warning {
+		severityColor = yellow
 	}
-	if this.diagnostics != nil {
-		fmt.Printf("\n")
+
+	code := d.DiagnosticInfo().Code()
+	codeStr := ""
+	if code != "" {
+		codeStr = fmt.Sprintf("[%s]", code)
 	}
+
+	// 1. severity[CODE]: MESSAGE
+	fmt.Fprintf(this.getDiagWriter(), "%s%s%s%s%s: %s%s%s\n",
+		bold, severityColor, severityStr, codeStr, reset,
+		bold, d.Message(), reset,
+	)
+
+	lineNumStr := fmt.Sprintf("%d", startLine+1)
+	numWidth := len(lineNumStr)
+
+	// 2.  --> FILE:LINE:COL
+	fmt.Fprintf(this.getDiagWriter(), "%*s%s-->%s %s:%d:%d\n",
+		numWidth, "", cyan, reset, fileName, startLine+1, startCol+1,
+	)
+
+	// Print source snippet if available
+	if fileName != "" {
+		file, err := os.Open(fileName)
+		if err == nil {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			currentLine := 0
+
+			fmt.Fprintf(this.getDiagWriter(), "%*s %s|%s\n", numWidth, "", cyan, reset)
+
+			for scanner.Scan() {
+				if currentLine == startLine {
+					lineContent := scanner.Text()
+
+					// 3. LINE | CONTENT
+					fmt.Fprintf(this.getDiagWriter(), "%s%s %s| %s\n", cyan, lineNumStr, reset, lineContent)
+
+					// 4.   | POINTER
+					pointer := ""
+					for i := range startCol {
+						if len(lineContent) > i && lineContent[i] == '\t' {
+							pointer += "\t"
+						} else {
+							pointer += " "
+						}
+					}
+					pointer += "^"
+					fmt.Fprintf(this.getDiagWriter(), "%*s %s| %s%s%s\n", numWidth, "", cyan, severityColor, pointer, reset)
+					break
+				}
+				currentLine++
+			}
+		}
+	}
+	fmt.Fprintln(this.getDiagWriter())
 }
 
 func NewCompilerContext(typeEnv semtypes.Env) *CompilerContext {

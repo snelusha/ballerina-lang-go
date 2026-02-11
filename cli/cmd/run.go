@@ -17,7 +17,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,7 +31,6 @@ import (
 	"ballerina-lang-go/runtime"
 	"ballerina-lang-go/semantics"
 	"ballerina-lang-go/semtypes"
-	"ballerina-lang-go/tools/diagnostics"
 
 	"github.com/spf13/cobra"
 )
@@ -151,7 +149,7 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 	}
 
 	if cx.HasErrors() {
-		printErrors(cx)
+		cx.PrintDiagnostics()
 		return nil
 	}
 
@@ -162,14 +160,14 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 	}
 
 	if cx.HasErrors() {
-		printErrors(cx)
+		cx.PrintDiagnostics()
 		return nil
 	}
 
 	pkg := ast.ToPackage(compilationUnit)
 
 	if cx.HasErrors() {
-		printErrors(cx)
+		cx.PrintDiagnostics()
 		return nil
 	}
 
@@ -190,7 +188,7 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 	semanticAnalyzer.Analyze(pkg)
 
 	if cx.HasErrors() {
-		printErrors(cx)
+		cx.PrintDiagnostics()
 		return nil
 	}
 
@@ -214,91 +212,4 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	return nil
-}
-
-func printErrors(cx *context.CompilerContext) {
-	if cx.HasErrors() {
-		fmt.Fprintln(os.Stderr, "\nCompilation failed with the following errors:")
-		for _, diagnostic := range cx.GetDiagnostics() {
-			printDiagnostic(diagnostic)
-		}
-	}
-}
-
-func printDiagnostic(d diagnostics.Diagnostic) {
-	location := d.Location()
-	lineRange := location.LineRange()
-	fileName := lineRange.FileName()
-	startLine := lineRange.StartLine().Line()
-	startCol := lineRange.StartLine().Offset()
-
-	// Color codes
-	reset := "\033[0m"
-	red := "\033[31m"
-	yellow := "\033[33m"
-	cyan := "\033[36m"
-	bold := "\033[1m"
-
-	severity := d.DiagnosticInfo().Severity()
-	severityStr := strings.ToLower(severity.String())
-	severityColor := red
-	if severity == diagnostics.Warning {
-		severityColor = yellow
-	}
-
-	code := d.DiagnosticInfo().Code()
-	codeStr := ""
-	if code != "" {
-		codeStr = fmt.Sprintf("[%s]", code)
-	}
-
-	// 1. severity[CODE]: MESSAGE
-	fmt.Fprintf(os.Stderr, "%s%s%s%s%s: %s%s%s\n",
-		bold, severityColor, severityStr, codeStr, reset,
-		bold, d.Message(), reset,
-	)
-
-	lineNumStr := fmt.Sprintf("%d", startLine+1)
-	numWidth := len(lineNumStr)
-
-	// 2.  --> FILE:LINE:COL
-	fmt.Fprintf(os.Stderr, "%*s%s-->%s %s:%d:%d\n",
-		numWidth, "", cyan, reset, fileName, startLine+1, startCol+1,
-	)
-
-	// Print source snippet if available
-	if fileName != "" {
-		file, err := os.Open(fileName)
-		if err == nil {
-			defer file.Close()
-			scanner := bufio.NewScanner(file)
-			currentLine := 0
-
-			fmt.Fprintf(os.Stderr, "%*s %s|%s\n", numWidth, "", cyan, reset)
-
-			for scanner.Scan() {
-				if currentLine == startLine {
-					lineContent := scanner.Text()
-
-					// 3. LINE | CONTENT
-					fmt.Fprintf(os.Stderr, "%s%s %s| %s\n", cyan, lineNumStr, reset, lineContent)
-
-					// 4.   | POINTER
-					pointer := ""
-					for i := range startCol {
-						if len(lineContent) > i && lineContent[i] == '\t' {
-							pointer += "\t"
-						} else {
-							pointer += " "
-						}
-					}
-					pointer += "^"
-					fmt.Fprintf(os.Stderr, "%*s %s| %s%s%s\n", numWidth, "", cyan, severityColor, pointer, reset)
-					break
-				}
-				currentLine++
-			}
-		}
-	}
-	fmt.Fprintln(os.Stderr)
 }
