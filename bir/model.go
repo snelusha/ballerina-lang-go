@@ -17,10 +17,11 @@
 package bir
 
 import (
+	"fmt"
+
 	"ballerina-lang-go/model"
 	"ballerina-lang-go/semtypes"
 	"ballerina-lang-go/tools/diagnostics"
-	"fmt"
 )
 
 //go:generate kaitai-struct-compiler --target go bir.ksy --outdir ../ --go-package bir
@@ -307,4 +308,9 @@ func BB(number int) BIRBasicBlock {
 		Number: number,
 		Id:     model.Name(fmt.Sprintf("bb%d", number)),
 	}
+}
+
+func (bp *BIRPackage) Print() string {
+	pp := PrettyPrinter{}
+	return pp.Print(*bp)
 }

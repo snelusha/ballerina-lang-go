@@ -24,9 +24,9 @@ import (
 	"time"
 )
 
-// memFS is an in-memory filesystem that supports both files and directories.
+// MemFS is an in-memory filesystem that supports both files and directories.
 // It implements fs.FS, fs.ReadDirFS, MutableFS, and WritableFS interfaces.
-type memFS struct {
+type MemFS struct {
 	entries map[string]*memEntry
 }
 
@@ -52,14 +52,14 @@ type memDirHandle struct {
 	offset  int
 }
 
-func NewMemFS() *memFS {
-	return &memFS{
+func NewMemFS() *MemFS {
+	return &MemFS{
 		entries: make(map[string]*memEntry),
 	}
 }
 
 // mkdirAllInternal creates all directories in the path if they don't exist.
-func (mfs *memFS) mkdirAllInternal(dirPath string, perm fs.FileMode) {
+func (mfs *MemFS) mkdirAllInternal(dirPath string, perm fs.FileMode) {
 	if dirPath == "" {
 		panic("dirPath cannot be empty")
 	}
@@ -93,7 +93,7 @@ func (mfs *memFS) mkdirAllInternal(dirPath string, perm fs.FileMode) {
 	}
 }
 
-func (mfs *memFS) Create(name string) (fs.File, error) {
+func (mfs *MemFS) Create(name string) (fs.File, error) {
 	if !fs.ValidPath(name) {
 		return nil, &fs.PathError{Op: "create", Path: name, Err: fs.ErrInvalid}
 	}
@@ -117,7 +117,7 @@ func (mfs *memFS) Create(name string) (fs.File, error) {
 	}, nil
 }
 
-func (mfs *memFS) MkdirAll(dirPath string, perm fs.FileMode) error {
+func (mfs *MemFS) MkdirAll(dirPath string, perm fs.FileMode) error {
 	if !fs.ValidPath(dirPath) {
 		return &fs.PathError{Op: "mkdir", Path: dirPath, Err: fs.ErrInvalid}
 	}
@@ -126,7 +126,7 @@ func (mfs *memFS) MkdirAll(dirPath string, perm fs.FileMode) error {
 	return nil
 }
 
-func (mfs *memFS) Open(name string) (fs.File, error) {
+func (mfs *MemFS) Open(name string) (fs.File, error) {
 	if !fs.ValidPath(name) {
 		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrInvalid}
 	}
@@ -161,7 +161,7 @@ func (mfs *memFS) Open(name string) (fs.File, error) {
 	}, nil
 }
 
-func (mfs *memFS) OpenFile(name string, flag int, perm fs.FileMode) (fs.File, error) {
+func (mfs *MemFS) OpenFile(name string, flag int, perm fs.FileMode) (fs.File, error) {
 	if !fs.ValidPath(name) {
 		return nil, &fs.PathError{Op: "openfile", Path: name, Err: fs.ErrInvalid}
 	}
@@ -188,7 +188,7 @@ func (mfs *memFS) OpenFile(name string, flag int, perm fs.FileMode) (fs.File, er
 	}, nil
 }
 
-func (mfs *memFS) ReadDir(name string) ([]fs.DirEntry, error) {
+func (mfs *MemFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	if !fs.ValidPath(name) {
 		return nil, &fs.PathError{Op: "readdir", Path: name, Err: fs.ErrInvalid}
 	}
@@ -211,7 +211,7 @@ func (mfs *memFS) ReadDir(name string) ([]fs.DirEntry, error) {
 }
 
 // readDirEntries returns direct children of a directory.
-func (mfs *memFS) readDirEntries(dirPath string) []fs.DirEntry {
+func (mfs *MemFS) readDirEntries(dirPath string) []fs.DirEntry {
 	var prefix string
 	if dirPath == "." {
 		prefix = ""
@@ -266,7 +266,7 @@ func (mfs *memFS) readDirEntries(dirPath string) []fs.DirEntry {
 }
 
 // Remove removes a file or directory and all its contents.
-func (mfs *memFS) Remove(name string) error {
+func (mfs *MemFS) Remove(name string) error {
 	removed := false
 
 	// Remove the entry itself if it exists
@@ -292,7 +292,7 @@ func (mfs *memFS) Remove(name string) error {
 }
 
 // Move moves a file or directory from oldpath to newpath.
-func (mfs *memFS) Move(oldpath, newpath string) error {
+func (mfs *MemFS) Move(oldpath, newpath string) error {
 	type moveItem struct {
 		oldName string
 		newName string
@@ -338,7 +338,7 @@ func (mfs *memFS) Move(oldpath, newpath string) error {
 }
 
 // WriteFile writes data to a file, creating it if necessary.
-func (mfs *memFS) WriteFile(name string, data []byte, perm fs.FileMode) error {
+func (mfs *MemFS) WriteFile(name string, data []byte, perm fs.FileMode) error {
 	if !fs.ValidPath(name) {
 		return &fs.PathError{Op: "writefile", Path: name, Err: fs.ErrInvalid}
 	}

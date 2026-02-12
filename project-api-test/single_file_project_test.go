@@ -41,7 +41,11 @@ func TestLoadSingleFile(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	// Create a file system that points to the root of the OS.
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	project := result.Project().(*projects.SingleFileProject)
@@ -75,7 +79,11 @@ func TestSingleFileTargetDirectory(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	// Create a file system that points to the root of the OS.
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	project := result.Project().(*projects.SingleFileProject)
@@ -103,7 +111,11 @@ func TestDefaultBuildOptions(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	// Create a file system that points to the root of the OS.
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	project := result.Project().(*projects.SingleFileProject)
@@ -133,7 +145,11 @@ func TestOverrideBuildOptions(t *testing.T) {
 		WithObservabilityIncluded(true).
 		Build()
 
-	result, err := directory.LoadProject(absPath, directory.ProjectLoadConfig{
+	// Create a file system that points to the root of the OS.
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath, directory.ProjectLoadConfig{
 		BuildOptions: &buildOptions,
 	})
 	require.NoError(err)
@@ -160,8 +176,12 @@ func TestUpdateSingleFile(t *testing.T) {
 
 	newContent := "import ballerina/io;\n"
 
+	// Create a file system that points to the root of the OS.
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
 	// Load the project
-	result, err := directory.LoadProject(absPath)
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	singleFileProject := result.Project().(*projects.SingleFileProject)
@@ -232,7 +252,11 @@ func TestProjectDuplicate(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	// Create a file system that points to the root of the OS.
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	originalProject := result.Project().(*projects.SingleFileProject)

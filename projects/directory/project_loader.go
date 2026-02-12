@@ -20,7 +20,7 @@
 package directory
 
 import (
-	"os"
+	"io/fs"
 	"path/filepath"
 	"strings"
 
@@ -46,21 +46,23 @@ type ProjectLoadConfig struct {
 //   - Is .bala file -> error (not implemented)
 //
 // If no config is provided, default configuration is used.
-func LoadProject(path string, config ...ProjectLoadConfig) (projects.ProjectLoadResult, error) {
+func LoadProject(fsys fs.FS, path string, config ...ProjectLoadConfig) (projects.ProjectLoadResult, error) {
 	// Apply defaults
 	var cfg ProjectLoadConfig
 	if len(config) > 0 {
 		cfg = config[0]
 	}
 
-	// Get absolute path
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return projects.ProjectLoadResult{}, err
+	// We trust the path provided relative to fs.FS
+	// os.Stat checks if path exists
+	slashPath := filepath.ToSlash(path)
+	if slashPath == "." {
+		slashPath = "."
+	} else if slashPath == "" {
+		slashPath = "."
 	}
 
-	// Check if path exists
-	info, err := os.Stat(absPath)
+	info, err := fs.Stat(fsys, slashPath)
 	if err != nil {
 		return projects.ProjectLoadResult{}, err
 	}
@@ -68,48 +70,44 @@ func LoadProject(path string, config ...ProjectLoadConfig) (projects.ProjectLoad
 	// Detect project type
 	if info.IsDir() {
 		// Check for Ballerina.toml
-		tomlPath := filepath.Join(absPath, projects.BallerinaTomlFile)
-		if _, err := os.Stat(tomlPath); err == nil {
+		// For fs.FS, join with forward slash is safer, but filepath.Join then ToSlash works
+		tomlPath := filepath.Join(path, projects.BallerinaTomlFile)
+		slashTomlPath := filepath.ToSlash(tomlPath)
+		if _, err := fs.Stat(fsys, slashTomlPath); err == nil {
 			// Has Ballerina.toml - load as build project
-			return loadBuildProject(absPath, cfg)
+			return loadBuildProject(fsys, path, cfg)
 		}
 
 		// Directory without Ballerina.toml - error
 		return projects.ProjectLoadResult{}, &projects.ProjectError{
-			Message: "not a valid Ballerina project directory (missing Ballerina.toml): " + absPath,
+			Message: "not a valid Ballerina project directory (missing Ballerina.toml): " + path,
 		}
 	}
 
 	// Check file extension
-	if strings.HasSuffix(absPath, projects.BalFileExtension) {
+	if strings.HasSuffix(path, projects.BalFileExtension) {
 		// Single .bal file
-		return loadSingleFileProject(absPath, cfg)
+		return loadSingleFileProject(fsys, path, cfg)
 	}
 
-	if strings.HasSuffix(absPath, projects.BalaFileExtension) {
+	if strings.HasSuffix(path, projects.BalaFileExtension) {
 		// .bala file - not implemented
 		return projects.ProjectLoadResult{}, &projects.ProjectError{
-			Message: "loading from .bala files is not implemented: " + absPath,
+			Message: "loading from .bala files is not implemented: " + path,
 		}
 	}
 
 	return projects.ProjectLoadResult{}, &projects.ProjectError{
-		Message: "unsupported file type: " + absPath,
+		Message: "unsupported file type: " + path,
 	}
 }
 
 // loadBuildProject loads a build project from the given path.
 // It merges build options from Ballerina.toml (manifest defaults) with the caller's
 // options using AcceptTheirs, so caller-provided options override manifest defaults.
-func loadBuildProject(path string, cfg ProjectLoadConfig) (projects.ProjectLoadResult, error) {
-	// Normalize path to absolute for consistent DocumentID() lookups
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return projects.ProjectLoadResult{}, err
-	}
-
+func loadBuildProject(fsys fs.FS, path string, cfg ProjectLoadConfig) (projects.ProjectLoadResult, error) {
 	// Use internal.CreateBuildProjectConfig to scan and create package config
-	packageConfig, err := internal.CreateBuildProjectConfig(absPath)
+	packageConfig, err := internal.CreateBuildProjectConfig(fsys, path)
 	if err != nil {
 		return projects.ProjectLoadResult{}, err
 	}
@@ -124,7 +122,9 @@ func loadBuildProject(path string, cfg ProjectLoadConfig) (projects.ProjectLoadR
 	}
 
 	// Create the project
-	project := projects.NewBuildProject(absPath, mergedOpts)
+	// Note: We are using the path relative to FS as the source root.
+	// This abstract path will be stored in the project.
+	project := projects.NewBuildProject(path, mergedOpts)
 
 	// Create package from config
 	compilationOptions := mergedOpts.CompilationOptions()
@@ -143,32 +143,28 @@ func loadBuildProject(path string, cfg ProjectLoadConfig) (projects.ProjectLoadR
 }
 
 // loadSingleFileProject loads a single .bal file as a project.
-func loadSingleFileProject(path string, cfg ProjectLoadConfig) (projects.ProjectLoadResult, error) {
+func loadSingleFileProject(fsys fs.FS, path string, cfg ProjectLoadConfig) (projects.ProjectLoadResult, error) {
 	// Verify file exists and is a .bal file
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return projects.ProjectLoadResult{}, err
-	}
-
-	info, err := os.Stat(absPath)
+	slashPath := filepath.ToSlash(path)
+	info, err := fs.Stat(fsys, slashPath)
 	if err != nil {
 		return projects.ProjectLoadResult{}, err
 	}
 
 	if info.IsDir() {
 		return projects.ProjectLoadResult{}, &projects.ProjectError{
-			Message: "expected a .bal file, got directory: " + absPath,
+			Message: "expected a .bal file, got directory: " + path,
 		}
 	}
 
-	if !strings.HasSuffix(absPath, projects.BalFileExtension) {
+	if !strings.HasSuffix(path, projects.BalFileExtension) {
 		return projects.ProjectLoadResult{}, &projects.ProjectError{
-			Message: "not a Ballerina source file: " + absPath,
+			Message: "not a Ballerina source file: " + path,
 		}
 	}
 
 	// Read file content
-	content, err := os.ReadFile(absPath)
+	content, err := fs.ReadFile(fsys, slashPath)
 	if err != nil {
 		return projects.ProjectLoadResult{}, err
 	}
@@ -182,14 +178,14 @@ func loadSingleFileProject(path string, cfg ProjectLoadConfig) (projects.Project
 	}
 
 	// Get directory and filename
-	sourceDir := filepath.Dir(absPath)
-	fileName := filepath.Base(absPath)
+	sourceDir := filepath.Dir(path)
+	fileName := filepath.Base(path)
 
 	// Derive package name from filename (without extension)
 	packageName := strings.TrimSuffix(fileName, projects.BalFileExtension)
 
 	// Create the project
-	project := projects.NewSingleFileProject(sourceDir, buildOpts, absPath)
+	project := projects.NewSingleFileProject(sourceDir, buildOpts, path)
 
 	// Create package descriptor with anonymous org and default version
 	defaultVersion, _ := projects.NewPackageVersionFromString(projects.DefaultVersion)

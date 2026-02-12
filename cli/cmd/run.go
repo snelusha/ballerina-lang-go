@@ -152,8 +152,13 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 		}()
 	}
 
+	// Create a file system that points to the root of the OS.
+	// This allows us to use absolute paths as relative paths to this FS.
+	fsys := os.DirFS("/")
+	path = strings.TrimPrefix(path, "/")
+
 	// Load project using ProjectLoader (auto-detects type)
-	result, err := directory.LoadProject(path, directory.ProjectLoadConfig{
+	result, err := directory.LoadProject(fsys, path, directory.ProjectLoadConfig{
 		BuildOptions: &buildOpts,
 	})
 	if err != nil {

@@ -22,7 +22,9 @@
 package projectapitest
 
 import (
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"ballerina-lang-go/projects"
@@ -40,7 +42,11 @@ func TestBuildProjectWithOneModule(t *testing.T) {
 	require.NoError(err)
 
 	// 1) Initialize the project instance
-	result, err := directory.LoadProject(absPath)
+	// Create a file system that points to the root of the OS.
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -101,7 +107,10 @@ func TestBuildProjectTargetDirectory(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -111,7 +120,7 @@ func TestBuildProjectTargetDirectory(t *testing.T) {
 	require.NotEmpty(targetDirPath)
 
 	// Verify target directory is under source root
-	expectedTargetDir := filepath.Join(absPath, "target")
+	expectedTargetDir := filepath.Join(relPath, "target")
 	assert.Equal(expectedTargetDir, targetDirPath)
 }
 
@@ -124,13 +133,16 @@ func TestBuildProjectSourceRoot(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	project := result.Project()
 
 	// Verify source root matches project path
-	assert.Equal(absPath, project.SourceRoot())
+	assert.Equal(relPath, project.SourceRoot())
 }
 
 // TestBuildProjectKind tests if the project kind is BUILD.
@@ -142,7 +154,10 @@ func TestBuildProjectKind(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -160,7 +175,10 @@ func TestBuildProjectDuplicate(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	originalProject := result.Project()
@@ -211,7 +229,10 @@ func TestUpdateDocument(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -283,7 +304,10 @@ func TestAddDocument(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -366,7 +390,10 @@ func TestAddTestDocument(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -441,7 +468,10 @@ func TestRemoveDocument(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -516,7 +546,10 @@ func TestAddModule(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	fsys := os.DirFS("/")
+	relPath := strings.TrimPrefix(absPath, "/")
+
+	result, err := directory.LoadProject(fsys, relPath)
 	require.NoError(err)
 
 	project := result.Project()
