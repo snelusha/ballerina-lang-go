@@ -87,7 +87,7 @@ function EditorContent() {
 
 	if (!ready) {
 		return (
-			<div className="flex items-center justify-center min-h-dvh">
+			<div className="w-full flex items-center justify-center min-h-dvh">
 				<div className="text-sm text-muted-foreground">Getting Ready!</div>
 			</div>
 		);
