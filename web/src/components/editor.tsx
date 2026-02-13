@@ -121,7 +121,7 @@ function EditorContent() {
 				<main className="flex flex-col lg:flex-row flex-1 min-h-0">
 					<div
 						className={cn(
-							"flex flex-col border-b lg:border-b-0 lg:border-r min-h-0",
+							"flex flex-col lg:border-b-0 lg:border-r min-h-0",
 							"lg:w-1/2 lg:flex-none lg:h-full",
 							outputOpen ? "h-1/2" : "flex-1",
 						)}
@@ -139,7 +139,7 @@ function EditorContent() {
 								}
 							>
 								<HugeiconsIcon icon={PlayIcon} strokeWidth={1.5} />
-								<span className="hidden sm:inline">Run</span>
+								<span>Run</span>
 							</Button>
 						</div>
 						<MinimalEditor

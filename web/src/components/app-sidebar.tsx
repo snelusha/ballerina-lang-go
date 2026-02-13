@@ -22,6 +22,7 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 	SidebarMenuSub,
+	useSidebar,
 } from "@/components/ui/sidebar";
 
 import { useFileStore } from "@/stores/file-store";
@@ -52,12 +53,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 function TreeNode({ node, path }: { node: FileNode; path: FilePath }) {
 	const selectFile = useFileStore((s) => s.selectFile);
 	const selectedFilePath = useFileStore((s) => s.selectedFilePath);
+	const { toggleSidebar } = useSidebar();
 
 	if (node.kind === "file") {
 		return (
 			<SidebarMenuButton
 				isActive={selectedFilePath === path}
-				onClick={() => selectFile(path)}
+				onClick={() => {
+					selectFile(path);
+					toggleSidebar();
+				}}
 			>
 				<HugeiconsIcon icon={File01Icon} strokeWidth={1.5} />
 				{node.name}
