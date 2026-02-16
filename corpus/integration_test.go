@@ -17,11 +17,6 @@
 package corpus
 
 import (
-	"ballerina-lang-go/bir"
-	"ballerina-lang-go/projects"
-	"ballerina-lang-go/projects/directory"
-	"ballerina-lang-go/runtime"
-	"ballerina-lang-go/values"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -31,6 +26,12 @@ import (
 	"sync"
 	"testing"
 	"unsafe"
+
+	"ballerina-lang-go/bir"
+	"ballerina-lang-go/projects"
+	"ballerina-lang-go/projects/directory"
+	"ballerina-lang-go/runtime"
+	"ballerina-lang-go/values"
 
 	_ "ballerina-lang-go/lib/rt"
 )
@@ -164,7 +165,8 @@ func runCompilePhase(balFile string) (failed bool, panicVal interface{}, pkg *bi
 		}
 	}()
 
-	result, err := directory.LoadProject(balFile)
+	fsys := os.DirFS(balFile)
+	result, err := directory.LoadProject(fsys, balFile)
 	if err != nil {
 		panic(err)
 	}

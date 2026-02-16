@@ -165,7 +165,8 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load project using ProjectLoader (auto-detects type)
-	result, err := directory.LoadProject(path, directory.ProjectLoadConfig{
+	fsys := os.DirFS(path)
+	result, err := directory.LoadProject(fsys, path, directory.ProjectLoadConfig{
 		BuildOptions: &buildOpts,
 	})
 	if err != nil {

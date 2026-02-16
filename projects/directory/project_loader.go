@@ -20,6 +20,7 @@
 package directory
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,7 +47,7 @@ type ProjectLoadConfig struct {
 //   - Is .bala file -> error (not implemented)
 //
 // If no config is provided, default configuration is used.
-func LoadProject(path string, config ...ProjectLoadConfig) (projects.ProjectLoadResult, error) {
+func LoadProject(fsys fs.FS, path string, config ...ProjectLoadConfig) (projects.ProjectLoadResult, error) {
 	// Apply defaults
 	var cfg ProjectLoadConfig
 	if len(config) > 0 {
@@ -71,7 +72,7 @@ func LoadProject(path string, config ...ProjectLoadConfig) (projects.ProjectLoad
 		tomlPath := filepath.Join(absPath, projects.BallerinaTomlFile)
 		if _, err := os.Stat(tomlPath); err == nil {
 			// Has Ballerina.toml - load as build project
-			return loadBuildProject(absPath, cfg)
+			return loadBuildProject(fsys, absPath, cfg)
 		}
 
 		// Directory without Ballerina.toml - error
@@ -83,7 +84,7 @@ func LoadProject(path string, config ...ProjectLoadConfig) (projects.ProjectLoad
 	// Check file extension
 	if strings.HasSuffix(absPath, projects.BalFileExtension) {
 		// Single .bal file
-		return loadSingleFileProject(absPath, cfg)
+		return loadSingleFileProject(fsys, absPath, cfg)
 	}
 
 	if strings.HasSuffix(absPath, projects.BalaFileExtension) {
@@ -101,7 +102,7 @@ func LoadProject(path string, config ...ProjectLoadConfig) (projects.ProjectLoad
 // loadBuildProject loads a build project from the given path.
 // It merges build options from Ballerina.toml (manifest defaults) with the caller's
 // options using AcceptTheirs, so caller-provided options override manifest defaults.
-func loadBuildProject(path string, cfg ProjectLoadConfig) (projects.ProjectLoadResult, error) {
+func loadBuildProject(fsys fs.FS, path string, cfg ProjectLoadConfig) (projects.ProjectLoadResult, error) {
 	// Normalize path to absolute for consistent DocumentID() lookups
 	absPath, err := filepath.Abs(path)
 	if err != nil {
@@ -124,7 +125,7 @@ func loadBuildProject(path string, cfg ProjectLoadConfig) (projects.ProjectLoadR
 	}
 
 	// Create the project
-	project := projects.NewBuildProject(absPath, mergedOpts)
+	project := projects.NewBuildProject(fsys, absPath, mergedOpts)
 
 	// Create package from config
 	compilationOptions := mergedOpts.CompilationOptions()
@@ -143,7 +144,7 @@ func loadBuildProject(path string, cfg ProjectLoadConfig) (projects.ProjectLoadR
 }
 
 // loadSingleFileProject loads a single .bal file as a project.
-func loadSingleFileProject(path string, cfg ProjectLoadConfig) (projects.ProjectLoadResult, error) {
+func loadSingleFileProject(fsys fs.FS, path string, cfg ProjectLoadConfig) (projects.ProjectLoadResult, error) {
 	// Verify file exists and is a .bal file
 	absPath, err := filepath.Abs(path)
 	if err != nil {
@@ -189,7 +190,7 @@ func loadSingleFileProject(path string, cfg ProjectLoadConfig) (projects.Project
 	packageName := strings.TrimSuffix(fileName, projects.BalFileExtension)
 
 	// Create the project
-	project := projects.NewSingleFileProject(sourceDir, buildOpts, absPath)
+	project := projects.NewSingleFileProject(fsys, sourceDir, buildOpts, absPath)
 
 	// Create package descriptor with anonymous org and default version
 	defaultVersion, _ := projects.NewPackageVersionFromString(projects.DefaultVersion)
