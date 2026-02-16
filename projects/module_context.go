@@ -30,7 +30,6 @@ import (
 	"ballerina-lang-go/context"
 	"ballerina-lang-go/parser/tree"
 	"ballerina-lang-go/semantics"
-	"ballerina-lang-go/semtypes"
 	"ballerina-lang-go/tools/diagnostics"
 )
 
@@ -97,6 +96,7 @@ func newModuleContext(project Project, moduleConfig ModuleConfig, disableSyntaxT
 		testDocContextMap:      testDocContextMap,
 		testSrcDocIDs:          testSrcDocIDs,
 		moduleDescDependencies: depsCopy,
+		compilerCtx:            project.Base().Environment().CompilerContext(),
 	}
 }
 
@@ -228,9 +228,6 @@ func (m *moduleContext) compile() {
 // parse sources, build BLangPackage (AST), and run semantic analysis.
 func compileInternal(moduleCtx *moduleContext) {
 	moduleCtx.moduleDiagnostics = make([]diagnostics.Diagnostic, 0)
-	env := semtypes.CreateTypeEnv()
-	cx := context.NewCompilerContext(env)
-	moduleCtx.compilerCtx = cx
 
 	// Parse all source documents and collect syntax trees.
 	var syntaxTrees []*tree.SyntaxTree
@@ -256,42 +253,44 @@ func compileInternal(moduleCtx *moduleContext) {
 		return
 	}
 
+	compilerCtx := moduleCtx.project.Base().Environment().CompilerContext()
+
 	// Build BLangPackage from syntax trees.
 	compilationOptions := moduleCtx.project.BuildOptions().CompilationOptions()
-	pkgNode := buildBLangPackage(cx, syntaxTrees, compilationOptions)
+	pkgNode := buildBLangPackage(compilerCtx, syntaxTrees, compilationOptions)
 	moduleCtx.bLangPkg = pkgNode
 
 	// Resolve symbols (imports) before type resolution
-	importedSymbols := semantics.ResolveImports(cx, pkgNode, semantics.GetImplicitImports(cx))
-	semantics.ResolveSymbols(cx, pkgNode, importedSymbols)
+	importedSymbols := semantics.ResolveImports(compilerCtx, pkgNode, semantics.GetImplicitImports(compilerCtx))
+	semantics.ResolveSymbols(compilerCtx, pkgNode, importedSymbols)
 
 	// Add type resolution step
-	typeResolver := semantics.NewTypeResolver(cx, importedSymbols)
-	typeResolver.ResolveTypes(cx, pkgNode)
+	typeResolver := semantics.NewTypeResolver(compilerCtx, importedSymbols)
+	typeResolver.ResolveTypes(compilerCtx, pkgNode)
 
 	// Create control flow graph before semantic analysis.
 	// CFG is needed for conditional type narrowing during semantic analysis.
-	cfg := semantics.CreateControlFlowGraph(cx, pkgNode)
+	cfg := semantics.CreateControlFlowGraph(compilerCtx, pkgNode)
 
 	// Dump CFG if requested
 	if compilationOptions.DumpCFG() {
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "==================BEGIN CFG==================")
 		if compilationOptions.DumpCFGFormat() == CFGFormatDot {
-			dotExporter := semantics.NewCFGDotExporter(cx)
+			dotExporter := semantics.NewCFGDotExporter(compilerCtx)
 			fmt.Println(strings.TrimSpace(dotExporter.Export(cfg)))
 		} else {
-			prettyPrinter := semantics.NewCFGPrettyPrinter(cx)
+			prettyPrinter := semantics.NewCFGPrettyPrinter(compilerCtx)
 			fmt.Println(strings.TrimSpace(prettyPrinter.Print(cfg)))
 		}
 		fmt.Fprintln(os.Stderr, "===================END CFG===================")
 	}
 
-	semanticAnalyzer := semantics.NewSemanticAnalyzer(cx)
+	semanticAnalyzer := semantics.NewSemanticAnalyzer(compilerCtx)
 	semanticAnalyzer.Analyze(pkgNode)
 
 	// Run CFG analyses (reachability and explicit return) after semantic analysis.
-	semantics.AnalyzeCFG(cx, pkgNode, cfg)
+	semantics.AnalyzeCFG(compilerCtx, pkgNode, cfg)
 }
 
 // buildBLangPackage builds a BLangPackage from one or more syntax trees.
