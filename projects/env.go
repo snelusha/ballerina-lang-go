@@ -29,7 +29,7 @@ type Environment struct {
 	compilerCtx *context.CompilerContext
 }
 
-func NewEnvironment(fsys fs.FS, cx *context.CompilerContext) *Environment {
+func newEnvironment(fsys fs.FS, cx *context.CompilerContext) *Environment {
 	return &Environment{
 		fsys:        fsys,
 		compilerCtx: cx,
