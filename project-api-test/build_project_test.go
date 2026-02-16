@@ -27,7 +27,6 @@ import (
 	"testing"
 
 	"ballerina-lang-go/projects"
-	"ballerina-lang-go/projects/directory"
 	"ballerina-lang-go/test_util"
 )
 
@@ -41,7 +40,7 @@ func TestBuildProjectWithOneModule(t *testing.T) {
 	require.NoError(err)
 
 	// 1) Initialize the project instance
-	result, err := directory.LoadProject(absPath)
+	result, err := loadProject(absPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -106,7 +105,7 @@ func TestBuildProjectTargetDirectory(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	result, err := loadProject(absPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -129,7 +128,7 @@ func TestBuildProjectSourceRoot(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	result, err := loadProject(absPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -147,7 +146,7 @@ func TestBuildProjectKind(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	result, err := loadProject(absPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -165,7 +164,7 @@ func TestBuildProjectDuplicate(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	result, err := loadProject(absPath)
 	require.NoError(err)
 
 	originalProject := result.Project()
@@ -216,7 +215,7 @@ func TestUpdateDocument(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	result, err := loadProject(absPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -288,7 +287,7 @@ func TestAddDocument(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	result, err := loadProject(absPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -371,7 +370,7 @@ func TestAddTestDocument(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	result, err := loadProject(absPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -446,7 +445,7 @@ func TestRemoveDocument(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	result, err := loadProject(absPath)
 	require.NoError(err)
 
 	project := result.Project()
@@ -521,7 +520,7 @@ func TestAddModule(t *testing.T) {
 	absPath, err := filepath.Abs(projectPath)
 	require.NoError(err)
 
-	result, err := directory.LoadProject(absPath)
+	result, err := loadProject(absPath)
 	require.NoError(err)
 
 	project := result.Project()
