@@ -17,9 +17,10 @@
 package io
 
 import (
-	"ballerina-lang-go/runtime"
 	"fmt"
 	"os"
+
+	"ballerina-lang-go/runtime"
 )
 
 const (
@@ -37,8 +38,29 @@ func printlnExtern(args []any) (any, error) {
 	return nil, nil
 }
 
+func fileReadStringExtern(args []any) (any, error) {
+	path := args[0].(string)
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return string(content), nil
+}
+
+func fileWriteStringExtern(args []any) (any, error) {
+	path := args[0].(string)
+	content := args[1].(string)
+	err := os.WriteFile(path, []byte(content), 0o644)
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
 func initIOModule(rt *runtime.Runtime) {
-	runtime.RegisterExternFunction(rt, orgName, moduleName, funcName, printlnExtern)
+	runtime.RegisterExternFunction(rt, orgName, moduleName, "println", printlnExtern)
+	runtime.RegisterExternFunction(rt, orgName, moduleName, "fileReadString", fileReadStringExtern)
+	runtime.RegisterExternFunction(rt, orgName, moduleName, "fileWriteString", fileWriteStringExtern)
 }
 
 func init() {
