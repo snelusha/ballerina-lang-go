@@ -211,9 +211,19 @@ func loadSingleFileProject(path string, cfg ProjectLoadConfig) (projects.Project
 	// Create module ID
 	moduleID := projects.NewModuleID(moduleDesc.Name().String(), packageID)
 
+	// Create document name as relative path from CWD for better diagnostic reporting
+	// cwd, _ := os.Getwd()
+	// docName, _ := filepath.Rel(cwd, absPath)
+
 	// Create document config
-	docID := projects.NewDocumentID(fileName, moduleID)
-	docConfig := projects.NewDocumentConfig(docID, fileName, string(content))
+	// docID := projects.NewDocumentID(docName, moduleID)
+	// docConfig := projects.NewDocumentConfig(docID, docName, string(content))
+
+	something := path
+
+	// Temp
+	docID := projects.NewDocumentID(something, moduleID)
+	docConfig := projects.NewDocumentConfig(docID, something, string(content))
 
 	// Create module config with single source file
 	moduleConfig := projects.NewModuleConfig(

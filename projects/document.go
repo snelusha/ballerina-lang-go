@@ -19,6 +19,7 @@
 package projects
 
 import (
+	"ballerina-lang-go/context"
 	"ballerina-lang-go/parser/tree"
 	"ballerina-lang-go/tools/text"
 )
@@ -58,8 +59,8 @@ func (d *Document) Module() *Module {
 
 // SyntaxTree returns the parsed syntax tree for this document.
 // The syntax tree is lazily parsed and cached.
-func (d *Document) SyntaxTree() *tree.SyntaxTree {
-	return d.documentCtx.getSyntaxTree()
+func (d *Document) SyntaxTree(cx *context.CompilerContext) *tree.SyntaxTree {
+	return d.documentCtx.getSyntaxTree(cx)
 }
 
 // TextDocument returns the text document representation.

@@ -14,6 +14,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package tree
+// @productions floating-point-literal return-stmt unary-expr function-call-expr
+public function main() {
+    foo(!1); // @error
+}
 
-type TextDocument interface{}
+function foo(int n) {
+    return;
+}

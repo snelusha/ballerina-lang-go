@@ -26,8 +26,10 @@ import (
 	"strings"
 	"testing"
 
+	"ballerina-lang-go/context"
 	"ballerina-lang-go/projects"
 	"ballerina-lang-go/projects/directory"
+	"ballerina-lang-go/semtypes"
 	"ballerina-lang-go/test_util"
 )
 
@@ -79,8 +81,10 @@ func TestBuildProjectWithOneModule(t *testing.T) {
 			doc := module.Document(docID)
 			require.NotNil(doc)
 
+			cx := context.NewCompilerContext(semtypes.CreateTypeEnv())
+
 			// Verify syntax tree exists
-			assert.NotNil(doc.SyntaxTree())
+			assert.NotNil(doc.SyntaxTree(cx))
 
 			// Verify document has content
 			content := doc.TextDocument().String()

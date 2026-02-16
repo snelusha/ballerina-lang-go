@@ -54,12 +54,10 @@ func validateSourceFile(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// printDiagnostics prints all diagnostics from a DiagnosticResult to stderr.
-// Java: Similar to printing in RunCommand.execute()
-func printDiagnostics(diagResult projects.DiagnosticResult) {
-	for _, d := range diagResult.Diagnostics() {
-		fmt.Fprintln(os.Stderr, formatDiagnostic(d))
-	}
+// printDiagnostics prints all diagnostics from a DiagnosticResult to the given writer.
+// Deprecated: Use projects.PrintDiagnostics
+func printDiagnostics(w io.Writer, diagResult projects.DiagnosticResult) {
+	projects.PrintDiagnostics(w, diagResult)
 }
 
 // formatDiagnostic formats a single diagnostic for CLI output.
@@ -79,4 +77,10 @@ func formatDiagnostic(d diagnostics.Diagnostic) string {
 			d.Message())
 	}
 	return fmt.Sprintf("%s: %s", info.Severity().String(), d.Message())
+}
+
+// printDiagnostic prints a single diagnostic for CLI output.
+// Deprecated: Use projects.PrintDiagnostic
+func printDiagnostic(w io.Writer, d diagnostics.Diagnostic) {
+	projects.PrintDiagnostic(w, d)
 }

@@ -48,8 +48,8 @@ type moduleContext struct {
 	moduleDescDependencies []ModuleDescriptor
 
 	// Compilation state tracking.
-	compilationState  moduleCompilationState
-	moduleDiagnostics []diagnostics.Diagnostic
+	compilationState moduleCompilationState
+	// moduleDiagnostics []diagnostics.Diagnostic
 
 	// Compilation artifacts.
 	bLangPkg       *ast.BLangPackage
@@ -227,7 +227,7 @@ func (m *moduleContext) compile() {
 // compileInternal performs the actual compilation of a module:
 // parse sources, build BLangPackage (AST), and run semantic analysis.
 func compileInternal(moduleCtx *moduleContext) {
-	moduleCtx.moduleDiagnostics = make([]diagnostics.Diagnostic, 0)
+	// moduleCtx.moduleDiagnostics = make([]diagnostics.Diagnostic, 0)
 	env := semtypes.CreateTypeEnv()
 	cx := context.NewCompilerContext(env)
 	moduleCtx.compilerCtx = cx
@@ -237,7 +237,7 @@ func compileInternal(moduleCtx *moduleContext) {
 	for _, docID := range moduleCtx.srcDocIDs {
 		docCtx := moduleCtx.srcDocContextMap[docID]
 		if docCtx != nil {
-			st := docCtx.parse()
+			st := docCtx.parse(cx)
 			if st != nil {
 				syntaxTrees = append(syntaxTrees, st)
 			}
@@ -248,7 +248,7 @@ func compileInternal(moduleCtx *moduleContext) {
 	for _, docID := range moduleCtx.testSrcDocIDs {
 		docCtx := moduleCtx.testDocContextMap[docID]
 		if docCtx != nil {
-			docCtx.parse()
+			docCtx.parse(cx)
 		}
 	}
 
@@ -256,10 +256,23 @@ func compileInternal(moduleCtx *moduleContext) {
 		return
 	}
 
+	// Syntax errors
+	// if cx.HasDiagnostics() {
+	// 	moduleCtx.moduleDiagnostics = append(moduleCtx.moduleDiagnostics, cx.Diagnostics()...)
+	// 	return
+	//
+	// }
+
 	// Build BLangPackage from syntax trees.
 	compilationOptions := moduleCtx.project.BuildOptions().CompilationOptions()
 	pkgNode := buildBLangPackage(cx, syntaxTrees, compilationOptions)
 	moduleCtx.bLangPkg = pkgNode
+
+	// AST construction errors
+	// if cx.HasDiagnostics() {
+	// 	moduleCtx.moduleDiagnostics = append(moduleCtx.moduleDiagnostics, cx.Diagnostics()...)
+	// 	return
+	// }
 
 	// Resolve symbols (imports) before type resolution
 	importedSymbols := semantics.ResolveImports(cx, pkgNode, semantics.GetImplicitImports(cx))
@@ -292,6 +305,11 @@ func compileInternal(moduleCtx *moduleContext) {
 
 	// Run CFG analyses (reachability and explicit return) after semantic analysis.
 	semantics.AnalyzeCFG(cx, pkgNode, cfg)
+
+	// if cx.HasDiagnostics() {
+	// 	moduleCtx.moduleDiagnostics = append(moduleCtx.moduleDiagnostics, cx.Diagnostics()...)
+	// 	return
+	// }
 }
 
 // buildBLangPackage builds a BLangPackage from one or more syntax trees.
@@ -369,7 +387,7 @@ func (m *moduleContext) getCompilationState() moduleCompilationState {
 
 // getDiagnostics returns the diagnostics produced during module compilation.
 func (m *moduleContext) getDiagnostics() []diagnostics.Diagnostic {
-	return m.moduleDiagnostics
+	return m.compilerCtx.Diagnostics()
 }
 
 // duplicate creates a copy of the context.

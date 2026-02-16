@@ -17,10 +17,7 @@
 package corpus
 
 import (
-	"ballerina-lang-go/bir"
-	"ballerina-lang-go/projects"
-	"ballerina-lang-go/projects/directory"
-	"ballerina-lang-go/runtime"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,7 +27,13 @@ import (
 	"sync"
 	"testing"
 
+	"ballerina-lang-go/bir"
 	_ "ballerina-lang-go/lib/rt"
+	"ballerina-lang-go/projects"
+	"ballerina-lang-go/projects/directory"
+	"ballerina-lang-go/runtime"
+
+	"golang.org/x/tools/txtar"
 )
 
 const (
@@ -39,7 +42,8 @@ const (
 	colorRed    = "\033[31m"
 	colorYellow = "\033[33m"
 
-	corpusBalBaseDir = "../corpus/bal"
+	corpusBalBaseDir     = "bal"
+	corpusIntegrationDir = "integration"
 
 	externOrgName    = "ballerina"
 	externModuleName = "io"
@@ -51,6 +55,8 @@ const (
 )
 
 var (
+	updateFlag = flag.Bool("update", false, "update txtar files")
+
 	outputRegex = regexp.MustCompile(`//\s*@output\s*(.*)`)
 	panicRegex  = regexp.MustCompile(`//\s*@panic\s+(.+)`)
 	errorRegex  = regexp.MustCompile(`//\s*@error`)
@@ -82,7 +88,7 @@ func TestIntegrationSuite(t *testing.T) {
 		return
 	}
 
-	balFiles := findBalFiles(corpusBalDir)
+	balFiles := findTestFiles(corpusBalDir)
 
 	var wg sync.WaitGroup
 
@@ -142,17 +148,90 @@ func TestIntegrationSuite(t *testing.T) {
 }
 
 func runTest(balFile string) testResult {
+	compileFailed, compilePanicValue, birPkg, diagStr := runCompilePhase(balFile)
+	panicOccurred, panicValue, printlnStr := runInterpretPhase(balFile, compileFailed, birPkg)
+
+	relPath, _ := filepath.Rel(corpusBalBaseDir, balFile)
+	expectationFile := filepath.Join(corpusIntegrationDir, relPath+".txtar")
+
+	if _, err := os.Stat(expectationFile); err == nil {
+		archive, err := txtar.ParseFile(expectationFile)
+		if err == nil {
+			var expectedStdout, expectedStderr string
+			for _, f := range archive.Files {
+				if f.Name == "stdout" {
+					expectedStdout = string(f.Data)
+				} else if f.Name == "stderr" {
+					expectedStderr = string(f.Data)
+				}
+			}
+
+			actualStdout := trimNewline(printlnStr)
+			if panicOccurred {
+				actualStdout += "\n" + formatPanicActual(panicValue)
+			} else if compileFailed && compilePanicValue != nil {
+				actualStdout += "\n" + formatPanicActual(compilePanicValue)
+			}
+			actualStderr := trimNewline(diagStr)
+
+			success := (trimNewline(actualStdout) == trimNewline(expectedStdout)) &&
+				(trimNewline(actualStderr) == trimNewline(expectedStderr))
+
+			if *updateFlag {
+				updateExpectationFile(expectationFile, actualStdout, actualStderr)
+				return testResult{success: true}
+			}
+
+			if success {
+				return testResult{success: true}
+			}
+
+			return testResult{
+				success:  false,
+				expected: fmt.Sprintf("STDOUT:\n%s\nSTDERR:\n%s", expectedStdout, expectedStderr),
+				actual:   fmt.Sprintf("STDOUT:\n%s\nSTDERR:\n%s", actualStdout, actualStderr),
+			}
+		}
+	}
+
 	expectedOutput := readExpectedOutput(balFile)
 	expectedPanic := readExpectedPanic(balFile)
 	isExpectedErrorTest := strings.HasSuffix(filepath.Base(balFile), "-e.bal") || hasError(balFile)
 
-	compileFailed, compilePanicValue, birPkg := runCompilePhase(balFile)
-	panicOccurred, panicValue, printlnStr := runInterpretPhase(balFile, compileFailed, birPkg)
+	result := evaluateTestResult(expectedOutput, expectedPanic, printlnStr, diagStr, panicOccurred, panicValue, isExpectedErrorTest, compileFailed, compilePanicValue)
 
-	return evaluateTestResult(expectedOutput, expectedPanic, printlnStr, panicOccurred, panicValue, isExpectedErrorTest, compileFailed, compilePanicValue)
+	if *updateFlag {
+		actualStdout := trimNewline(printlnStr)
+		if panicOccurred {
+			actualStdout += "\n" + formatPanicActual(panicValue)
+		} else if compileFailed && compilePanicValue != nil {
+			actualStdout += "\n" + formatPanicActual(compilePanicValue)
+		}
+		actualStderr := trimNewline(diagStr)
+
+		updateExpectationFile(expectationFile, actualStdout, actualStderr)
+		return testResult{success: true}
+	}
+
+	return result
 }
 
-func runCompilePhase(balFile string) (failed bool, panicVal interface{}, pkg *bir.BIRPackage) {
+func updateExpectationFile(testFile string, actualStdout, actualStderr string) {
+	if err := os.MkdirAll(filepath.Dir(testFile), 0755); err != nil {
+		fmt.Printf("failed to create directory %s: %v\n", filepath.Dir(testFile), err)
+		return
+	}
+	archive := &txtar.Archive{
+		Files: []txtar.File{
+			{Name: "stdout", Data: []byte(actualStdout + "\n")},
+			{Name: "stderr", Data: []byte(actualStderr + "\n")},
+		},
+	}
+	data := txtar.Format(archive)
+	os.WriteFile(testFile, data, 0644)
+}
+
+func runCompilePhase(balFile string) (failed bool, panicVal interface{}, pkg *bir.BIRPackage, diagStr string) {
 	defer func() {
 		if r := recover(); r != nil {
 			failed = true
@@ -166,6 +245,11 @@ func runCompilePhase(balFile string) (failed bool, panicVal interface{}, pkg *bi
 	}
 	currentPkg := result.Project().CurrentPackage()
 	compilation := currentPkg.Compilation()
+
+	var diagBuf strings.Builder
+	projects.PrintDiagnostics(&diagBuf, compilation.DiagnosticResult())
+	diagStr = diagBuf.String()
+
 	if compilation.DiagnosticResult().HasErrors() {
 		failed = true
 		return
@@ -206,7 +290,7 @@ func runInterpretPhase(balFile string, compileFailed bool, birPkg *bir.BIRPackag
 	return
 }
 
-func evaluateTestResult(expectedOutput, expectedPanic, outputStr string, panicOccurred bool, panicValue interface{}, isExpectedErrorTest, compileFailed bool, compilePanicValue interface{}) testResult {
+func evaluateTestResult(expectedOutput, expectedPanic, outputStr, diagStr string, panicOccurred bool, panicValue interface{}, isExpectedErrorTest, compileFailed bool, compilePanicValue interface{}) testResult {
 	if expectedPanic != "" {
 		if panicOccurred {
 			panicStr := extractPanicMessage(fmt.Sprintf("%v", panicValue))
@@ -249,6 +333,8 @@ func evaluateTestResult(expectedOutput, expectedPanic, outputStr string, panicOc
 		}
 		return testResult{success: false, expected: expectedCompileErrorMsg, actual: actual}
 	}
+
+	_ = diagStr // For non-error tests, we might want to check diagnostics eventually
 
 	if compileFailed {
 		return testResult{
@@ -468,11 +554,13 @@ func printIndentedLines(text, indent string) {
 	}
 }
 
-func findBalFiles(dir string) []string {
+func findTestFiles(dir string) []string {
 	var files []string
 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err == nil && !info.IsDir() && filepath.Ext(path) == ".bal" {
-			files = append(files, path)
+		if err == nil && !info.IsDir() {
+			if filepath.Ext(path) == ".bal" {
+				files = append(files, path)
+			}
 		}
 		return nil
 	})

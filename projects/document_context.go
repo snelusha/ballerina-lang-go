@@ -21,6 +21,7 @@ package projects
 import (
 	"sync"
 
+	"ballerina-lang-go/context"
 	"ballerina-lang-go/parser"
 	"ballerina-lang-go/parser/tree"
 	"ballerina-lang-go/tools/text"
@@ -61,7 +62,7 @@ func (d *documentContext) getName() string {
 
 // parseContent parses the content string and returns a SyntaxTree.
 // The textDoc parameter is passed to avoid circular dependency with TextDocument().
-func (d *documentContext) parseContent(content string, textDoc text.TextDocument) *tree.SyntaxTree {
+func (d *documentContext) parseContent(cx *context.CompilerContext, content string, textDoc text.TextDocument) *tree.SyntaxTree {
 	// Create CharReader from content
 	charReader := text.CharReaderFromText(content)
 
@@ -82,29 +83,34 @@ func (d *documentContext) parseContent(content string, textDoc text.TextDocument
 
 	// Create the SyntaxTree
 	syntaxTree := tree.NewSyntaxTreeFromNodeTextDocumentStringBool(moduleNode, textDoc, d.name, false)
+
+	if syntaxTree.HasDiagnostics() {
+		cx.SyntaxError("Syntax error at", nil)
+	}
+
 	return &syntaxTree
 }
 
 // parse parses the document and returns the syntax tree.
 // Uses lazy loading with sync.Once for memoization when disableSyntaxTree is false.
 // When disableSyntaxTree is true, parsing happens on every call (no caching).
-func (d *documentContext) parse() *tree.SyntaxTree {
+func (d *documentContext) parse(cx *context.CompilerContext) *tree.SyntaxTree {
 	if d.disableSyntaxTree {
 		// Parse every time without caching
 		textDoc := d.getTextDocumentInternal()
-		return d.parseContent(d.content(), textDoc)
+		return d.parseContent(cx, d.content(), textDoc)
 	}
 
 	d.syntaxTreeOnce.Do(func() {
 		textDoc := d.getTextDocument()
-		d.syntaxTree = d.parseContent(d.content(), textDoc)
+		d.syntaxTree = d.parseContent(cx, d.content(), textDoc)
 	})
 	return d.syntaxTree
 }
 
 // getSyntaxTree returns the cached or parsed syntax tree.
-func (d *documentContext) getSyntaxTree() *tree.SyntaxTree {
-	return d.parse()
+func (d *documentContext) getSyntaxTree(cx *context.CompilerContext) *tree.SyntaxTree {
+	return d.parse(cx)
 }
 
 // getTextDocument returns the text document (lazy loaded).
