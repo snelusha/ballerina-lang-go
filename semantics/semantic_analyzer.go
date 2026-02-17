@@ -17,13 +17,14 @@
 package semantics
 
 import (
+	"fmt"
+	"reflect"
+
 	"ballerina-lang-go/ast"
 	"ballerina-lang-go/context"
 	"ballerina-lang-go/model"
 	"ballerina-lang-go/semtypes"
 	"ballerina-lang-go/tools/diagnostics"
-	"fmt"
-	"reflect"
 )
 
 type analyzer interface {
@@ -31,10 +32,10 @@ type analyzer interface {
 	ctx() *context.CompilerContext
 	tyCtx() semtypes.Context
 	importedPackage(alias string) *ast.BLangImportPackage
-	unimplementedErr(message string)
-	semanticErr(message string)
-	syntaxErr(message string)
-	internalErr(message string)
+	unimplementedErr(message string, loc diagnostics.Location)
+	semanticErr(message string, loc diagnostics.Location)
+	syntaxErr(message string, loc diagnostics.Location)
+	internalErr(message string, loc diagnostics.Location)
 	parentAnalyzer() analyzer
 	loc() diagnostics.Location
 }
@@ -192,68 +193,116 @@ func (la *loopAnalyzer) tyCtx() semtypes.Context {
 	return la.parent.tyCtx()
 }
 
-func (sa *SemanticAnalyzer) unimplementedErr(message string) {
-	sa.compilerCtx.Unimplemented(message, nil)
+func (sa *SemanticAnalyzer) unimplementedErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = sa.loc()
+	}
+	sa.compilerCtx.Unimplemented(message, loc)
 }
 
-func (sa *SemanticAnalyzer) semanticErr(message string) {
-	sa.compilerCtx.SemanticError(message, nil)
+func (sa *SemanticAnalyzer) semanticErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = sa.loc()
+	}
+	sa.compilerCtx.SemanticError(message, loc)
 }
 
-func (sa *SemanticAnalyzer) syntaxErr(message string) {
-	sa.compilerCtx.SyntaxError(message, nil)
+func (sa *SemanticAnalyzer) syntaxErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = sa.loc()
+	}
+	sa.compilerCtx.SyntaxError(message, loc)
 }
 
-func (sa *SemanticAnalyzer) internalErr(message string) {
-	sa.compilerCtx.InternalError(message, nil)
+func (sa *SemanticAnalyzer) internalErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = sa.loc()
+	}
+	sa.compilerCtx.InternalError(message, loc)
 }
 
-func (ca *constantAnalyzer) unimplementedErr(message string) {
-	ca.parentAnalyzer().ctx().Unimplemented(message, ca.constant.GetPosition())
+func (ca *constantAnalyzer) unimplementedErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = ca.loc()
+	}
+	ca.parentAnalyzer().ctx().Unimplemented(message, loc)
 }
 
-func (ca *constantAnalyzer) semanticErr(message string) {
-	ca.parentAnalyzer().ctx().SemanticError(message, ca.constant.GetPosition())
+func (ca *constantAnalyzer) semanticErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = ca.loc()
+	}
+	ca.parentAnalyzer().ctx().SemanticError(message, loc)
 }
 
-func (ca *constantAnalyzer) syntaxErr(message string) {
-	ca.parentAnalyzer().ctx().SyntaxError(message, ca.constant.GetPosition())
+func (ca *constantAnalyzer) syntaxErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = ca.loc()
+	}
+	ca.parentAnalyzer().ctx().SyntaxError(message, loc)
 }
 
-func (ca *constantAnalyzer) internalErr(message string) {
-	ca.parentAnalyzer().ctx().InternalError(message, ca.constant.GetPosition())
+func (ca *constantAnalyzer) internalErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = ca.loc()
+	}
+	ca.parentAnalyzer().ctx().InternalError(message, loc)
 }
 
-func (fa *functionAnalyzer) unimplementedErr(message string) {
-	fa.parent.ctx().Unimplemented(message, fa.function.GetPosition())
+func (fa *functionAnalyzer) unimplementedErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = fa.loc()
+	}
+	fa.parent.ctx().Unimplemented(message, loc)
 }
 
-func (fa *functionAnalyzer) semanticErr(message string) {
-	fa.parent.ctx().SemanticError(message, fa.function.GetPosition())
+func (fa *functionAnalyzer) semanticErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = fa.loc()
+	}
+	fa.parent.ctx().SemanticError(message, loc)
 }
 
-func (fa *functionAnalyzer) syntaxErr(message string) {
-	fa.parent.ctx().SyntaxError(message, fa.function.GetPosition())
+func (fa *functionAnalyzer) syntaxErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = fa.loc()
+	}
+	fa.parent.ctx().SyntaxError(message, loc)
 }
 
-func (fa *functionAnalyzer) internalErr(message string) {
-	fa.parent.ctx().InternalError(message, fa.function.GetPosition())
+func (fa *functionAnalyzer) internalErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = fa.loc()
+	}
+	fa.parent.ctx().InternalError(message, loc)
 }
 
-func (la *loopAnalyzer) unimplementedErr(message string) {
-	la.parent.ctx().Unimplemented(message, la.loop.GetPosition())
+func (la *loopAnalyzer) unimplementedErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = la.loc()
+	}
+	la.parent.ctx().Unimplemented(message, loc)
 }
 
-func (la *loopAnalyzer) semanticErr(message string) {
-	la.parent.ctx().SemanticError(message, la.loop.GetPosition())
+func (la *loopAnalyzer) semanticErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = la.loc()
+	}
+	la.parent.ctx().SemanticError(message, loc)
 }
 
-func (la *loopAnalyzer) syntaxErr(message string) {
-	la.parent.ctx().SyntaxError(message, la.loop.GetPosition())
+func (la *loopAnalyzer) syntaxErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = la.loc()
+	}
+	la.parent.ctx().SyntaxError(message, loc)
 }
 
-func (la *loopAnalyzer) internalErr(message string) {
-	la.parent.ctx().InternalError(message, la.loop.GetPosition())
+func (la *loopAnalyzer) internalErr(message string, loc diagnostics.Location) {
+	if loc == nil {
+		loc = la.loc()
+	}
+	la.parent.ctx().InternalError(message, loc)
 }
 
 // When we support multiple packages we need to resolve types of all of them before semantic analysis
@@ -291,14 +340,14 @@ func (sa *SemanticAnalyzer) Visit(node ast.BLangNode) ast.Visitor {
 		return createConstantAnalyzer(sa, n)
 	case *ast.BLangReturn:
 		// Error: return only valid in functions
-		sa.semanticErr("return statement outside function")
+		sa.semanticErr("return statement outside function", n.GetPosition())
 		return nil
 	case *ast.BLangWhile:
 		// Error: loop only valid in functions
-		sa.semanticErr("loop statement outside function")
+		sa.semanticErr("loop statement outside function", n.GetPosition())
 		return nil
 	case *ast.BLangIf:
-		sa.semanticErr("if statement outside function")
+		sa.semanticErr("if statement outside function", n.GetPosition())
 		return nil
 	default:
 		// Now delegates function creation to visitInner
@@ -311,18 +360,18 @@ func (sa *SemanticAnalyzer) processImport(importNode *ast.BLangImportPackage) {
 
 	// Only support ballerina/io
 	if importNode.OrgName == nil || importNode.OrgName.GetValue() != "ballerina" {
-		sa.unimplementedErr("unsupported import organization: only 'ballerina' imports are supported")
+		sa.unimplementedErr("unsupported import organization: only 'ballerina' imports are supported", importNode.GetPosition())
 		return
 	}
 
 	if !isIoImport(importNode) && !isImplicitImport(importNode) {
-		sa.unimplementedErr("unsupported import package: only 'ballerina/io' is supported")
+		sa.unimplementedErr("unsupported import package: only 'ballerina/io' is supported", importNode.GetPosition())
 		return
 	}
 
 	// Check for duplicate imports
 	if _, exists := sa.importedPkgs[alias]; exists {
-		sa.semanticErr(fmt.Sprintf("import alias '%s' already defined", alias))
+		sa.semanticErr(fmt.Sprintf("import alias '%s' already defined", alias), importNode.GetPosition())
 		return
 	}
 
@@ -344,7 +393,7 @@ func isLangImport(importNode *ast.BLangImportPackage, name string) bool {
 func validateMainFunction(parent analyzer, function *ast.BLangFunction, fnSymbol model.FunctionSymbol) {
 	// Check 1: Must be public
 	if !fnSymbol.IsPublic() {
-		parent.semanticErr("'main' function must be public")
+		parent.semanticErr("'main' function must be public", function.GetPosition())
 	}
 
 	// Check 2: Must return error?
@@ -352,7 +401,7 @@ func validateMainFunction(parent analyzer, function *ast.BLangFunction, fnSymbol
 	actualReturnType := fnSymbol.Signature().ReturnType
 
 	if actualReturnType != nil && !semtypes.IsSubtype(parent.tyCtx(), actualReturnType, expectedReturnType) {
-		parent.semanticErr("'main' function must have return type 'error?'")
+		parent.semanticErr("'main' function must have return type 'error?'", function.GetPosition())
 	}
 }
 
@@ -385,33 +434,33 @@ func (ca *constantAnalyzer) Visit(node ast.BLangNode) ast.Visitor {
 	case *ast.BLangIdentifier:
 		return nil
 	case *ast.BLangFunction:
-		ca.semanticErr("function definition not allowed in constant expression")
+		ca.semanticErr("function definition not allowed in constant expression", n.GetPosition())
 		return nil
 	case *ast.BLangWhile:
-		ca.semanticErr("loop not allowed in constant expression")
+		ca.semanticErr("loop not allowed in constant expression", n.GetPosition())
 		return nil
 	case *ast.BLangIf:
-		ca.semanticErr("if statement not allowed in constant expression")
+		ca.semanticErr("if statement not allowed in constant expression", n.GetPosition())
 		return nil
 	case *ast.BLangReturn:
-		ca.semanticErr("return statement not allowed in constant expression")
+		ca.semanticErr("return statement not allowed in constant expression", n.GetPosition())
 		return nil
 	case *ast.BLangBreak:
-		ca.semanticErr("break statement not allowed in constant expression")
+		ca.semanticErr("break statement not allowed in constant expression", n.GetPosition())
 		return nil
 	case *ast.BLangContinue:
-		ca.semanticErr("continue statement not allowed in constant expression")
+		ca.semanticErr("continue statement not allowed in constant expression", n.GetPosition())
 		return nil
 	case *ast.BLangTypeDefinition:
 		typeData := n.GetTypeData()
 		expectedType := typeData.Type
 		if expectedType == nil {
-			ca.internalErr("type not resolved")
+			ca.internalErr("type not resolved", n.GetPosition())
 			return nil
 		}
 		ctx := ca.tyCtx()
 		if semtypes.IsNever(expectedType) || !semtypes.IsSubtype(ctx, expectedType, semtypes.CreateAnydata(ctx)) {
-			ca.syntaxErr("invalid type for constant declaration")
+			ca.syntaxErr("invalid type for constant declaration", n.GetPosition())
 			return nil
 		}
 	case model.ExpressionNode:
@@ -431,14 +480,14 @@ func (ca *constantAnalyzer) Visit(node ast.BLangNode) ast.Visitor {
 			exprTy := bLangExpr.GetTypeData().Type
 			if ca.expectedType != nil {
 				if !semtypes.IsSubtype(ca.tyCtx(), exprTy, ca.expectedType) {
-					ca.semanticErr("incompatible type for constant expression")
+					ca.semanticErr("incompatible type for constant expression", bLangExpr.GetPosition())
 					return nil
 				}
 			} else {
 				ca.expectedType = exprTy
 			}
 		default:
-			ca.semanticErr("expression is not a constant expression")
+			ca.semanticErr("expression is not a constant expression", n.GetPosition())
 			return nil
 		}
 	}
@@ -450,7 +499,7 @@ func validateResolvedType[A analyzer](a A, expr ast.BLangExpression, expectedTyp
 	typeData := expr.GetTypeData()
 	resolvedTy := typeData.Type
 	if resolvedTy == nil {
-		a.internalErr(fmt.Sprintf("expression type not resolved for %T at %v", expr, expr.GetPosition()))
+		a.internalErr(fmt.Sprintf("expression type not resolved for %T at %v", expr, expr.GetPosition()), expr.GetPosition())
 		return false
 	}
 
@@ -460,7 +509,7 @@ func validateResolvedType[A analyzer](a A, expr ast.BLangExpression, expectedTyp
 
 	ctx := a.tyCtx()
 	if !semtypes.IsSubtype(ctx, resolvedTy, expectedType) {
-		a.semanticErr(fmt.Sprintf("incompatible type: expected %v, got %v", expectedType, resolvedTy))
+		a.semanticErr(fmt.Sprintf("incompatible type: expected %v, got %v", expectedType, resolvedTy), expr.GetPosition())
 		return false
 	}
 
@@ -514,7 +563,7 @@ func analyzeExpression[A analyzer](a A, expr ast.BLangExpression, expectedType s
 	case *ast.BLangTypeConversionExpr:
 		validateTypeConversionExpr(a, expr, expectedType)
 	default:
-		a.internalErr("unexpected expression type: " + reflect.TypeOf(expr).String())
+		a.internalErr("unexpected expression type: "+reflect.TypeOf(expr).String(), expr.GetPosition())
 	}
 }
 
@@ -524,11 +573,11 @@ func validateTypeConversionExpr[A analyzer](a A, expr *ast.BLangTypeConversionEx
 	targetType := expr.TypeDescriptor.GetDeterminedType()
 	intersection := semtypes.Intersect(exprTy, targetType)
 	if semtypes.IsEmpty(a.tyCtx(), intersection) && !hasPotentialNumericConversions(exprTy, targetType) {
-		a.semanticErr("impossible type conversion, intersection is empty")
+		a.semanticErr("impossible type conversion, intersection is empty", expr.GetPosition())
 		return
 	}
 	if expectedType != nil && !semtypes.IsSubtype(a.tyCtx(), targetType, expectedType) {
-		a.semanticErr(fmt.Sprintf("incompatible type: expected %v, got %v", expectedType, exprTy))
+		a.semanticErr(fmt.Sprintf("incompatible type: expected %v, got %v", expectedType, exprTy), expr.GetPosition())
 		return
 	}
 	validateResolvedType(a, expr, expectedType)
@@ -552,12 +601,12 @@ func analyzeIndexBasedAccess[A analyzer](a A, expr *ast.BLangIndexBasedAccess, e
 		semtypes.IsSubtypeSimple(containerExprTy, semtypes.XML) {
 		keyExprExpectedType = &semtypes.INT
 	} else if semtypes.IsSubtypeSimple(containerExprTy, semtypes.TABLE) {
-		a.unimplementedErr("table not supported")
+		a.unimplementedErr("table not supported", expr.GetPosition())
 		return
 	} else if semtypes.IsSubtype(ctx, containerExprTy, semtypes.Union(&semtypes.NIL, &semtypes.MAPPING)) {
 		keyExprExpectedType = &semtypes.STRING
 	} else {
-		a.semanticErr("incompatible type for index based access")
+		a.semanticErr("incompatible type for index based access", expr.GetPosition())
 		return
 	}
 
@@ -575,94 +624,14 @@ func analyzeListConstructorExpr[A analyzer](a A, expr *ast.BLangListConstructorE
 		analyzeExpression(a, memberExpr, nil)
 	}
 
-	if expectedType != nil {
-		resultType, listAtomicType := selectListInherentType(a, expr, expectedType)
-		for i, memberExpr := range expr.Exprs {
-			requiredType := listAtomicType.MemberAtInnerVal(i)
-			if semtypes.IsNever(requiredType) {
-				a.semanticErr("too many members in list constructor")
-				return
-			}
-			analyzeExpression(a, memberExpr, requiredType)
-		}
-		expr.AtomicType = listAtomicType
-		setExpectedType(expr, resultType)
-	} else {
-		// type resolver will have set the correct type and list atomic type
-		for _, memberExpr := range expr.Exprs {
-			analyzeExpression(a, memberExpr, nil)
-		}
-	}
+	// Validate the resolved list type against expected type
 	validateResolvedType(a, expr, expectedType)
-}
-
-func selectListInherentType[A analyzer](a A, expr *ast.BLangListConstructorExpr, expectedType semtypes.SemType) (semtypes.SemType, semtypes.ListAtomicType) {
-	expectedListType := semtypes.Intersect(expectedType, &semtypes.LIST)
-	tc := a.tyCtx()
-	if semtypes.IsEmpty(tc, expectedListType) {
-		a.semanticErr("list type not found in expected type")
-		return nil, semtypes.ListAtomicType{}
-	}
-	lat := semtypes.ToListAtomicType(tc, expectedListType)
-	if lat != nil {
-		return expectedListType, *lat
-	}
-
-	alts := semtypes.ListAlternatives(tc, expectedListType)
-
-	// Filter alternatives by length compatibility
-	var validAlts []semtypes.ListAlternative
-
-	for _, expr := range expr.Exprs {
-		analyzeExpression(a, expr, nil)
-	}
-	for _, alt := range alts {
-		if semtypes.ListAlternativeAllowsLength(alt, len(expr.Exprs)) {
-			if alt.Pos != nil {
-				isValid := true
-				lat := alt.Pos
-				for i, expr := range expr.Exprs {
-					exprTy := expr.GetDeterminedType()
-					ty := lat.MemberAtInnerVal(i)
-					if !semtypes.IsSubtype(tc, exprTy, ty) {
-						isValid = false
-						break
-					}
-				}
-				if isValid {
-					validAlts = append(validAlts, alt)
-				}
-			} else {
-				validAlts = append(validAlts, alt)
-			}
-		}
-	}
-
-	// Validate uniqueness
-	if len(validAlts) == 0 {
-		a.semanticErr("no applicable inherent type for list constructor")
-		return nil, semtypes.ListAtomicType{}
-	}
-	if len(validAlts) > 1 {
-		a.semanticErr("ambiguous inherent type for list constructor")
-		return nil, semtypes.ListAtomicType{}
-	}
-
-	// Extract atomic type from selected alternative
-	selectedSemType := validAlts[0].SemType
-	lat = semtypes.ToListAtomicType(tc, selectedSemType)
-	if lat == nil {
-		a.semanticErr("applicable type for list constructor is not atomic")
-		return nil, semtypes.ListAtomicType{}
-	}
-
-	return selectedSemType, *lat
 }
 
 func analyzeErrorConstructorExpr[A analyzer](a A, expr *ast.BLangErrorConstructorExpr, expectedType semtypes.SemType) {
 	argCount := len(expr.PositionalArgs)
 	if argCount < 1 || argCount > 2 {
-		a.semanticErr("error constructor must have at least 1 and at most 2 positional arguments")
+		a.semanticErr("error constructor must have at least 1 and at most 2 positional arguments", expr.GetPosition())
 		return
 	}
 
@@ -690,16 +659,16 @@ func analyzeUnaryExpr[A analyzer](a A, unaryExpr *ast.BLangUnaryExpr, expectedTy
 	switch unaryExpr.GetOperatorKind() {
 	case model.OperatorKind_ADD, model.OperatorKind_SUB, model.OperatorKind_BITWISE_COMPLEMENT:
 		if !isNumericType(exprTy) {
-			a.semanticErr(fmt.Sprintf("expect numeric type for %s", string(unaryExpr.GetOperatorKind())))
+			a.semanticErr(fmt.Sprintf("expect numeric type for %s", string(unaryExpr.GetOperatorKind())), unaryExpr.GetPosition())
 			return
 		}
 	case model.OperatorKind_NOT:
 		if !semtypes.IsSubtypeSimple(exprTy, semtypes.BOOLEAN) {
-			a.semanticErr(fmt.Sprintf("expect boolean type for %s", string(unaryExpr.GetOperatorKind())))
+			a.semanticErr(fmt.Sprintf("expect boolean type for %s", string(unaryExpr.GetOperatorKind())), unaryExpr.GetPosition())
 			return
 		}
 	default:
-		a.semanticErr(fmt.Sprintf("unsupported unary operator: %s", string(unaryExpr.GetOperatorKind())))
+		a.semanticErr(fmt.Sprintf("unsupported unary operator: %s", string(unaryExpr.GetOperatorKind())), unaryExpr.GetPosition())
 		return
 	}
 
@@ -722,14 +691,14 @@ func analyzeBinaryExpr[A analyzer](a A, binaryExpr *ast.BLangBinaryExpr, expecte
 		// For equality operators, ensure types have non-empty intersection
 		intersection := semtypes.Intersect(lhsTy, rhsTy)
 		if semtypes.IsEmpty(ctx, intersection) {
-			a.semanticErr(fmt.Sprintf("incompatible types for %s", string(binaryExpr.GetOperatorKind())))
+			a.semanticErr(fmt.Sprintf("incompatible types for %s", string(binaryExpr.GetOperatorKind())), binaryExpr.GetPosition())
 			return
 		}
 		switch binaryExpr.GetOperatorKind() {
 		case model.OperatorKind_EQUALS, model.OperatorKind_NOT_EQUAL:
 			anyData := semtypes.CreateAnydata(ctx)
 			if !semtypes.IsSubtype(ctx, lhsTy, anyData) && !semtypes.IsSubtype(ctx, rhsTy, anyData) {
-				a.semanticErr(fmt.Sprintf("expect anydata types for %s", string(binaryExpr.GetOperatorKind())))
+				a.semanticErr(fmt.Sprintf("expect anydata types for %s", string(binaryExpr.GetOperatorKind())), binaryExpr.GetPosition())
 				return
 			}
 		}
@@ -747,7 +716,7 @@ var bitWiseOpLookOrder = []semtypes.SemType{semtypes.UINT8, semtypes.UINT16, sem
 func analyzeBitWiseExpr[A analyzer](a A, binaryExpr *ast.BLangBinaryExpr, lhsTy, rhsTy semtypes.SemType, expectedType semtypes.SemType) {
 	ctx := a.tyCtx()
 	if !semtypes.IsSubtype(ctx, lhsTy, &semtypes.INT) || !semtypes.IsSubtype(ctx, rhsTy, &semtypes.INT) {
-		a.semanticErr("expect integer types for bitwise operators")
+		a.semanticErr("expect integer types for bitwise operators", binaryExpr.GetPosition())
 		return
 	}
 	var resultTy semtypes.SemType
@@ -769,7 +738,7 @@ func analyzeBitWiseExpr[A analyzer](a A, binaryExpr *ast.BLangBinaryExpr, lhsTy,
 			}
 		}
 	default:
-		a.internalErr(fmt.Sprintf("unsupported bitwise operator: %s", string(binaryExpr.GetOperatorKind())))
+		a.internalErr(fmt.Sprintf("unsupported bitwise operator: %s", string(binaryExpr.GetOperatorKind())), binaryExpr.GetPosition())
 		return
 	}
 	setExpectedType(binaryExpr, resultTy)
@@ -780,7 +749,7 @@ func analyzeInvocation[A analyzer](a A, invocation *ast.BLangInvocation, expecte
 	symbol := invocation.Symbol()
 	fnTy := a.ctx().SymbolType(symbol)
 	if fnTy == nil || !semtypes.IsSubtypeSimple(fnTy, semtypes.FUNCTION) {
-		a.semanticErr("function not found: " + invocation.Name.GetValue())
+		a.semanticErr("function not found: "+invocation.Name.GetValue(), invocation.GetPosition())
 		return
 	}
 
@@ -797,7 +766,7 @@ func analyzeInvocation[A analyzer](a A, invocation *ast.BLangInvocation, expecte
 	argLd := semtypes.NewListDefinition()
 	argListTy := argLd.DefineListTypeWrapped(a.tyCtx().Env(), argTys, len(argTys), &semtypes.NEVER, semtypes.CellMutability_CELL_MUT_NONE)
 	if !semtypes.IsSubtype(a.tyCtx(), argListTy, paramListTy) {
-		a.semanticErr("incompatible arguments for function call")
+		a.semanticErr("incompatible arguments for function call", invocation.GetPosition())
 		return
 	}
 
@@ -860,22 +829,22 @@ func analyzeAssignment[A analyzer](a A, assignment assignmentNode) {
 		symbol := symbolNode.Symbol()
 		if symbol == nil {
 			// If this happens it is a bug in symbol resolver
-			a.internalErr("unexpected nil symbol")
+			a.internalErr("unexpected nil symbol", variable.GetPosition())
 			return
 		}
 		ctx := a.ctx()
 		switch ctx.SymbolKind(symbol) {
 		case model.SymbolKindConstant:
-			a.semanticErr("cannot assign to constant")
+			a.semanticErr("cannot assign to constant", variable.GetPosition())
 			return
 		case model.SymbolKindParemeter:
-			a.semanticErr("cannot assign to parameter")
+			a.semanticErr("cannot assign to parameter", variable.GetPosition())
 			return
 		case model.SymbolKindFunction:
-			a.semanticErr("cannot assign to function")
+			a.semanticErr("cannot assign to function", variable.GetPosition())
 			return
 		case model.SymbolKindType:
-			a.semanticErr("cannot assign to type")
+			a.semanticErr("cannot assign to type", variable.GetPosition())
 			return
 		}
 	}
