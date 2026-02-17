@@ -70,8 +70,19 @@ func (d *dirFS) BaseDir() string {
 // DirFSForPath resolves path (file or directory) to an absolute path, then returns
 // an fs.FS rooted at the containing directory and the load path relative to that root.
 // Use this with directory.LoadProject(fsys, loadPath, ...). Uses filepath and os.
-func DirFSForPath(path string) (fsys fs.FS, loadPath string, err error) {
-	absPath, err := filepath.Abs(path)
+// Path is optional: if not provided or empty, the user's home directory is used.
+func DirFSForPath(path ...string) (fsys fs.FS, loadPath string, err error) {
+	p := ""
+	if len(path) > 0 && path[0] != "" {
+		p = path[0]
+	}
+	if p == "" {
+		p, err = os.UserHomeDir()
+		if err != nil {
+			return nil, "", err
+		}
+	}
+	absPath, err := filepath.Abs(p)
 	if err != nil {
 		return nil, "", err
 	}
