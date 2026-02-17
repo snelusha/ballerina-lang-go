@@ -17,102 +17,79 @@
 package context
 
 import (
+	"fmt"
+
 	"ballerina-lang-go/model"
 	"ballerina-lang-go/semtypes"
 	"ballerina-lang-go/tools/diagnostics"
-	"fmt"
-	"strconv"
 )
 
-// TODO: consider moving type resolution env in to this
 type CompilerContext struct {
-	anonTypeCount   map[*model.PackageID]int
-	packageInterner *model.PackageIDInterner
-	symbolSpaces    []*model.SymbolSpace
-	typeEnv         semtypes.Env
+	env *CompilerEnvironment
+}
+
+func NewCompilerContext(env *CompilerEnvironment) *CompilerContext {
+	return &CompilerContext{
+		env: env,
+	}
 }
 
 func (this *CompilerContext) NewSymbolSpace(packageId model.PackageID) *model.SymbolSpace {
-	space := model.NewSymbolSpaceInner(packageId, len(this.symbolSpaces))
-	this.symbolSpaces = append(this.symbolSpaces, space)
-	return space
+	return this.env.NewSymbolSpace(packageId)
 }
 
 func (this *CompilerContext) NewFunctionScope(parent model.Scope, pkg model.PackageID) *model.FunctionScope {
-	return &model.FunctionScope{
-		BlockScopeBase: model.BlockScopeBase{
-			Parent: parent,
-			Main:   this.NewSymbolSpace(pkg),
-		},
-	}
+	return this.env.NewFunctionScope(parent, pkg)
 }
 
 func (this *CompilerContext) NewBlockScope(parent model.Scope, pkg model.PackageID) *model.BlockScope {
-	return &model.BlockScope{
-		BlockScopeBase: model.BlockScopeBase{
-			Parent: parent,
-			Main:   this.NewSymbolSpace(pkg),
-		},
-	}
+	return this.env.NewBlockScope(parent, pkg)
 }
 
 func (this *CompilerContext) GetSymbol(symbol model.Symbol) model.Symbol {
-	if refSymbol, ok := symbol.(*model.SymbolRef); ok {
-		symbolSpace := this.symbolSpaces[refSymbol.SpaceIndex]
-		return symbolSpace.Symbols[refSymbol.Index]
-	}
-	return symbol
+	return this.env.GetSymbol(symbol)
 }
 
 func (this *CompilerContext) RefSymbol(symbol model.Symbol) model.SymbolRef {
-	// If this happen that's a bug in SymbolResolver
-	if symbol == nil {
-		this.InternalError("RefSymbol called with nil symbol", nil)
-	}
-	if refSymbol, ok := symbol.(*model.SymbolRef); ok {
-		return *refSymbol
-	}
-	// This should never happen because we should never store actual symbols in the AST
-	this.InternalError(fmt.Sprintf("Symbol is not a SymbolRef: type=%T, name=%s, kind=%v", symbol, symbol.Name(), symbol.Kind()), nil)
-	return model.SymbolRef{}
+	return this.env.RefSymbol(symbol)
 }
 
 func (this *CompilerContext) SymbolName(symbol model.Symbol) string {
 	return this.GetSymbol(symbol).Name()
 }
 
-func (this *CompilerContext) SymbolType(symbol model.Symbol) semtypes.SemType {
+func (this CompilerContext) SymbolType(symbol model.Symbol) semtypes.SemType {
 	return this.GetSymbol(symbol).Type()
 }
 
-func (this *CompilerContext) SymbolKind(symbol model.Symbol) model.SymbolKind {
+func (this CompilerContext) SymbolKind(symbol model.Symbol) model.SymbolKind {
 	return this.GetSymbol(symbol).Kind()
 }
 
-func (this *CompilerContext) SymbolIsPublic(symbol model.Symbol) bool {
+func (this CompilerContext) SymbolIsPublic(symbol model.Symbol) bool {
 	return this.GetSymbol(symbol).IsPublic()
 }
 
-func (this *CompilerContext) SetSymbolType(symbol model.Symbol, ty semtypes.SemType) {
+func (this CompilerContext) SetSymbolType(symbol model.Symbol, ty semtypes.SemType) {
 	this.GetSymbol(symbol).SetType(ty)
 }
 
-func (this *CompilerContext) GetDefaultPackage() *model.PackageID {
-	return this.packageInterner.GetDefaultPackage()
+func (this CompilerContext) GetDefaultPackage() *model.PackageID {
+	return this.env.GetDefaultPackage()
 }
 
-func (this *CompilerContext) NewPackageID(orgName model.Name, nameComps []model.Name, version model.Name) *model.PackageID {
-	return model.NewPackageID(this.packageInterner, orgName, nameComps, version)
+func (this CompilerContext) NewPackageID(orgName model.Name, nameComps []model.Name, version model.Name) *model.PackageID {
+	return this.env.NewPackageID(orgName, nameComps, version)
 }
 
-func (this *CompilerContext) Unimplemented(message string, pos diagnostics.Location) {
+func (this *CompilerEnvironment) Unimplemented(message string, pos diagnostics.Location) {
 	if pos != nil {
 		panic(fmt.Sprintf("Unimplemented: %s at %s", message, pos))
 	}
 	panic(fmt.Sprintf("Unimplemented: %s", message))
 }
 
-func (this *CompilerContext) SemanticError(message string, pos diagnostics.Location) {
+func (this *CompilerEnvironment) SemanticError(message string, pos diagnostics.Location) {
 	if pos != nil {
 		panic(fmt.Sprintf("Semantic error: %s at %s", message, pos))
 	}
@@ -120,44 +97,25 @@ func (this *CompilerContext) SemanticError(message string, pos diagnostics.Locat
 }
 
 // TODO: implement these properly
-func (this *CompilerContext) SyntaxError(message string, pos diagnostics.Location) {
+func (this *CompilerEnvironment) SyntaxError(message string, pos diagnostics.Location) {
 	if pos != nil {
 		panic(fmt.Sprintf("Syntax error: %s at %s", message, pos))
 	}
 	panic(fmt.Sprintf("Syntax error: %s", message))
 }
 
-func (this *CompilerContext) InternalError(message string, pos diagnostics.Location) {
+func (this *CompilerEnvironment) InternalError(message string, pos diagnostics.Location) {
 	if pos != nil {
 		panic(fmt.Sprintf("Internal error: %s at %s", message, pos))
 	}
 	panic(fmt.Sprintf("Internal error: %s", message))
 }
 
-func NewCompilerContext(typeEnv semtypes.Env) *CompilerContext {
-	return &CompilerContext{
-		anonTypeCount:   make(map[*model.PackageID]int),
-		packageInterner: model.DefaultPackageIDInterner,
-		typeEnv:         typeEnv,
-	}
-}
-
 // GetTypeEnv returns the type environment for this context
-func (this *CompilerContext) GetTypeEnv() semtypes.Env {
-	return this.typeEnv
+func (this CompilerContext) GetTypeEnv() semtypes.Env {
+	return this.env.GetTypeEnv()
 }
 
-const (
-	ANON_PREFIX       = "$anon"
-	BUILTIN_ANON_TYPE = ANON_PREFIX + "Type$builtin$"
-	ANON_TYPE         = ANON_PREFIX + "Type$"
-)
-
-func (this *CompilerContext) GetNextAnonymousTypeKey(packageID *model.PackageID) string {
-	nextValue := this.anonTypeCount[packageID]
-	this.anonTypeCount[packageID] = nextValue + 1
-	if packageID != nil && model.ANNOTATIONS_PKG != packageID {
-		return BUILTIN_ANON_TYPE + "_" + strconv.Itoa(nextValue)
-	}
-	return ANON_TYPE + "_" + strconv.Itoa(nextValue)
+func (this CompilerContext) GetNextAnonymousTypeKey(packageID *model.PackageID) string {
+	return this.env.GetNextAnonymousTypeKey(packageID)
 }
