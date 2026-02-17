@@ -18,11 +18,13 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"ballerina-lang-go/cli/templates"
+	"ballerina-lang-go/common/bfs"
 	"ballerina-lang-go/projects"
 
 	"github.com/spf13/cobra"
@@ -89,6 +91,7 @@ func runNew(cmd *cobra.Command, args []string) error {
 	packageName := filepath.Base(absPath)
 
 	// Check if directory exists
+	var fsys fs.FS
 	info, err := os.Stat(absPath)
 	if err == nil {
 		// Directory exists - check for conflicts
@@ -98,7 +101,12 @@ func runNew(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if err := checkExistingDirectory(absPath); err != nil {
+		fsys, err = bfs.NewDirFS(absPath)
+		if err != nil {
+			printErrorTo(cmd.ErrOrStderr(), fmt.Errorf("error opening path: %w", err), "new <project-path>", false)
+			return err
+		}
+		if err := checkExistingDirectory(fsys); err != nil {
 			printErrorTo(cmd.ErrOrStderr(), err, "new <project-path>", false)
 			return err
 		}
@@ -122,7 +130,7 @@ func runNew(cmd *cobra.Command, args []string) error {
 	orgName := guessOrgName()
 
 	// Create the package
-	if err := initPackage(absPath, packageName, orgName); err != nil {
+	if err := initPackage(fsys, absPath, packageName, orgName); err != nil {
 		printErrorTo(cmd.ErrOrStderr(), err, "new <project-path>", false)
 		return err
 	}
@@ -143,11 +151,10 @@ func runNew(cmd *cobra.Command, args []string) error {
 }
 
 // checkExistingDirectory validates that an existing directory can be used for a new package.
-func checkExistingDirectory(path string) error {
+func checkExistingDirectory(fsys fs.FS) error {
 	// Check for Ballerina.toml (already a project)
-	ballerinaToml := filepath.Join(path, projects.BallerinaTomlFile)
-	if _, err := os.Stat(ballerinaToml); err == nil {
-		return fmt.Errorf("directory is already a Ballerina project: %s", path)
+	if _, err := fs.Stat(fsys, projects.BallerinaTomlFile); err == nil {
+		return fmt.Errorf("directory is already a Ballerina project")
 	}
 
 	// Check for conflicting files
@@ -159,10 +166,9 @@ func checkExistingDirectory(path string) error {
 		projects.ModulesDir,
 		projects.TestsDir,
 	}
-
 	var found []string
 	for _, name := range conflictingFiles {
-		if _, err := os.Stat(filepath.Join(path, name)); err == nil {
+		if _, err := fs.Stat(fsys, name); err == nil {
 			found = append(found, name)
 		}
 	}
@@ -171,13 +177,12 @@ func checkExistingDirectory(path string) error {
 		return fmt.Errorf("existing %s file/directory(s) were found. Please use a different directory to create the package",
 			strings.Join(found, ", "))
 	}
-
 	return nil
 }
 
-// hasExistingBalFiles checks if the directory contains any .bal files.
-func hasExistingBalFiles(path string) bool {
-	entries, err := os.ReadDir(path)
+// hasExistingBalFiles reports whether the filesystem root contains any .bal files.
+func hasExistingBalFiles(fsys fs.FS) bool {
+	entries, err := fs.ReadDir(fsys, ".")
 	if err != nil {
 		return false
 	}
@@ -190,13 +195,12 @@ func hasExistingBalFiles(path string) bool {
 }
 
 // initPackage creates a new Ballerina package at the specified path.
-func initPackage(projectPath, packageName, orgName string) error {
-	// Create directory if it doesn't exist
+// fsys is non-nil when the directory already existed; it is used to avoid creating main.bal if .bal files exist.
+func initPackage(fsys fs.FS, projectPath, packageName, orgName string) error {
 	if err := os.MkdirAll(projectPath, 0755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	// Track created files for cleanup on error
 	var createdFiles []string
 	cleanup := func() {
 		for i := len(createdFiles) - 1; i >= 0; i-- {
@@ -204,7 +208,6 @@ func initPackage(projectPath, packageName, orgName string) error {
 		}
 	}
 
-	// Create Ballerina.toml
 	manifestContent, err := templates.ReadTemplate(templates.ManifestApp)
 	if err != nil {
 		cleanup()
@@ -221,7 +224,8 @@ func initPackage(projectPath, packageName, orgName string) error {
 	createdFiles = append(createdFiles, ballerinaToml)
 
 	// Create main.bal only if no existing .bal files
-	if !hasExistingBalFiles(projectPath) {
+	createMain := fsys == nil || !hasExistingBalFiles(fsys)
+	if createMain {
 		mainContent, err := templates.ReadTemplate(templates.MainBal)
 		if err != nil {
 			cleanup()
