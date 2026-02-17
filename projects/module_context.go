@@ -53,8 +53,9 @@ type moduleContext struct {
 	// Compilation artifacts.
 	bLangPkg       *ast.BLangPackage
 	bPackageSymbol interface{} // TODO(S3): BPackageSymbol once compiler symbol types are migrated
-	compilerCtx    *context.CompilerContext
 	birPkg         *bir.BIRPackage
+
+	compilerCtx *context.CompilerContext
 }
 
 // newModuleContext creates a moduleContext from ModuleConfig.
@@ -96,7 +97,7 @@ func newModuleContext(project Project, moduleConfig ModuleConfig, disableSyntaxT
 		testDocContextMap:      testDocContextMap,
 		testSrcDocIDs:          testSrcDocIDs,
 		moduleDescDependencies: depsCopy,
-		compilerCtx:            project.Environment().compilerContext(),
+		compilerCtx:            context.NewCompilerContext(project.Environment().compilerEnvironment()),
 	}
 }
 
@@ -253,7 +254,8 @@ func compileInternal(moduleCtx *moduleContext) {
 		return
 	}
 
-	compilerCtx := moduleCtx.project.Environment().compilerContext()
+	// compilerCtx := moduleCtx.project.Environment().compilerEnvironment()
+	compilerCtx := moduleCtx.compilerCtx
 
 	// Build BLangPackage from syntax trees.
 	compilationOptions := moduleCtx.project.BuildOptions().CompilationOptions()
@@ -296,7 +298,7 @@ func compileInternal(moduleCtx *moduleContext) {
 // buildBLangPackage builds a BLangPackage from one or more syntax trees.
 // For a single file this is equivalent to ast.ToPackage(ast.GetCompilationUnit(cx, st)).
 // For multiple files it merges all compilation units into a single package.
-func buildBLangPackage(cx *context.CompilerContext, syntaxTrees []*tree.SyntaxTree, compilationOptions CompilationOptions) *ast.BLangPackage {
+func buildBLangPackage(env *context.CompilerContext, syntaxTrees []*tree.SyntaxTree, compilationOptions CompilationOptions) *ast.BLangPackage {
 	dumpAST := compilationOptions.DumpAST()
 	var prettyPrinter ast.PrettyPrinter
 	if dumpAST {
@@ -304,7 +306,7 @@ func buildBLangPackage(cx *context.CompilerContext, syntaxTrees []*tree.SyntaxTr
 	}
 
 	if len(syntaxTrees) == 1 {
-		cu := ast.GetCompilationUnit(cx, syntaxTrees[0])
+		cu := ast.GetCompilationUnit(env, syntaxTrees[0])
 		if dumpAST {
 			fmt.Fprintln(os.Stderr, prettyPrinter.Print(cu))
 		}
@@ -313,7 +315,7 @@ func buildBLangPackage(cx *context.CompilerContext, syntaxTrees []*tree.SyntaxTr
 
 	pkg := &ast.BLangPackage{}
 	for _, st := range syntaxTrees {
-		cu := ast.GetCompilationUnit(cx, st)
+		cu := ast.GetCompilationUnit(env, st)
 		if dumpAST {
 			fmt.Fprintln(os.Stderr, prettyPrinter.Print(cu))
 		}
