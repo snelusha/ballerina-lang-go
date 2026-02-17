@@ -257,3 +257,25 @@ func TestMkdirAll_ReadDir(t *testing.T) {
 		t.Errorf("sub2 should be a directory")
 	}
 }
+
+func TestMemFS_PathFS(t *testing.T) {
+	fsys := NewMemFS()
+	_ = WriteFile(fsys, "a/b/file.txt", []byte("x"), 0o644)
+
+	if got := Join(fsys, "a", "b", "c"); got != "a/b/c" {
+		t.Errorf("Join: got %q want %q", got, "a/b/c")
+	}
+	if got := Dir(fsys, "a/b/file.txt"); got != "a/b" {
+		t.Errorf("Dir: got %q want %q", got, "a/b")
+	}
+	if got := Base(fsys, "a/b/file.txt"); got != "file.txt" {
+		t.Errorf("Base: got %q want %q", got, "file.txt")
+	}
+	abs, err := Abs(fsys, "a/b/file.txt")
+	if err != nil {
+		t.Fatalf("Abs error: %v", err)
+	}
+	if abs != "a/b/file.txt" {
+		t.Errorf("Abs: got %q want %q", abs, "a/b/file.txt")
+	}
+}
