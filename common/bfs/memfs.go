@@ -25,7 +25,7 @@ import (
 )
 
 // memFS is an in-memory filesystem that supports both files and directories.
-// It implements fs.FS, fs.ReadDirFS, MutableFS, and WritableFS interfaces.
+// It implements fs.FS, fs.ReadDirFS, MutableFS, WritableFS, and PathFS interfaces.
 type memFS struct {
 	entries map[string]*memEntry
 }
@@ -451,4 +451,25 @@ func (d *dirEntry) Type() fs.FileMode {
 
 func (d *dirEntry) Info() (fs.FileInfo, error) {
 	return d.entry, nil
+}
+
+func (mfs *memFS) Join(elem ...string) string {
+	return path.Join(elem...)
+}
+
+func (mfs *memFS) Dir(p string) string {
+	return path.Dir(p)
+}
+
+func (mfs *memFS) Base(p string) string {
+	return path.Base(p)
+}
+
+func (mfs *memFS) Abs(p string) (string, error) {
+	// Paths are already relative to root, so return as-is
+	return p, nil
+}
+
+func (mfs *memFS) BaseDir() string {
+	return ""
 }
