@@ -19,13 +19,15 @@
 package projectapitest
 
 import (
-	"os"
-
+	"ballerina-lang-go/common/bfs"
 	"ballerina-lang-go/projects"
 	"ballerina-lang-go/projects/directory"
 )
 
-func loadProject(absPath string, configs ...directory.ProjectLoadConfig) (projects.ProjectLoadResult, error) {
-	fsys := os.DirFS(absPath)
-	return directory.LoadProject(fsys, absPath, configs...)
+func loadProject(path string, configs ...directory.ProjectLoadConfig) (projects.ProjectLoadResult, error) {
+	fsys, loadPath, err := bfs.DirFSForPath(path)
+	if err != nil {
+		return projects.ProjectLoadResult{}, err
+	}
+	return directory.LoadProject(fsys, loadPath, configs...)
 }

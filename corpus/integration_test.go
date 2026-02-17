@@ -28,6 +28,7 @@ import (
 	"unsafe"
 
 	"ballerina-lang-go/bir"
+	"ballerina-lang-go/common/bfs"
 	"ballerina-lang-go/projects"
 	"ballerina-lang-go/projects/directory"
 	"ballerina-lang-go/runtime"
@@ -165,8 +166,11 @@ func runCompilePhase(balFile string) (failed bool, panicVal interface{}, pkg *bi
 		}
 	}()
 
-	fsys := os.DirFS(balFile)
-	result, err := directory.LoadProject(fsys, balFile)
+	fsys, loadPath, err := bfs.DirFSForPath(balFile)
+	if err != nil {
+		panic(err)
+	}
+	result, err := directory.LoadProject(fsys, loadPath)
 	if err != nil {
 		panic(err)
 	}

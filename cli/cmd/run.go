@@ -24,6 +24,7 @@ import (
 
 	"ballerina-lang-go/bir"
 	debugcommon "ballerina-lang-go/common"
+	"ballerina-lang-go/common/bfs"
 	_ "ballerina-lang-go/lib/rt"
 	"ballerina-lang-go/projects"
 	"ballerina-lang-go/projects/directory"
@@ -165,8 +166,12 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load project using ProjectLoader (auto-detects type)
-	fsys := os.DirFS(path)
-	result, err := directory.LoadProject(fsys, path, directory.ProjectLoadConfig{
+	fsys, loadPath, err := bfs.DirFSForPath(path)
+	if err != nil {
+		printError(err, "run [<source-file.bal> | <package-dir> | .]", false)
+		return err
+	}
+	result, err := directory.LoadProject(fsys, loadPath, directory.ProjectLoadConfig{
 		BuildOptions: &buildOpts,
 	})
 	if err != nil {

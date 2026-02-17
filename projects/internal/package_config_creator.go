@@ -19,11 +19,12 @@
 package internal
 
 import (
+	"io/fs"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
+	"ballerina-lang-go/common/bfs"
 	"ballerina-lang-go/projects"
 	"ballerina-lang-go/tomlparser"
 )
@@ -31,9 +32,9 @@ import (
 // CreateBuildProjectConfig creates a PackageConfig by scanning the project directory.
 // This is the main entry point for loading build projects (projects with Ballerina.toml).
 // Java equivalent: PackageConfigCreator.createBuildProjectConfig(Path projectDirPath)
-func CreateBuildProjectConfig(projectDirPath string) (projects.PackageConfig, error) {
+func CreateBuildProjectConfig(fsys fs.FS, projectDirPath string) (projects.PackageConfig, error) {
 	// Verify project directory exists
-	info, err := os.Stat(projectDirPath)
+	info, err := fs.Stat(fsys, projectDirPath)
 	if err != nil {
 		return projects.PackageConfig{}, err
 	}
@@ -44,15 +45,15 @@ func CreateBuildProjectConfig(projectDirPath string) (projects.PackageConfig, er
 	}
 
 	// Verify Ballerina.toml exists
-	ballerinaTomlPath := filepath.Join(projectDirPath, projects.BallerinaTomlFile)
-	if _, err := os.Stat(ballerinaTomlPath); os.IsNotExist(err) {
+	ballerinaTomlPath := bfs.Join(fsys, projectDirPath, projects.BallerinaTomlFile)
+	if _, err := fs.Stat(fsys, ballerinaTomlPath); os.IsNotExist(err) {
 		return projects.PackageConfig{}, &projects.ProjectError{
 			Message: "Ballerina.toml not found in: " + projectDirPath,
 		}
 	}
 
 	// Parse Ballerina.toml
-	toml, err := tomlparser.Read(os.DirFS(projectDirPath), projects.BallerinaTomlFile)
+	toml, err := tomlparser.Read(fsys, ballerinaTomlPath)
 	if err != nil {
 		return projects.PackageConfig{}, err
 	}
@@ -68,13 +69,13 @@ func CreateBuildProjectConfig(projectDirPath string) (projects.PackageConfig, er
 	packageDesc := manifest.PackageDescriptor()
 
 	// Scan and create default module config
-	defaultModuleConfig, err := createDefaultModuleConfig(projectDirPath, packageDesc, packageID)
+	defaultModuleConfig, err := createDefaultModuleConfig(fsys, projectDirPath, packageDesc, packageID)
 	if err != nil {
 		return projects.PackageConfig{}, err
 	}
 
 	// Scan and create other module configs
-	otherModules, err := createOtherModuleConfigs(projectDirPath, packageDesc, packageID)
+	otherModules, err := createOtherModuleConfigs(fsys, projectDirPath, packageDesc, packageID)
 	if err != nil {
 		return projects.PackageConfig{}, err
 	}
@@ -83,7 +84,7 @@ func CreateBuildProjectConfig(projectDirPath string) (projects.PackageConfig, er
 	defaultModuleID := defaultModuleConfig.ModuleID()
 
 	// Create Ballerina.toml document config
-	ballerinaTomlContent, err := os.ReadFile(ballerinaTomlPath)
+	ballerinaTomlContent, err := fs.ReadFile(fsys, ballerinaTomlPath)
 	if err != nil {
 		return projects.PackageConfig{}, err
 	}
@@ -92,9 +93,9 @@ func CreateBuildProjectConfig(projectDirPath string) (projects.PackageConfig, er
 
 	// Check for README.md
 	var readmeMdDoc projects.DocumentConfig
-	readmeMdPath := filepath.Join(projectDirPath, projects.ReadmeMdFile)
-	if _, err := os.Stat(readmeMdPath); err == nil {
-		readmeMdContent, err := os.ReadFile(readmeMdPath)
+	readmeMdPath := bfs.Join(fsys, projectDirPath, projects.ReadmeMdFile)
+	if _, err := fs.Stat(fsys, readmeMdPath); err == nil {
+		readmeMdContent, err := fs.ReadFile(fsys, readmeMdPath)
 		if err == nil {
 			readmeMdDocID := projects.NewDocumentID(projects.ReadmeMdFile, defaultModuleID)
 			readmeMdDoc = projects.NewDocumentConfig(readmeMdDocID, projects.ReadmeMdFile, string(readmeMdContent))
@@ -115,22 +116,22 @@ func CreateBuildProjectConfig(projectDirPath string) (projects.PackageConfig, er
 
 // createDefaultModuleConfig creates a ModuleConfig for the default module.
 // The default module contains .bal files in the project root directory.
-func createDefaultModuleConfig(projectPath string, packageDesc projects.PackageDescriptor, packageID projects.PackageID) (projects.ModuleConfig, error) {
+func createDefaultModuleConfig(fsys fs.FS, projectPath string, packageDesc projects.PackageDescriptor, packageID projects.PackageID) (projects.ModuleConfig, error) {
 	moduleDesc := projects.NewModuleDescriptorForDefaultModule(packageDesc)
 	// ModuleId.create uses moduleDescriptor.name().toString() as the first argument
 	moduleID := projects.NewModuleID(moduleDesc.Name().String(), packageID)
 
 	// Scan for .bal files in root directory
-	sourceDocs, err := scanBalFiles(projectPath, moduleID)
+	sourceDocs, err := scanBalFiles(fsys, projectPath, moduleID)
 	if err != nil {
 		return projects.ModuleConfig{}, err
 	}
 
 	// Scan for test files in tests/ directory
-	testsPath := filepath.Join(projectPath, projects.TestsDir)
+	testsPath := bfs.Join(fsys, projectPath, projects.TestsDir)
 	var testDocs []projects.DocumentConfig
-	if info, err := os.Stat(testsPath); err == nil && info.IsDir() {
-		testDocs, err = scanBalFiles(testsPath, moduleID)
+	if info, err := fs.Stat(fsys, testsPath); err == nil && info.IsDir() {
+		testDocs, err = scanBalFiles(fsys, testsPath, moduleID)
 		if err != nil {
 			return projects.ModuleConfig{}, err
 		}
@@ -138,9 +139,9 @@ func createDefaultModuleConfig(projectPath string, packageDesc projects.PackageD
 
 	// Check for README.md in module
 	var readmeMd projects.DocumentConfig
-	readmeMdPath := filepath.Join(projectPath, projects.ReadmeMdFile)
-	if _, err := os.Stat(readmeMdPath); err == nil {
-		content, err := os.ReadFile(readmeMdPath)
+	readmeMdPath := bfs.Join(fsys, projectPath, projects.ReadmeMdFile)
+	if _, err := fs.Stat(fsys, readmeMdPath); err == nil {
+		content, err := fs.ReadFile(fsys, readmeMdPath)
 		if err == nil {
 			readmeMd = projects.NewDocumentConfig(projects.NewDocumentID(projects.ReadmeMdFile, moduleID), projects.ReadmeMdFile, string(content))
 		}
@@ -157,23 +158,25 @@ func createDefaultModuleConfig(projectPath string, packageDesc projects.PackageD
 }
 
 // createOtherModuleConfigs scans the modules/ directory for named modules.
-func createOtherModuleConfigs(projectPath string, packageDesc projects.PackageDescriptor, packageID projects.PackageID) ([]projects.ModuleConfig, error) {
-	modulesDir := filepath.Join(projectPath, projects.ModulesDir)
+func createOtherModuleConfigs(fsys fs.FS, projectPath string, packageDesc projects.PackageDescriptor, packageID projects.PackageID) ([]projects.ModuleConfig, error) {
+	modulesDir := bfs.Join(fsys, projectPath, projects.ModulesDir)
 
 	// Check if modules/ directory exists
-	info, err := os.Stat(modulesDir)
+	info, err := fs.Stat(fsys, modulesDir)
 	if os.IsNotExist(err) {
 		return nil, nil // No named modules
 	}
+
 	if err != nil {
 		return nil, err
 	}
+
 	if !info.IsDir() {
 		return nil, nil
 	}
 
 	// List subdirectories in modules/
-	entries, err := os.ReadDir(modulesDir)
+	entries, err := fs.ReadDir(fsys, modulesDir)
 	if err != nil {
 		return nil, err
 	}
@@ -185,9 +188,9 @@ func createOtherModuleConfigs(projectPath string, packageDesc projects.PackageDe
 		}
 
 		moduleName := entry.Name()
-		modulePath := filepath.Join(modulesDir, moduleName)
+		modulePath := bfs.Join(fsys, modulesDir, moduleName)
 
-		moduleConfig, err := createModuleConfig(modulePath, moduleName, packageDesc, packageID)
+		moduleConfig, err := createModuleConfig(fsys, modulePath, moduleName, packageDesc, packageID)
 		if err != nil {
 			return nil, err
 		}
@@ -199,23 +202,23 @@ func createOtherModuleConfigs(projectPath string, packageDesc projects.PackageDe
 }
 
 // createModuleConfig creates a ModuleConfig for a named module.
-func createModuleConfig(modulePath string, moduleNamePart string, packageDesc projects.PackageDescriptor, packageID projects.PackageID) (projects.ModuleConfig, error) {
+func createModuleConfig(fsys fs.FS, modulePath string, moduleNamePart string, packageDesc projects.PackageDescriptor, packageID projects.PackageID) (projects.ModuleConfig, error) {
 	moduleName := projects.NewModuleName(packageDesc.Name(), moduleNamePart)
 	moduleDesc := projects.NewModuleDescriptor(packageDesc, moduleName)
 	// ModuleId.create uses moduleDescriptor.name().toString() as the first argument
 	moduleID := projects.NewModuleID(moduleDesc.Name().String(), packageID)
 
 	// Scan for .bal files in module directory
-	sourceDocs, err := scanBalFiles(modulePath, moduleID)
+	sourceDocs, err := scanBalFiles(fsys, modulePath, moduleID)
 	if err != nil {
 		return projects.ModuleConfig{}, err
 	}
 
 	// Scan for test files in module's tests/ directory
-	testsPath := filepath.Join(modulePath, projects.TestsDir)
+	testsPath := bfs.Join(fsys, modulePath, projects.TestsDir)
 	var testDocs []projects.DocumentConfig
-	if info, err := os.Stat(testsPath); err == nil && info.IsDir() {
-		testDocs, err = scanBalFiles(testsPath, moduleID)
+	if info, err := fs.Stat(fsys, testsPath); err == nil && info.IsDir() {
+		testDocs, err = scanBalFiles(fsys, testsPath, moduleID)
 		if err != nil {
 			return projects.ModuleConfig{}, err
 		}
@@ -223,9 +226,9 @@ func createModuleConfig(modulePath string, moduleNamePart string, packageDesc pr
 
 	// Check for README.md in module
 	var readmeMd projects.DocumentConfig
-	readmeMdPath := filepath.Join(modulePath, projects.ReadmeMdFile)
-	if _, err := os.Stat(readmeMdPath); err == nil {
-		content, err := os.ReadFile(readmeMdPath)
+	readmeMdPath := bfs.Join(fsys, modulePath, projects.ReadmeMdFile)
+	if _, err := fs.Stat(fsys, readmeMdPath); err == nil {
+		content, err := fs.ReadFile(fsys, readmeMdPath)
 		if err == nil {
 			readmeMd = projects.NewDocumentConfig(projects.NewDocumentID(projects.ReadmeMdFile, moduleID), projects.ReadmeMdFile, string(content))
 		}
@@ -242,8 +245,8 @@ func createModuleConfig(modulePath string, moduleNamePart string, packageDesc pr
 }
 
 // scanBalFiles scans a directory for .bal files and creates DocumentConfigs.
-func scanBalFiles(dirPath string, moduleID projects.ModuleID) ([]projects.DocumentConfig, error) {
-	entries, err := os.ReadDir(dirPath)
+func scanBalFiles(fsys fs.FS, dirPath string, moduleID projects.ModuleID) ([]projects.DocumentConfig, error) {
+	entries, err := fs.ReadDir(fsys, dirPath)
 	if err != nil {
 		return nil, err
 	}
@@ -267,8 +270,8 @@ func scanBalFiles(dirPath string, moduleID projects.ModuleID) ([]projects.Docume
 
 	// Create DocumentConfigs
 	for _, fileName := range fileNames {
-		filePath := filepath.Join(dirPath, fileName)
-		content, err := os.ReadFile(filePath)
+		filePath := bfs.Join(fsys, dirPath, fileName)
+		content, err := fs.ReadFile(fsys, filePath)
 		if err != nil {
 			return nil, err
 		}
