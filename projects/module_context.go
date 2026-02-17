@@ -47,8 +47,7 @@ type moduleContext struct {
 	moduleDescDependencies []ModuleDescriptor
 
 	// Compilation state tracking.
-	compilationState  moduleCompilationState
-	moduleDiagnostics []diagnostics.Diagnostic
+	compilationState moduleCompilationState
 
 	// Compilation artifacts.
 	bLangPkg       *ast.BLangPackage
@@ -228,8 +227,6 @@ func (m *moduleContext) compile() {
 // compileInternal performs the actual compilation of a module:
 // parse sources, build BLangPackage (AST), and run semantic analysis.
 func compileInternal(moduleCtx *moduleContext) {
-	moduleCtx.moduleDiagnostics = make([]diagnostics.Diagnostic, 0)
-
 	// Parse all source documents and collect syntax trees.
 	var syntaxTrees []*tree.SyntaxTree
 	for _, docID := range moduleCtx.srcDocIDs {
@@ -370,7 +367,7 @@ func (m *moduleContext) getCompilationState() moduleCompilationState {
 
 // getDiagnostics returns the diagnostics produced during module compilation.
 func (m *moduleContext) getDiagnostics() []diagnostics.Diagnostic {
-	return m.moduleDiagnostics
+	return m.compilerCtx.Diagnostics()
 }
 
 // duplicate creates a copy of the context.
