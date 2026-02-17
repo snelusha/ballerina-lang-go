@@ -51,7 +51,16 @@ func (this *CompilerContext) GetSymbol(symbol model.Symbol) model.Symbol {
 }
 
 func (this *CompilerContext) RefSymbol(symbol model.Symbol) model.SymbolRef {
-	return this.env.RefSymbol(symbol)
+	// If this happen that's a bug in SymbolResolver
+	if symbol == nil {
+		this.InternalError("RefSymbol called with nil symbol", nil)
+	}
+	if refSymbol, ok := symbol.(*model.SymbolRef); ok {
+		return *refSymbol
+	}
+	// This should never happen because we should never store actual symbols in the AST
+	this.InternalError(fmt.Sprintf("Symbol is not a SymbolRef: type=%T, name=%s, kind=%v", symbol, symbol.Name(), symbol.Kind()), nil)
+	return model.SymbolRef{}
 }
 
 func (this *CompilerContext) SymbolName(symbol model.Symbol) string {
@@ -82,14 +91,14 @@ func (this CompilerContext) NewPackageID(orgName model.Name, nameComps []model.N
 	return this.env.NewPackageID(orgName, nameComps, version)
 }
 
-func (this *CompilerEnvironment) Unimplemented(message string, pos diagnostics.Location) {
+func (this *CompilerContext) Unimplemented(message string, pos diagnostics.Location) {
 	if pos != nil {
 		panic(fmt.Sprintf("Unimplemented: %s at %s", message, pos))
 	}
 	panic(fmt.Sprintf("Unimplemented: %s", message))
 }
 
-func (this *CompilerEnvironment) SemanticError(message string, pos diagnostics.Location) {
+func (this *CompilerContext) SemanticError(message string, pos diagnostics.Location) {
 	if pos != nil {
 		panic(fmt.Sprintf("Semantic error: %s at %s", message, pos))
 	}
@@ -97,14 +106,14 @@ func (this *CompilerEnvironment) SemanticError(message string, pos diagnostics.L
 }
 
 // TODO: implement these properly
-func (this *CompilerEnvironment) SyntaxError(message string, pos diagnostics.Location) {
+func (this *CompilerContext) SyntaxError(message string, pos diagnostics.Location) {
 	if pos != nil {
 		panic(fmt.Sprintf("Syntax error: %s at %s", message, pos))
 	}
 	panic(fmt.Sprintf("Syntax error: %s", message))
 }
 
-func (this *CompilerEnvironment) InternalError(message string, pos diagnostics.Location) {
+func (this *CompilerContext) InternalError(message string, pos diagnostics.Location) {
 	if pos != nil {
 		panic(fmt.Sprintf("Internal error: %s at %s", message, pos))
 	}

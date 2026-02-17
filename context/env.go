@@ -17,7 +17,6 @@
 package context
 
 import (
-	"fmt"
 	"strconv"
 
 	"ballerina-lang-go/model"
@@ -62,19 +61,6 @@ func (this *CompilerEnvironment) GetSymbol(symbol model.Symbol) model.Symbol {
 		return symbolSpace.Symbols[refSymbol.Index]
 	}
 	return symbol
-}
-
-func (this *CompilerEnvironment) RefSymbol(symbol model.Symbol) model.SymbolRef {
-	// If this happen that's a bug in SymbolResolver
-	if symbol == nil {
-		this.InternalError("RefSymbol called with nil symbol", nil)
-	}
-	if refSymbol, ok := symbol.(*model.SymbolRef); ok {
-		return *refSymbol
-	}
-	// This should never happen because we should never store actual symbols in the AST
-	this.InternalError(fmt.Sprintf("Symbol is not a SymbolRef: type=%T, name=%s, kind=%v", symbol, symbol.Name(), symbol.Kind()), nil)
-	return model.SymbolRef{}
 }
 
 func (this *CompilerEnvironment) SymbolName(symbol model.Symbol) string {
