@@ -25,7 +25,8 @@ import (
 )
 
 type CompilerContext struct {
-	env *CompilerEnvironment
+	env         *CompilerEnvironment
+	diagnostics []diagnostics.Diagnostic
 }
 
 func NewCompilerContext(env *CompilerEnvironment) *CompilerContext {
@@ -92,32 +93,33 @@ func (this CompilerContext) NewPackageID(orgName model.Name, nameComps []model.N
 }
 
 func (this *CompilerContext) Unimplemented(message string, pos diagnostics.Location) {
-	if pos != nil {
-		panic(fmt.Sprintf("Unimplemented: %s at %s", message, pos))
-	}
-	panic(fmt.Sprintf("Unimplemented: %s", message))
+	panic(fmt.Sprintf("Unimplemented: %s at %s", message, pos))
 }
 
 func (this *CompilerContext) SemanticError(message string, pos diagnostics.Location) {
-	if pos != nil {
-		panic(fmt.Sprintf("Semantic error: %s at %s", message, pos))
-	}
-	panic(fmt.Sprintf("Semantic error: %s", message))
+	code := "SEMANTIC_ERROR"
+	diagnosticInfo := diagnostics.NewDiagnosticInfo(&code, message, diagnostics.Error)
+	dignostic := diagnostics.CreateDiagnostic(diagnosticInfo, pos)
+	this.diagnostics = append(this.diagnostics, dignostic)
 }
 
-// TODO: implement these properly
 func (this *CompilerContext) SyntaxError(message string, pos diagnostics.Location) {
-	if pos != nil {
-		panic(fmt.Sprintf("Syntax error: %s at %s", message, pos))
-	}
-	panic(fmt.Sprintf("Syntax error: %s", message))
+	code := "SYNTAX_ERROR"
+	diagnosticInfo := diagnostics.NewDiagnosticInfo(&code, message, diagnostics.Error)
+	dignostic := diagnostics.CreateDiagnostic(diagnosticInfo, pos)
+	this.diagnostics = append(this.diagnostics, dignostic)
 }
 
 func (this *CompilerContext) InternalError(message string, pos diagnostics.Location) {
-	if pos != nil {
-		panic(fmt.Sprintf("Internal error: %s at %s", message, pos))
-	}
-	panic(fmt.Sprintf("Internal error: %s", message))
+	panic(fmt.Sprintf("Internal error: %s at %s", message, pos))
+}
+
+func (this *CompilerContext) Diagnostics() []diagnostics.Diagnostic {
+	return this.diagnostics
+}
+
+func (this *CompilerContext) HasDiagnostics() bool {
+	return len(this.diagnostics) > 0
 }
 
 // GetTypeEnv returns the type environment for this context
