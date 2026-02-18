@@ -54,7 +54,7 @@ type moduleContext struct {
 	bPackageSymbol interface{} // TODO(S3): BPackageSymbol once compiler symbol types are migrated
 	birPkg         *bir.BIRPackage
 
-	compilerCtx *context.CompilerContext
+	moduleCompilerCtx *context.CompilerContext
 }
 
 // newModuleContext creates a moduleContext from ModuleConfig.
@@ -96,7 +96,7 @@ func newModuleContext(project Project, moduleConfig ModuleConfig, disableSyntaxT
 		testDocContextMap:      testDocContextMap,
 		testSrcDocIDs:          testSrcDocIDs,
 		moduleDescDependencies: depsCopy,
-		compilerCtx:            context.NewCompilerContext(project.Environment().compilerEnvironment()),
+		moduleCompilerCtx:      context.NewCompilerContext(project.Environment().compilerEnvironment()),
 	}
 }
 
@@ -252,7 +252,7 @@ func compileInternal(moduleCtx *moduleContext) {
 	}
 
 	// compilerCtx := moduleCtx.project.Environment().compilerEnvironment()
-	compilerCtx := moduleCtx.compilerCtx
+	compilerCtx := moduleCtx.moduleCompilerCtx
 
 	// Build BLangPackage from syntax trees.
 	compilationOptions := moduleCtx.project.BuildOptions().CompilationOptions()
@@ -344,10 +344,10 @@ func buildBLangPackage(env *context.CompilerContext, syntaxTrees []*tree.SyntaxT
 // generateCodeInternal generates BIR for this module from the compiled BLangPackage.
 // -> CompilerPhaseRunner.performBirGenPhases(bLangPackage)
 func generateCodeInternal(moduleCtx *moduleContext) {
-	if moduleCtx.bLangPkg == nil || moduleCtx.compilerCtx == nil {
+	if moduleCtx.bLangPkg == nil || moduleCtx.moduleCompilerCtx == nil {
 		return
 	}
-	moduleCtx.birPkg = bir.GenBir(moduleCtx.compilerCtx, moduleCtx.bLangPkg)
+	moduleCtx.birPkg = bir.GenBir(moduleCtx.moduleCompilerCtx, moduleCtx.bLangPkg)
 }
 
 // getBLangPackage returns the compiled BLangPackage.
@@ -367,7 +367,7 @@ func (m *moduleContext) getCompilationState() moduleCompilationState {
 
 // getDiagnostics returns the diagnostics produced during module compilation.
 func (m *moduleContext) getDiagnostics() []diagnostics.Diagnostic {
-	return m.compilerCtx.Diagnostics()
+	return m.moduleCompilerCtx.Diagnostics()
 }
 
 // duplicate creates a copy of the context.
