@@ -17,59 +17,43 @@
 package context
 
 import (
+	"fmt"
+
 	"ballerina-lang-go/model"
 	"ballerina-lang-go/semtypes"
 	"ballerina-lang-go/tools/diagnostics"
-	"fmt"
-	"strconv"
 )
 
 type CompilerContext struct {
-	anonTypeCount   map[*model.PackageID]int
-	packageInterner *model.PackageIDInterner
-	symbolSpaces    []*model.SymbolSpace
-	typeEnv         semtypes.Env
+	env *CompilerEnvironment
 }
 
 func (this *CompilerContext) NewSymbolSpace(packageId model.PackageID) *model.SymbolSpace {
-	space := model.NewSymbolSpaceInner(packageId, len(this.symbolSpaces))
-	this.symbolSpaces = append(this.symbolSpaces, space)
-	return space
+	return this.env.NewSymbolSpace(packageId)
 }
 
 func (this *CompilerContext) NewFunctionScope(parent model.Scope, pkg model.PackageID) *model.FunctionScope {
-	return &model.FunctionScope{
-		BlockScopeBase: model.BlockScopeBase{
-			Parent: parent,
-			Main:   this.NewSymbolSpace(pkg),
-		},
-	}
+	return this.env.NewFunctionScope(parent, pkg)
 }
 
 func (this *CompilerContext) NewBlockScope(parent model.Scope, pkg model.PackageID) *model.BlockScope {
-	return &model.BlockScope{
-		BlockScopeBase: model.BlockScopeBase{
-			Parent: parent,
-			Main:   this.NewSymbolSpace(pkg),
-		},
-	}
+	return this.env.NewBlockScope(parent, pkg)
 }
 
 func (this *CompilerContext) GetSymbol(symbol model.SymbolRef) model.Symbol {
-	symbolSpace := this.symbolSpaces[symbol.SpaceIndex]
-	return symbolSpace.Symbols[symbol.Index]
+	return this.env.GetSymbol(symbol)
 }
 
 func (this *CompilerContext) SymbolName(symbol model.SymbolRef) string {
-	return this.GetSymbol(symbol).Name()
+	return this.env.GetSymbol(symbol).Name()
 }
 
 func (this *CompilerContext) SymbolType(symbol model.SymbolRef) semtypes.SemType {
-	return this.GetSymbol(symbol).Type()
+	return this.env.GetSymbol(symbol).Type()
 }
 
 func (this *CompilerContext) SymbolKind(symbol model.SymbolRef) model.SymbolKind {
-	return this.GetSymbol(symbol).Kind()
+	return this.env.GetSymbol(symbol).Kind()
 }
 
 func (this *CompilerContext) SymbolIsPublic(symbol model.SymbolRef) bool {
@@ -81,11 +65,11 @@ func (this *CompilerContext) SetSymbolType(symbol model.SymbolRef, ty semtypes.S
 }
 
 func (this *CompilerContext) GetDefaultPackage() *model.PackageID {
-	return this.packageInterner.GetDefaultPackage()
+	return this.env.GetDefaultPackage()
 }
 
 func (this *CompilerContext) NewPackageID(orgName model.Name, nameComps []model.Name, version model.Name) *model.PackageID {
-	return model.NewPackageID(this.packageInterner, orgName, nameComps, version)
+	return this.env.NewPackageID(orgName, nameComps, version)
 }
 
 func (this *CompilerContext) Unimplemented(message string, pos diagnostics.Location) {
@@ -102,7 +86,6 @@ func (this *CompilerContext) SemanticError(message string, pos diagnostics.Locat
 	panic(fmt.Sprintf("Semantic error: %s", message))
 }
 
-// TODO: implement these properly
 func (this *CompilerContext) SyntaxError(message string, pos diagnostics.Location) {
 	if pos != nil {
 		panic(fmt.Sprintf("Syntax error: %s at %s", message, pos))
@@ -117,30 +100,17 @@ func (this *CompilerContext) InternalError(message string, pos diagnostics.Locat
 	panic(fmt.Sprintf("Internal error: %s", message))
 }
 
-func NewCompilerContext(typeEnv semtypes.Env) *CompilerContext {
+func NewCompilerContext(env *CompilerEnvironment) *CompilerContext {
 	return &CompilerContext{
-		anonTypeCount:   make(map[*model.PackageID]int),
-		packageInterner: model.DefaultPackageIDInterner,
-		typeEnv:         typeEnv,
+		env: env,
 	}
 }
 
 // GetTypeEnv returns the type environment for this context
 func (this *CompilerContext) GetTypeEnv() semtypes.Env {
-	return this.typeEnv
+	return this.env.GetTypeEnv()
 }
 
-const (
-	ANON_PREFIX       = "$anon"
-	BUILTIN_ANON_TYPE = ANON_PREFIX + "Type$builtin$"
-	ANON_TYPE         = ANON_PREFIX + "Type$"
-)
-
 func (this *CompilerContext) GetNextAnonymousTypeKey(packageID *model.PackageID) string {
-	nextValue := this.anonTypeCount[packageID]
-	this.anonTypeCount[packageID] = nextValue + 1
-	if packageID != nil && model.ANNOTATIONS_PKG != packageID {
-		return BUILTIN_ANON_TYPE + "_" + strconv.Itoa(nextValue)
-	}
-	return ANON_TYPE + "_" + strconv.Itoa(nextValue)
+	return this.env.GetNextAnonymousTypeKey(packageID)
 }
