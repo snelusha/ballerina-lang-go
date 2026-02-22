@@ -167,7 +167,7 @@ func (r *PackageResolution) TopologicallySortedModuleList() []*moduleContext {
 // DependencyGraph returns the dependency graph.
 // TODO(P7): Implement when full DependencyGraph type is migrated.
 // Java source: PackageResolution.dependencyGraph()
-func (r *PackageResolution) DependencyGraph() interface{} {
+func (r *PackageResolution) DependencyGraph() any {
 	// TODO(P7): Return *DependencyGraph once the type is implemented.
 	return nil
 }

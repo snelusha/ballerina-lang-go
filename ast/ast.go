@@ -1146,7 +1146,7 @@ func (this *BLangMarkdownDocumentation) GetReturnParameterDocumentation() *strin
 	if this.ReturnParameter == nil {
 		return nil
 	}
-	return common.ToPointer(this.ReturnParameter.GetReturnParameterDocumentation())
+	return new(this.ReturnParameter.GetReturnParameterDocumentation())
 }
 
 func (this *BLangMarkdownDocumentation) GetReferences() []model.MarkdownDocumentationReferenceAttributeNode {

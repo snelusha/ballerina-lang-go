@@ -56,10 +56,10 @@ func (this *MappingAlternative) From(cx Context, semType SemType, pos []Atom, ne
 	// migrated from MappingAlternative.java:63:5
 	p := make([]MappingAtomicType, len(pos))
 	n := make([]MappingAtomicType, len(neg))
-	for i := 0; i < len(pos); i++ {
+	for i := range pos {
 		p[i] = *cx.mappingAtomType(pos[i])
 	}
-	for i := 0; i < len(neg); i++ {
+	for i := range neg {
 		n[i] = *cx.mappingAtomType(neg[i])
 	}
 	return newMappingAlternativeFromSemType(semType, p, n)
