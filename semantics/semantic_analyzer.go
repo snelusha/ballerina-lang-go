@@ -195,114 +195,66 @@ func (la *loopAnalyzer) tyCtx() semtypes.Context {
 }
 
 func (sa *SemanticAnalyzer) unimplementedErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = sa.loc()
-	}
 	sa.compilerCtx.Unimplemented(message, loc)
 }
 
 func (sa *SemanticAnalyzer) semanticErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = sa.loc()
-	}
 	sa.compilerCtx.SemanticError(message, loc)
 }
 
 func (sa *SemanticAnalyzer) syntaxErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = sa.loc()
-	}
 	sa.compilerCtx.SyntaxError(message, loc)
 }
 
 func (sa *SemanticAnalyzer) internalErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = sa.loc()
-	}
 	sa.compilerCtx.InternalError(message, loc)
 }
 
 func (ca *constantAnalyzer) unimplementedErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = ca.loc()
-	}
 	ca.parentAnalyzer().ctx().Unimplemented(message, loc)
 }
 
 func (ca *constantAnalyzer) semanticErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = ca.loc()
-	}
 	ca.parentAnalyzer().ctx().SemanticError(message, loc)
 }
 
 func (ca *constantAnalyzer) syntaxErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = ca.loc()
-	}
 	ca.parentAnalyzer().ctx().SyntaxError(message, loc)
 }
 
 func (ca *constantAnalyzer) internalErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = ca.loc()
-	}
 	ca.parentAnalyzer().ctx().InternalError(message, loc)
 }
 
 func (fa *functionAnalyzer) unimplementedErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = fa.loc()
-	}
 	fa.parent.ctx().Unimplemented(message, loc)
 }
 
 func (fa *functionAnalyzer) semanticErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = fa.loc()
-	}
 	fa.parent.ctx().SemanticError(message, loc)
 }
 
 func (fa *functionAnalyzer) syntaxErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = fa.loc()
-	}
 	fa.parent.ctx().SyntaxError(message, loc)
 }
 
 func (fa *functionAnalyzer) internalErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = fa.loc()
-	}
 	fa.parent.ctx().InternalError(message, loc)
 }
 
 func (la *loopAnalyzer) unimplementedErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = la.loc()
-	}
 	la.parent.ctx().Unimplemented(message, loc)
 }
 
 func (la *loopAnalyzer) semanticErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = la.loc()
-	}
 	la.parent.ctx().SemanticError(message, loc)
 }
 
 func (la *loopAnalyzer) syntaxErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = la.loc()
-	}
 	la.parent.ctx().SyntaxError(message, loc)
 }
 
 func (la *loopAnalyzer) internalErr(message string, loc diagnostics.Location) {
-	if loc == nil {
-		loc = la.loc()
-	}
 	la.parent.ctx().InternalError(message, loc)
 }
 
@@ -744,7 +696,7 @@ func selectMappingInherentType[A analyzer](a A, expr *ast.BLangMappingConstructo
 	expectedMappingType := semtypes.Intersect(expectedType, &semtypes.MAPPING)
 	tc := a.tyCtx()
 	if semtypes.IsEmpty(tc, expectedMappingType) {
-		a.semanticErr("mapping type not found in expected type")
+		a.semanticErr("mapping type not found in expected type", expr.GetPosition())
 		return nil, semtypes.MappingAtomicType{}
 	}
 	mat := semtypes.ToMappingAtomicType(tc, expectedMappingType)
@@ -786,11 +738,11 @@ func selectMappingInherentType[A analyzer](a A, expr *ast.BLangMappingConstructo
 		}
 	}
 	if len(validAlts) == 0 {
-		a.semanticErr("no applicable inherent type for mapping constructor")
+		a.semanticErr("no applicable inherent type for mapping constructor", expr.GetPosition())
 		return nil, semtypes.MappingAtomicType{}
 	}
 	if len(validAlts) > 1 {
-		a.semanticErr("ambiguous inherent type for mapping constructor")
+		a.semanticErr("ambiguous inherent type for mapping constructor", expr.GetPosition())
 		return nil, semtypes.MappingAtomicType{}
 	}
 
@@ -798,7 +750,7 @@ func selectMappingInherentType[A analyzer](a A, expr *ast.BLangMappingConstructo
 	selectedSemType := validAlts[0].SemType
 	mat = semtypes.ToMappingAtomicType(tc, selectedSemType)
 	if mat == nil {
-		a.semanticErr("applicable type for mapping constructor is not atomic")
+		a.semanticErr("applicable type for mapping constructor is not atomic", expr.GetPosition())
 		return nil, semtypes.MappingAtomicType{}
 	}
 
