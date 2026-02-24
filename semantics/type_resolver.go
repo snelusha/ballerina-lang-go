@@ -204,7 +204,9 @@ func (t *TypeResolver) Visit(node ast.BLangNode) ast.Visitor {
 		t.resolveTypeDefinition(n, 0)
 		return nil
 	case ast.BLangExpression:
-		t.resolveExpression(n)
+		if res := t.resolveExpression(n); res == nil {
+			return nil
+		}
 	default:
 		// Non-expression nodes with no specific handling: mark as NEVER and continue traversal
 	}
@@ -986,7 +988,9 @@ func (t *TypeResolver) resolveFunctionCall(expr *ast.BLangInvocation, symbolRef 
 	// Resolve argument expressions
 	argTys := make([]semtypes.SemType, len(expr.ArgExprs))
 	for i, arg := range expr.ArgExprs {
-		argTys[i] = t.resolveExpression(arg)
+		if argTys[i] = t.resolveExpression(arg); argTys[i] == nil {
+			return nil
+		}
 	}
 
 	baseSymbol := t.ctx.GetSymbol(symbolRef)
