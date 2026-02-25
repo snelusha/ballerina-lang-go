@@ -23,7 +23,6 @@ import (
 	"ballerina-lang-go/semtypes"
 )
 
-// TODO: consider moving type resolution env in to this
 type CompilerEnvironment struct {
 	anonTypeCount   map[*model.PackageID]int
 	packageInterner *model.PackageIDInterner
