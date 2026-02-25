@@ -45,25 +45,20 @@ func NewLocalStorageFS(proxy js.Value) *localStorageFS {
 }
 
 func (l *localStorageFS) Create(name string) (fs.File, error) {
-	// FIXME: Should we handle errors from the JS side?
-	l.proxy.Call("create", name)
+	l.proxy.Call("writeFile", name, "")
 	return l.Open(name)
 }
 
 func (l *localStorageFS) MkdirAll(path string, perm fs.FileMode) error {
-	// FIXME: Do we need this?
 	panic("unimplemented")
 }
 
 func (l *localStorageFS) Move(oldpath string, newpath string) error {
-	// FIXME: Could we just call a "move" method on the JS side instead of doing read/write/remove?
-	content := l.proxy.Call("readFile", oldpath)
-	if !content.IsNull() && !content.IsUndefined() {
-		l.proxy.Call("writeFile", newpath, content.String())
-		l.proxy.Call("remove", oldpath)
-		return nil
+	res := l.proxy.Call("move", oldpath, newpath)
+	if res.IsNull() || res.IsUndefined() || (res.Type() == js.TypeBoolean && !res.Bool()) {
+		return &fs.PathError{Op: "move", Path: oldpath, Err: fs.ErrNotExist}
 	}
-	return &fs.PathError{Op: "move", Path: oldpath, Err: fs.ErrNotExist}
+	return nil
 }
 
 func (l *localStorageFS) OpenFile(name string, _ int, _ fs.FileMode) (fs.File, error) {
@@ -71,8 +66,10 @@ func (l *localStorageFS) OpenFile(name string, _ int, _ fs.FileMode) (fs.File, e
 }
 
 func (l *localStorageFS) Remove(name string) error {
-	// FIXME: Should we handle errors from the JS side?
-	l.proxy.Call("remove", name)
+	res := l.proxy.Call("remove", name)
+	if res.IsNull() || res.IsUndefined() || (res.Type() == js.TypeBoolean && !res.Bool()) {
+		return &fs.PathError{Op: "remove", Path: name, Err: fs.ErrNotExist}
+	}
 	return nil
 }
 
@@ -106,6 +103,9 @@ func (l *localStorageFS) Open(name string) (fs.File, error) {
 
 func (l *localStorageFS) openDir(name string, stat js.Value) (fs.File, error) {
 	localStorageEntries := l.proxy.Call("readDir", name)
+	if localStorageEntries.IsNull() || localStorageEntries.IsUndefined() {
+		return nil, &fs.PathError{Op: "readDir", Path: name, Err: fs.ErrNotExist}
+	}
 	entries := make([]fs.DirEntry, localStorageEntries.Length())
 	for i := 0; i < localStorageEntries.Length(); i++ {
 		e := localStorageEntries.Index(i)
@@ -126,8 +126,10 @@ func (l *localStorageFS) openDir(name string, stat js.Value) (fs.File, error) {
 }
 
 func (l *localStorageFS) WriteFile(name string, data []byte, perm fs.FileMode) error {
-	// FIXME: Should we handle errors from the JS side?
-	l.proxy.Call("writeFile", name, string(data))
+	res := l.proxy.Call("writeFile", name, string(data))
+	if res.IsNull() || res.IsUndefined() || (res.Type() == js.TypeBoolean && !res.Bool()) {
+		return &fs.PathError{Op: "writeFile", Path: name, Err: fs.ErrNotExist}
+	}
 	return nil
 }
 
