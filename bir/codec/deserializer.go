@@ -25,13 +25,16 @@ import (
 	"ballerina-lang-go/bir"
 	"ballerina-lang-go/context"
 	"ballerina-lang-go/model"
+	"ballerina-lang-go/semtypes"
 	"ballerina-lang-go/tools/diagnostics"
 )
 
 type birReader struct {
-	r   *bytes.Reader
-	cp  []any
-	ctx *context.CompilerContext
+	r        *bytes.Reader
+	cp       []any
+	ctx      *context.CompilerContext
+	typeEnv  semtypes.Env
+	semTypes []semtypes.SemType
 }
 
 func Unmarshal(ctx *context.CompilerContext, data []byte) (*bir.BIRPackage, error) {
@@ -70,6 +73,7 @@ func (br *birReader) readPackage() (pkg *bir.BIRPackage, err error) {
 
 	pkgID := br.getPackageFromCP(int(pkgIdx))
 	imports := br.readImports()
+	br.readSemTypeSection()
 	constants := br.readConstants()
 	globalVars := br.readGlobalVars()
 	functions := br.readFunctions()
@@ -80,6 +84,7 @@ func (br *birReader) readPackage() (pkg *bir.BIRPackage, err error) {
 		Constants:     constants,
 		GlobalVars:    globalVars,
 		Functions:     functions,
+		TypeEnv:       br.typeEnv,
 	}, nil
 }
 
@@ -155,7 +160,54 @@ func (br *birReader) getPackageFromCP(index int) *model.PackageID {
 	return v.(*model.PackageID)
 }
 
-// FIXME: Read actual type
+func (br *birReader) getSemType(typeIdx int32) semtypes.SemType {
+	if typeIdx < 0 || int(typeIdx) >= len(br.semTypes) {
+		return nil
+	}
+	return br.semTypes[typeIdx]
+}
+
+func (br *birReader) readSemTypeSection() {
+	if br.r.Len() < 4 {
+		return
+	}
+	magic := make([]byte, 4)
+	if _, err := br.r.Read(magic); err != nil {
+		return
+	}
+	if string(magic) != semtypes.SemTypeSectionMagic {
+		_, _ = br.r.Seek(-4, 1)
+		return
+	}
+	if br.r.Len() < 8 {
+		panic("truncated semtype section")
+	}
+	var version int32
+	if err := binary.Read(br.r, binary.BigEndian, &version); err != nil {
+		panic(fmt.Sprintf("reading semtype section version: %v", err))
+	}
+	if version != semtypes.SemTypeCodecVersion {
+		return
+	}
+	var count int32
+	if err := binary.Read(br.r, binary.BigEndian, &count); err != nil {
+		panic(fmt.Sprintf("reading semtype section count: %v", err))
+	}
+	if count < 0 {
+		return
+	}
+	br.typeEnv = semtypes.CreateTypeEnv()
+	br.semTypes = make([]semtypes.SemType, count)
+	for i := int32(0); i < count; i++ {
+		t, err := semtypes.ReadSemType(br.r, br.typeEnv, &br.semTypes)
+		if err != nil {
+			panic(fmt.Sprintf("reading semtype %d: %v", i, err))
+		}
+		br.semTypes[i] = t
+	}
+}
+
+// FIXME: Read actual type (model.ValueType / ast.BType for ConstValue, ConstantLoad)
 func (br *birReader) getTypeFromCP(_ int) ast.BType {
 	return nil
 }
@@ -189,8 +241,6 @@ func (br *birReader) readConstants() []bir.BIRConstant {
 		var typeIdx int32
 		br.read(&typeIdx)
 
-		// TODO: Implement Types
-		// t := br.getTypeFromCP(int(typeIdx))
 		constant := bir.BIRConstant{
 			BIRDocumentableNodeBase: bir.BIRDocumentableNodeBase{
 				BIRNodeBase: bir.BIRNodeBase{
@@ -200,7 +250,7 @@ func (br *birReader) readConstants() []bir.BIRConstant {
 			Name:   name,
 			Flags:  flags,
 			Origin: origin,
-			Type:   nil,
+			Type:   br.getSemType(typeIdx),
 		}
 
 		br.readLength()
@@ -234,8 +284,6 @@ func (br *birReader) readGlobalVars() []bir.BIRGlobalVariableDcl {
 		var typeIdx int32
 		br.read(&typeIdx)
 
-		// TODO: Implement Types
-		// t := br.getTypeFromCP(int(typeIdx))
 		variables[i] = bir.BIRGlobalVariableDcl{
 			BIRVariableDcl: bir.BIRVariableDcl{
 				BIRDocumentableNodeBase: bir.BIRDocumentableNodeBase{
@@ -245,7 +293,7 @@ func (br *birReader) readGlobalVars() []bir.BIRGlobalVariableDcl {
 				},
 				Kind: kind,
 				Name: name,
-				Type: nil,
+				Type: br.getSemType(typeIdx),
 			},
 			Flags:  flags,
 			Origin: origin,
@@ -291,22 +339,20 @@ func (br *birReader) readFunction() *bir.BIRFunction {
 	bbMap := make(map[string]*bir.BIRBasicBlock)
 
 	var hasReturnVar bool
-	br.read(&hasReturnVar)
+		br.read(&hasReturnVar)
 
-	var returnVar *bir.BIRVariableDcl
-	if hasReturnVar {
+		var returnVar *bir.BIRVariableDcl
+		if hasReturnVar {
 		returnVarKind := br.readKind()
 		var returnVarTypeIdx int32
 		br.read(&returnVarTypeIdx)
 
-		// TODO: Implement Types
-		// returnVarType := br.getTypeFromCP(int(returnVarTypeIdx))
 		returnVarName := br.readStringCPEntry()
 
 		returnVar = &bir.BIRVariableDcl{
 			Kind: returnVarKind,
 			Name: returnVarName,
-			Type: nil,
+			Type: br.getSemType(returnVarTypeIdx),
 		}
 		varMap[returnVarName.Value()] = returnVar
 	}
@@ -386,14 +432,12 @@ func (br *birReader) readLocalVar(varMap map[string]*bir.BIRVariableDcl) *bir.BI
 	var typeIdx int32
 	br.read(&typeIdx)
 
-	// TODO: Implement Types
-	// t := br.getTypeFromCP(int(typeIdx))
 	name := br.readStringCPEntry()
 
 	localVar := &bir.BIRVariableDcl{
 		Kind: kind,
 		Name: name,
-		Type: nil,
+		Type: br.getSemType(typeIdx),
 	}
 
 	switch kind {
@@ -530,9 +574,6 @@ func (br *birReader) readInstruction(varMap map[string]*bir.BIRVariableDcl) bir.
 		var typeIdx int32
 		br.read(&typeIdx)
 
-		// TODO: Implement Types
-		// t := br.getTypeFromCP(int(typeIdx))
-
 		lhsOp := br.readOperand(varMap)
 		sizeOp := br.readOperand(varMap)
 		return &bir.NewArray{
@@ -540,6 +581,27 @@ func (br *birReader) readInstruction(varMap map[string]*bir.BIRVariableDcl) bir.
 				LhsOp: lhsOp,
 			},
 			SizeOp: sizeOp,
+			Type:   br.getSemType(typeIdx),
+		}
+	case bir.INSTRUCTION_KIND_NEW_STRUCTURE:
+		// NewMap (JBallerina NewStruct) - mapping constructor
+		var typeIdx int32
+		br.read(&typeIdx)
+
+		lhsOp := br.readOperand(varMap)
+		count := br.readLength()
+		values := make([]bir.MappingConstructorEntry, count)
+		for i := 0; i < int(count); i++ {
+			key := br.readOperand(varMap)
+			val := br.readOperand(varMap)
+			values[i] = bir.NewMappingConstructorKeyValueEntry(key, val)
+		}
+		return &bir.NewMap{
+			BIRInstructionBase: bir.BIRInstructionBase{
+				LhsOp: lhsOp,
+			},
+			Type:   br.getSemType(typeIdx),
+			Values: values,
 		}
 	case bir.INSTRUCTION_KIND_TYPE_CAST:
 		lhsOp := br.readOperand(varMap)
@@ -553,7 +615,25 @@ func (br *birReader) readInstruction(varMap map[string]*bir.BIRVariableDcl) bir.
 				LhsOp: lhsOp,
 			},
 			RhsOp: rhsOp,
-			Type:  nil,
+			Type:  br.getSemType(typeIdx),
+		}
+	case bir.INSTRUCTION_KIND_TYPE_TEST:
+		lhsOp := br.readOperand(varMap)
+		rhsOp := br.readOperand(varMap)
+
+		var typeIdx int32
+		br.read(&typeIdx)
+
+		var isNegation bool
+		br.read(&isNegation)
+
+		return &bir.TypeTest{
+			BIRInstructionBase: bir.BIRInstructionBase{
+				LhsOp: lhsOp,
+			},
+			RhsOp:      rhsOp,
+			Type:       br.getSemType(typeIdx),
+			IsNegation: isNegation,
 		}
 	default:
 		panic(fmt.Sprintf("unsupported instruction kind: %d", instructionKind))
@@ -649,11 +729,9 @@ func (br *birReader) readOperand(varMap map[string]*bir.BIRVariableDcl) *bir.BIR
 		var varTypeIdx int32
 		br.read(&varTypeIdx)
 
-		// TODO: Implement Types
-		// varType := br.getTypeFromCP(int(varTypeIdx))
 		return &bir.BIROperand{
 			VariableDcl: &bir.BIRVariableDcl{
-				Type: nil,
+				Type: br.getSemType(varTypeIdx),
 			},
 		}
 	}

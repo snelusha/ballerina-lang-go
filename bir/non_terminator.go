@@ -237,3 +237,11 @@ func (m *MappingConstructorKeyValueEntry) ValueOp() *BIROperand {
 func (m *MappingConstructorKeyValueEntry) KeyOp() *BIROperand {
 	return m.keyOp
 }
+
+// NewMappingConstructorKeyValueEntry creates a new key-value mapping constructor entry.
+func NewMappingConstructorKeyValueEntry(key, value *BIROperand) *MappingConstructorKeyValueEntry {
+	return &MappingConstructorKeyValueEntry{
+		keyOp:   key,
+		valueOp: value,
+	}
+}

@@ -23,6 +23,7 @@ import (
 
 	"ballerina-lang-go/bir"
 	"ballerina-lang-go/model"
+	"ballerina-lang-go/semtypes"
 	"ballerina-lang-go/tools/diagnostics"
 )
 
@@ -32,12 +33,16 @@ const (
 )
 
 type birWriter struct {
-	cp *ConstantPool
+	cp           *ConstantPool
+	semTypeTable []semtypes.SemType
+	semTypeIndex map[semtypes.SemType]int32
 }
 
 func Marshal(pkg *bir.BIRPackage) ([]byte, error) {
 	writer := &birWriter{
-		cp: NewConstantPool(),
+		cp:           NewConstantPool(),
+		semTypeTable: make([]semtypes.SemType, 0),
+		semTypeIndex: make(map[semtypes.SemType]int32),
 	}
 	return writer.serialize(pkg)
 }
@@ -53,6 +58,8 @@ func (bw *birWriter) serialize(pkg *bir.BIRPackage) (result []byte, err error) {
 	birbuf := &bytes.Buffer{}
 	bw.writePackageCPEntry(birbuf, pkg.PackageID)
 	bw.writeImportModuleDecls(birbuf, pkg)
+	bw.collectSemTypes(pkg)
+	bw.writeSemTypeSection(birbuf)
 	bw.writeConstants(birbuf, pkg)
 	bw.writeGlobalVars(birbuf, pkg)
 	bw.writeFunctions(birbuf, pkg)
@@ -108,7 +115,7 @@ func (bw *birWriter) writeConstant(buf *bytes.Buffer, constant *bir.BIRConstant)
 	bw.writeType(buf, constant.Type)
 
 	birbuf := &bytes.Buffer{}
-	bw.writeType(birbuf, constant.ConstValue.Type)
+	bw.writeTypeConstValue(birbuf)
 	bw.writeConstValue(birbuf, &constant.ConstValue)
 	bw.writeBufferLength(buf, birbuf)
 
@@ -234,7 +241,7 @@ func (bw *birWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstructio
 		bw.writeOperand(buf, instr.RhsOp)
 		bw.writeOperand(buf, instr.LhsOp)
 	case *bir.ConstantLoad:
-		bw.writeType(buf, instr.Type)
+		bw.writeTypeConstValue(buf)
 		bw.writeOperand(buf, instr.LhsOp)
 
 		isWrapped := false
@@ -261,11 +268,27 @@ func (bw *birWriter) writeInstruction(buf *bytes.Buffer, instr bir.BIRInstructio
 		bw.writeType(buf, instr.Type)
 		bw.writeOperand(buf, instr.LhsOp)
 		bw.writeOperand(buf, instr.SizeOp)
+	case *bir.NewMap:
+		// Encode mapping constructor: type, lhs, then entries as (key,value) pairs.
+		bw.writeType(buf, instr.Type)
+		bw.writeOperand(buf, instr.LhsOp)
+		bw.writeLength(buf, len(instr.Values))
+		for _, entry := range instr.Values {
+			kv := entry.(*bir.MappingConstructorKeyValueEntry)
+			bw.writeOperand(buf, kv.KeyOp())
+			bw.writeOperand(buf, kv.ValueOp())
+		}
 	case *bir.TypeCast:
 		bw.writeOperand(buf, instr.LhsOp)
 		bw.writeOperand(buf, instr.RhsOp)
 		bw.writeType(buf, instr.Type)
 		// TODO: Write checkTypes
+	case *bir.TypeTest:
+		// Encode type-test: lhs, rhs, type, negation flag.
+		bw.writeOperand(buf, instr.LhsOp)
+		bw.writeOperand(buf, instr.RhsOp)
+		bw.writeType(buf, instr.Type)
+		write(buf, instr.IsNegation)
 	default:
 		panic(fmt.Sprintf("unsupported instruction type: %T", instr))
 	}
@@ -482,9 +505,125 @@ func (bw *birWriter) writeBufferLength(buf *bytes.Buffer, birbuf *bytes.Buffer) 
 	write(buf, int64(birbuf.Len()))
 }
 
-// FIXME: Write actual type
-func (bw *birWriter) writeType(buf *bytes.Buffer, _ any) {
+func (bw *birWriter) getOrAddSemTypeIndex(t semtypes.SemType) int32 {
+	if t == nil {
+		return -1
+	}
+	if idx, ok := bw.semTypeIndex[t]; ok {
+		return idx
+	}
+	idx := int32(len(bw.semTypeTable))
+	bw.semTypeTable = append(bw.semTypeTable, t)
+	bw.semTypeIndex[t] = idx
+	return idx
+}
+
+func (bw *birWriter) writeSemType(buf *bytes.Buffer, t semtypes.SemType) {
+	write(buf, bw.getOrAddSemTypeIndex(t))
+}
+
+func (bw *birWriter) collectSemTypes(pkg *bir.BIRPackage) {
+	for i := range pkg.Constants {
+		bw.getOrAddSemTypeIndex(pkg.Constants[i].Type)
+	}
+	for i := range pkg.GlobalVars {
+		bw.getOrAddSemTypeIndex(pkg.GlobalVars[i].Type)
+	}
+	for i := range pkg.Functions {
+		fn := &pkg.Functions[i]
+		if fn.ReturnVariable != nil {
+			bw.getOrAddSemTypeIndex(fn.ReturnVariable.Type)
+		}
+		for j := range fn.LocalVars {
+			bw.getOrAddSemTypeIndex(fn.LocalVars[j].Type)
+		}
+		for _, bb := range fn.BasicBlocks {
+			for _, instr := range bb.Instructions {
+				bw.collectSemTypesFromInstruction(instr)
+			}
+			if bb.Terminator != nil {
+				bw.collectSemTypesFromTerminator(bb.Terminator)
+			}
+		}
+	}
+}
+
+func (bw *birWriter) collectSemTypesFromOperand(op *bir.BIROperand) {
+	if op != nil && op.VariableDcl != nil && op.VariableDcl.IgnoreVariable {
+		bw.getOrAddSemTypeIndex(op.VariableDcl.Type)
+	}
+}
+
+func (bw *birWriter) collectSemTypesFromInstruction(instr bir.BIRInstruction) {
+	switch instr := instr.(type) {
+	case *bir.Move:
+		bw.collectSemTypesFromOperand(instr.RhsOp)
+		bw.collectSemTypesFromOperand(instr.LhsOp)
+	case *bir.BinaryOp:
+		bw.collectSemTypesFromOperand(&instr.RhsOp1)
+		bw.collectSemTypesFromOperand(&instr.RhsOp2)
+		bw.collectSemTypesFromOperand(instr.LhsOp)
+	case *bir.UnaryOp:
+		bw.collectSemTypesFromOperand(instr.RhsOp)
+		bw.collectSemTypesFromOperand(instr.LhsOp)
+	case *bir.ConstantLoad:
+		// ConstValue.Type is model.ValueType, not SemType
+	case *bir.FieldAccess:
+		bw.collectSemTypesFromOperand(instr.LhsOp)
+		bw.collectSemTypesFromOperand(instr.KeyOp)
+		bw.collectSemTypesFromOperand(instr.RhsOp)
+	case *bir.NewArray:
+		bw.getOrAddSemTypeIndex(instr.Type)
+		bw.collectSemTypesFromOperand(instr.LhsOp)
+		bw.collectSemTypesFromOperand(instr.SizeOp)
+	case *bir.NewMap:
+		bw.getOrAddSemTypeIndex(instr.Type)
+		bw.collectSemTypesFromOperand(instr.LhsOp)
+	case *bir.TypeCast:
+		bw.getOrAddSemTypeIndex(instr.Type)
+		bw.collectSemTypesFromOperand(instr.LhsOp)
+		bw.collectSemTypesFromOperand(instr.RhsOp)
+	case *bir.TypeTest:
+		bw.getOrAddSemTypeIndex(instr.Type)
+		bw.collectSemTypesFromOperand(instr.LhsOp)
+		bw.collectSemTypesFromOperand(instr.RhsOp)
+	}
+}
+
+func (bw *birWriter) collectSemTypesFromTerminator(term bir.BIRTerminator) {
+	switch term := term.(type) {
+	case *bir.Call:
+		bw.collectSemTypesFromOperand(term.LhsOp)
+		for i := range term.Args {
+			bw.collectSemTypesFromOperand(&term.Args[i])
+		}
+	}
+}
+
+// writeSemTypeSection appends the semtype table to the BIR stream. Layout: 4-byte magic "SEMT", int32 codec version, int32 count, then count × encoded SemType (see semtypes/codec.go). Old BIR without this section is still readable; types will be nil.
+func (bw *birWriter) writeSemTypeSection(buf *bytes.Buffer) {
+	_, err := buf.Write([]byte(semtypes.SemTypeSectionMagic))
+	if err != nil {
+		panic(fmt.Sprintf("writing semtype section magic: %v", err))
+	}
+	write(buf, int32(semtypes.SemTypeCodecVersion))
+	write(buf, int32(len(bw.semTypeTable)))
+	for _, t := range bw.semTypeTable {
+		err := semtypes.WriteSemType(buf, bw.getOrAddSemTypeIndex, t)
+		if err != nil {
+			panic(fmt.Sprintf("writing semtype: %v", err))
+		}
+	}
+}
+
+// writeTypeConstValue writes a placeholder type index for ConstValue.Type / ConstantLoad.Type (model.ValueType); out of scope for semtype codec.
+func (bw *birWriter) writeTypeConstValue(buf *bytes.Buffer) {
 	write(buf, int32(-1))
+}
+
+// writeType writes semtype index for BIR type fields (SemType). Use writeTypeConstValue for ConstValue.Type.
+func (bw *birWriter) writeType(buf *bytes.Buffer, t semtypes.SemType) {
+	bw.writeSemType(buf, t)
 }
 
 func (bw *birWriter) writePosition(buf *bytes.Buffer, pos diagnostics.Location) {

@@ -45,7 +45,6 @@ func getBIRDiff(expectedText, actualText string) string {
 
 // TestBIRSerialization tests BIR serialization and deserialization roundtrip from .bal source files in the corpus.
 func TestBIRSerialization(t *testing.T) {
-	t.Skip("BIR serialization test disabled")
 	flag.Parse()
 
 	testPairs := test_util.GetValidTests(t, test_util.BIR)
@@ -58,32 +57,8 @@ func TestBIRSerialization(t *testing.T) {
 	}
 }
 
-// Ignore due to missing types on serialization
-var ignoreBIRTests = []string{
-	"subset2/02-typecast/numeric-conversion-v.bal",
-	"subset2/02-typecast/3-v.bal",
-	"subset2/02-typecast/5-v.bal",
-	"subset2/02-typecast/7-v.bal",
-	"subset3/03-list/21-v.bal",
-	"subset3/03-list/09-v.bal",
-	"subset2/02-type/cyclic2-v.bal",
-	"subset3/03-list/14-v.bal",
-	"subset3/03-function/direct-call-v.bal",
-	"subset2/02-type/cyclic-v.bal",
-	"subset3/03-list/06-v.bal",
-	"subset3/03-function/call-v.bal",
-	"subset3/03-list/24-v.bal",
-	"subset3/03-list/19-v.bal",
-	"subset3/03-list/select-type-v.bal",
-	"subset3/03-list/20-v.bal",
-	"subset3/03-list/18-v.bal",
-	"subset3/03-list/16-v.bal",
-	"subset3/03-list/23-v.bal",
-	"subset1/01-function/assign8-v.bal",
-	"subset3/03-list/03-v.bal",
-	"subset3/03-list/22-v.bal",
-	"subset3/03-list/12-v.bal",
-}
+// All BIR corpus tests are enabled; semtype serialization supports all cases we emit.
+var ignoreBIRTests = []string{}
 
 func shouldIgnoreTest(testName string) bool {
 	return slices.Contains(ignoreBIRTests, testName)
