@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"runtime"
 	"strings"
 
 	"ballerina-lang-go/tools/diagnostics"
@@ -25,6 +26,17 @@ func (s outputStyle) severityColor(severity diagnostics.DiagnosticSeverity) stri
 
 func outputStyleFor(w io.Writer) outputStyle {
 	s := outputStyle{}
+	// On wasm/js, there is no traditional TTY, but diagnostics are still rendered
+	// in environments that can handle ANSI escape codes, so always enable colors.
+	if runtime.GOOS == "js" {
+		s.reset = "\033[0m"
+		s.red = "\033[31m"
+		s.yellow = "\033[33m"
+		s.cyan = "\033[36m"
+		s.bold = "\033[1m"
+		return s
+	}
+
 	if f, ok := w.(*os.File); ok && term.IsTerminal(int(f.Fd())) {
 		s.reset = "\033[0m"
 		s.red = "\033[31m"

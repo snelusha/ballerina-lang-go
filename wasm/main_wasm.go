@@ -17,6 +17,7 @@
 package main
 
 import (
+	"os"
 	"syscall/js"
 
 	"ballerina-lang-go/projects"
@@ -51,7 +52,7 @@ func run(this js.Value, args []js.Value) any {
 
 	diags := result.Diagnostics()
 	if diags.HasErrors() {
-		// Print diagnostics
+		projects.PrintDiagnostics(fsys, os.Stderr, diags)
 		return nil
 	}
 
@@ -59,8 +60,9 @@ func run(this js.Value, args []js.Value) any {
 	pkg := project.CurrentPackage()
 
 	compilation := pkg.Compilation()
-	if compilation.DiagnosticResult().HasErrors() {
-		// Print diagnostics
+	diags = compilation.DiagnosticResult()
+	if diags.HasErrors() {
+		projects.PrintDiagnostics(fsys, os.Stdout, diags)
 		return nil
 	}
 
