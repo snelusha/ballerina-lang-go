@@ -44,6 +44,17 @@ jobs:
               ./cli/cmd
           done
 
+      - name: Build WASM binary
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p dist/wasm
+          echo "Building WASM (js/wasm)..."
+          CGO_ENABLED=0 GOOS=js GOARCH=wasm go build \
+            -ldflags="-s -w -X main.Version=$VERSION" \
+            -o dist/wasm/main.wasm \
+            ./wasm
+
       - name: Prepare artifacts
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -60,6 +71,9 @@ jobs:
             mkdir -p "$artifact_dir"
             cp "$src_dir/bal${ext}" "$artifact_dir/bal${ext}"
           done
+          artifact_dir="artifacts/bal-wasm/ballerina-${VERSION}"
+          mkdir -p "$artifact_dir"
+          cp dist/wasm/main.wasm "$artifact_dir/main.wasm"
 
       - name: Upload linux-amd64
         uses: actions/upload-artifact@v4
@@ -90,6 +104,12 @@ jobs:
         with:
           name: bal-windows-amd64
           path: artifacts/bal-windows-amd64
+
+      - name: Upload wasm
+        uses: actions/upload-artifact@v4
+        with:
+          name: bal-wasm
+          path: artifacts/bal-wasm
 
   release:
     name: Create Release
