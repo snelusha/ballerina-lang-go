@@ -292,7 +292,7 @@ func runCompilePhase(balFile string, stdoutBuf, stderrBuf *bytes.Buffer) (pkg *b
 	currentPkg := result.Project().CurrentPackage()
 	compilation := currentPkg.Compilation()
 
-	projects.PrintDiagnostics(fsys, stderrBuf, compilation.DiagnosticResult())
+	printDiagnostics(fsys, stderrBuf, compilation.DiagnosticResult())
 	if compilation.DiagnosticResult().HasErrors() {
 		return nil, nil
 	}
