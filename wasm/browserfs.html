@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>BrowserFS inspector</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #020617;
+        color: #e5e7eb;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #111827;
+        background: #020617;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 1rem;
+      }
+      header h1 {
+        font-size: 1rem;
+        margin: 0;
+      }
+      header .subtitle {
+        font-size: 0.8rem;
+        color: #9ca3af;
+      }
+      main {
+        flex: 1;
+        display: grid;
+        grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+        min-height: 0;
+      }
+      .pane {
+        padding: 0.75rem 1rem;
+        min-width: 0;
+      }
+      .pane + .pane {
+        border-left: 1px solid #111827;
+      }
+      .pane-title {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #9ca3af;
+        margin-bottom: 0.5rem;
+      }
+      .tree-container {
+        border-radius: 0.75rem;
+        border: 1px solid #111827;
+        background: #020617;
+        padding: 0.5rem;
+        height: 60%;
+        overflow: auto;
+      }
+      ul.tree {
+        list-style: none;
+        padding-left: 0.5rem;
+        margin: 0;
+        font-size: 0.85rem;
+      }
+      .tree-item {
+        cursor: pointer;
+        padding: 0.1rem 0.25rem;
+        border-radius: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+      .tree-item:hover {
+        background: #111827;
+      }
+      .tree-item.selected {
+        background: #1f2937;
+      }
+      .tree-item .icon {
+        width: 1.1rem;
+        text-align: center;
+        color: #facc15;
+      }
+      .tree-item.file .icon {
+        color: #38bdf8;
+      }
+      .tree-item span.name {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        max-width: 100%;
+      }
+      .toolbar {
+        margin-top: 0.4rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+      }
+      button {
+        border-radius: 999px;
+        border: 1px solid #374151;
+        background: #020617;
+        color: #e5e7eb;
+        font-size: 0.75rem;
+        padding: 0.25rem 0.6rem;
+        cursor: pointer;
+      }
+      button.primary {
+        background: linear-gradient(to right, #4f46e5, #06b6d4);
+        border-color: transparent;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .section-title {
+        font-size: 0.8rem;
+        margin: 0.6rem 0 0.2rem;
+        color: #9ca3af;
+      }
+      textarea {
+        width: 100%;
+        min-height: 7rem;
+        max-height: 40%;
+        resize: vertical;
+        border-radius: 0.5rem;
+        border: 1px solid #111827;
+        background: #020617;
+        color: #e5e7eb;
+        padding: 0.4rem 0.5rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        font-size: 0.8rem;
+      }
+      textarea:focus {
+        outline: 1px solid #4f46e5;
+        outline-offset: 1px;
+      }
+      pre {
+        margin: 0;
+        padding: 0.5rem;
+        border-radius: 0.75rem;
+        background: #020617;
+        border: 1px solid #111827;
+        font-size: 0.8rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: calc(100% - 1.5rem);
+        overflow: auto;
+      }
+      .status {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        margin-top: 0.4rem;
+      }
+      .status strong {
+        color: #e5e7eb;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>BrowserFS inspector</h1>
+        <div class="subtitle">
+          Visualize and mutate the in-browser file system backing the wasm
+          runtime.
+        </div>
+      </div>
+      <div class="subtitle">Storage key: <code>bfs</code> (localStorage)</div>
+    </header>
+
+    <main>
+      <section class="pane">
+        <div class="pane-title">File tree</div>
+        <div class="tree-container">
+          <ul class="tree" id="tree-root"></ul>
+        </div>
+
+        <div class="toolbar">
+          <button id="refresh-tree">Refresh</button>
+          <button id="new-file" class="primary">New file…</button>
+          <button id="rename-path">Rename / move…</button>
+          <button id="delete-path">Delete…</button>
+        </div>
+
+        <p class="section-title">Selected path</p>
+        <div class="status" id="selected-path">None</div>
+
+        <p class="section-title">File contents (for files)</p>
+        <textarea
+          id="file-editor"
+          placeholder="Select a file to view or edit its contents…"
+        ></textarea>
+        <div class="toolbar">
+          <button id="save-file" class="primary" disabled>Save file</button>
+        </div>
+        <div class="status" id="editor-status"></div>
+      </section>
+
+      <section class="pane">
+        <div class="pane-title">Raw BrowserFS data (localStorage → JSON)</div>
+        <div style="height: 100%; display: flex; flex-direction: column">
+          <pre id="json-view"></pre>
+          <div class="toolbar" style="margin-top: 0.4rem">
+            <button id="reload-json">Reload JSON</button>
+            <button id="reset-fs">Reset to default</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+    <script>
+      const treeRootEl = document.getElementById("tree-root");
+      const jsonViewEl = document.getElementById("json-view");
+      const selectedPathEl = document.getElementById("selected-path");
+      const editorEl = document.getElementById("file-editor");
+      const saveFileBtn = document.getElementById("save-file");
+      const editorStatusEl = document.getElementById("editor-status");
+      const refreshTreeBtn = document.getElementById("refresh-tree");
+      const newFileBtn = document.getElementById("new-file");
+      const renamePathBtn = document.getElementById("rename-path");
+      const deletePathBtn = document.getElementById("delete-path");
+      const reloadJsonBtn = document.getElementById("reload-json");
+      const resetFsBtn = document.getElementById("reset-fs");
+
+      const bfs = new BrowserFS();
+      // const STORAGE_KEY = "bfs";
+
+      let selectedPath = null;
+      let selectedIsDir = false;
+
+      function setSelected(path, isDir) {
+        selectedPath = path;
+        selectedIsDir = !!isDir;
+        selectedPathEl.innerHTML = path
+          ? `<strong>${path}</strong> ${isDir ? "(dir)" : "(file)"}`
+          : "None";
+
+        // Update selection highlight.
+        document
+          .querySelectorAll(".tree-item.selected")
+          .forEach((el) => el.classList.remove("selected"));
+        if (path) {
+          const el = document.querySelector(
+            `.tree-item[data-path="${CSS.escape(path)}"]`
+          );
+          if (el) el.classList.add("selected");
+        }
+
+        // Update editor availability.
+        if (!path || isDir) {
+          editorEl.value = "";
+          editorEl.disabled = true;
+          saveFileBtn.disabled = true;
+        } else {
+          editorEl.disabled = false;
+          loadFileContent(path);
+        }
+      }
+
+      function buildTree() {
+        treeRootEl.innerHTML = "";
+        const rootLi = document.createElement("li");
+        rootLi.appendChild(createTreeItem("/", true, ""));
+
+        const childrenUl = document.createElement("ul");
+        childrenUl.className = "tree";
+        populateDir(childrenUl, "");
+        rootLi.appendChild(childrenUl);
+        treeRootEl.appendChild(rootLi);
+      }
+
+      function populateDir(ul, basePath) {
+        const entries = bfs.readDir(basePath || "/") || [];
+        const sorted = [...entries].sort((a, b) => {
+          if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+          return a.name.localeCompare(b.name);
+        });
+        for (const entry of sorted) {
+          const fullPath = (basePath ? basePath + "/" : "") + entry.name;
+          const li = document.createElement("li");
+          li.appendChild(createTreeItem(entry.name, entry.isDir, fullPath));
+          if (entry.isDir) {
+            const subUl = document.createElement("ul");
+            subUl.className = "tree";
+            populateDir(subUl, fullPath);
+            li.appendChild(subUl);
+          }
+          ul.appendChild(li);
+        }
+      }
+
+      function createTreeItem(name, isDir, fullPath) {
+        const div = document.createElement("div");
+        div.className = "tree-item" + (isDir ? " dir" : " file");
+        if (fullPath) {
+          div.dataset.path = fullPath;
+        }
+        const icon = document.createElement("span");
+        icon.className = "icon";
+        icon.textContent = isDir ? "📁" : "📄";
+        const label = document.createElement("span");
+        label.className = "name";
+        label.textContent = name || "/";
+        div.append(icon, label);
+
+        div.addEventListener("click", (e) => {
+          e.stopPropagation();
+          setSelected(fullPath || "/", isDir);
+        });
+
+        return div;
+      }
+
+      function loadFileContent(path) {
+        editorStatusEl.textContent = "Loading…";
+        const file = bfs.open(path);
+        if (!file || file.isDir) {
+          editorEl.value = "";
+          editorStatusEl.textContent = "Not a file.";
+          saveFileBtn.disabled = true;
+          return;
+        }
+        editorEl.value = file.content ?? "";
+        editorStatusEl.textContent = "Loaded.";
+        saveFileBtn.disabled = false;
+      }
+
+      function refreshJson() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) {
+            jsonViewEl.textContent = "// No data in localStorage for bfs";
+            return;
+          }
+          const parsed = JSON.parse(raw);
+          jsonViewEl.textContent = JSON.stringify(parsed, null, 2);
+        } catch (e) {
+          jsonViewEl.textContent = "// Failed to parse JSON: " + e.message;
+        }
+      }
+
+      refreshTreeBtn.addEventListener("click", () => {
+        buildTree();
+      });
+
+      reloadJsonBtn.addEventListener("click", () => {
+        refreshJson();
+      });
+
+      resetFsBtn.addEventListener("click", () => {
+        if (
+          !confirm(
+            "Reset BrowserFS data to default sample file? This clears the current tree."
+          )
+        ) {
+          return;
+        }
+        localStorage.removeItem(STORAGE_KEY);
+        // Recreate instance so it re-runs _load() / _reset().
+        Object.assign(bfs, new BrowserFS());
+        buildTree();
+        refreshJson();
+        setSelected(null, false);
+      });
+
+      newFileBtn.addEventListener("click", () => {
+        const base = selectedIsDir
+          ? selectedPath
+          : selectedPath && selectedPath.lastIndexOf("/") !== -1
+          ? selectedPath.slice(0, selectedPath.lastIndexOf("/"))
+          : "";
+        const name = prompt(
+          "Enter new file path (relative to selected directory):",
+          (base ? base + "/" : "") + "new.bal"
+        );
+        if (!name) return;
+        const ok = bfs.writeFile(name, "");
+        if (!ok) {
+          alert("writeFile failed for " + name);
+          return;
+        }
+        buildTree();
+        refreshJson();
+        setSelected(name, false);
+      });
+
+      renamePathBtn.addEventListener("click", () => {
+        if (!selectedPath) {
+          alert("Select a file or directory first.");
+          return;
+        }
+        const target = prompt(
+          "Enter new path for " + selectedPath + ":",
+          selectedPath
+        );
+        if (!target || target === selectedPath) return;
+        const ok = bfs.move(selectedPath, target);
+        if (!ok) {
+          alert("move failed.");
+          return;
+        }
+        buildTree();
+        refreshJson();
+        setSelected(target, selectedIsDir);
+      });
+
+      deletePathBtn.addEventListener("click", () => {
+        if (!selectedPath) {
+          alert("Select a file or directory first.");
+          return;
+        }
+        if (
+          !confirm(
+            `Delete "${selectedPath}"?\nFor directories this removes the whole subtree.`
+          )
+        ) {
+          return;
+        }
+        const ok = bfs.remove(selectedPath);
+        if (!ok) {
+          alert("remove failed.");
+          return;
+        }
+        setSelected(null, false);
+        buildTree();
+        refreshJson();
+      });
+
+      saveFileBtn.addEventListener("click", () => {
+        if (!selectedPath || selectedIsDir) return;
+        const ok = bfs.writeFile(selectedPath, editorEl.value ?? "");
+        if (!ok) {
+          alert("writeFile failed.");
+          return;
+        }
+        editorStatusEl.textContent = "Saved.";
+        refreshJson();
+      });
+
+      // Initial render.
+      buildTree();
+      refreshJson();
+      setSelected(null, false);
+    </script>
+  </body>
+</html>
+

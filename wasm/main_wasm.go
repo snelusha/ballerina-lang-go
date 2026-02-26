@@ -23,6 +23,8 @@ import (
 	"ballerina-lang-go/projects"
 	"ballerina-lang-go/projects/directory"
 	"ballerina-lang-go/runtime"
+
+	_ "ballerina-lang-go/lib/rt"
 )
 
 func main() {
@@ -62,7 +64,7 @@ func run(this js.Value, args []js.Value) any {
 	compilation := pkg.Compilation()
 	diags = compilation.DiagnosticResult()
 	if diags.HasErrors() {
-		projects.PrintDiagnostics(fsys, os.Stdout, diags)
+		projects.PrintDiagnostics(fsys, os.Stderr, diags)
 		return nil
 	}
 

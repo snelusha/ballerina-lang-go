@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Ballerina WASM demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        margin: 0;
+        padding: 1.5rem;
+        background: #0f172a;
+        color: #e5e7eb;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+      .panel {
+        background: #020617;
+        border-radius: 0.75rem;
+        padding: 1rem 1.25rem;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.8);
+        max-width: 900px;
+      }
+      label {
+        display: block;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #9ca3af;
+        margin-bottom: 0.25rem;
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        border: 1px solid #1f2937;
+        background: #020617;
+        color: #e5e7eb;
+        font-family: inherit;
+      }
+      input[type="text"]:focus {
+        outline: 2px solid #4f46e5;
+        outline-offset: 1px;
+      }
+      button {
+        margin-top: 0.75rem;
+        padding: 0.5rem 1rem;
+        border-radius: 999px;
+        border: none;
+        background: linear-gradient(to right, #4f46e5, #06b6d4);
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      .outputs {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1rem;
+        margin-top: 1.25rem;
+      }
+      .output-block {
+        background: #020617;
+        border-radius: 0.75rem;
+        border: 1px solid #111827;
+        padding: 0.75rem;
+        font-size: 0.85rem;
+      }
+      pre.output {
+        margin: 0.25rem 0 0;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        background: #020617;
+        color: #e5e7eb;
+        max-height: 260px;
+        overflow: auto;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        font-size: 0.8rem;
+        white-space: pre-wrap;
+      }
+      pre.output .ansi-red { color: #f87171; }
+      pre.output .ansi-yellow { color: #facc15; }
+      pre.output .ansi-cyan { color: #22d3ee; }
+      pre.output .ansi-bold { font-weight: 700; }
+      pre.output .ansi-reset { color: inherit; font-weight: inherit; }
+      .stderr pre.output { color: #e5e7eb; }
+      .small {
+        font-size: 0.8rem;
+        color: #6b7280;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="panel">
+      <h1>Ballerina WebAssembly runner</h1>
+      <p class="small">
+        This page loads <code>main.wasm</code>, exposes the Go <code>run</code>
+        function, and uses a browser-backed file system stored in
+        <code>localStorage</code>.
+      </p>
+
+      <div style="margin-top: 1rem">
+        <label for="path-input">Entry file path</label>
+        <input id="path-input" type="text" value="main.bal" />
+        <button id="run-btn" disabled>Run Ballerina</button>
+      </div>
+
+      <div class="outputs">
+        <div class="output-block">
+          <label>stdout</label>
+          <pre id="stdout" class="output"></pre>
+        </div>
+        <div class="output-block">
+          <label>stderr</label>
+          <pre id="stderr" class="output stderr"></pre>
+        </div>
+      </div>
+    </div>
+
+    <script src="wasm_exec.js"></script>
+    <script src="script.js"></script>
+    <script>
+      const outEl = document.getElementById("stdout");
+      const errEl = document.getElementById("stderr");
+      const pathInput = document.getElementById("path-input");
+      const runBtn = document.getElementById("run-btn");
+
+      function escapeHtml(s) {
+        return s
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function ansiToHtml(str) {
+        if (!str) return "";
+        const ESC = "\x1b";
+        let html = "";
+        let bold = false;
+        let color = null;
+        const flush = (text) => {
+          const escaped = escapeHtml(text);
+          if (bold || color) {
+            const classes = ["ansi-" + (color || "reset"), bold ? "ansi-bold" : ""].filter(Boolean).join(" ");
+            html += '<span class="' + classes + '">' + escaped + "</span>";
+          } else {
+            html += escaped;
+          }
+        };
+        let i = 0;
+        while (i < str.length) {
+          if (str[i] === ESC && str[i + 1] === "[") {
+            let end = str.indexOf("m", i + 2);
+            if (end === -1) end = str.length;
+            const codes = str.slice(i + 2, end).split(";").map((s) => parseInt(s, 10) || 0);
+            for (const c of codes) {
+              if (c === 0) {
+                bold = false;
+                color = null;
+              } else if (c === 1) {
+                bold = true;
+              } else if (c === 31) {
+                color = "red";
+              } else if (c === 33) {
+                color = "yellow";
+              } else if (c === 36) {
+                color = "cyan";
+              }
+            }
+            i = end + 1;
+            continue;
+          }
+          let next = str.indexOf(ESC, i);
+          if (next === -1) next = str.length;
+          flush(str.slice(i, next));
+          i = next;
+        }
+        return html;
+      }
+
+      function append(el, text) {
+        const raw = (el._raw || "") + text + "\n";
+        el._raw = raw;
+        el.innerHTML = ansiToHtml(raw);
+        el.scrollTop = el.scrollHeight;
+      }
+
+      // Capture console output so we can show what Go prints.
+      (function patchConsole() {
+        const origLog = console.log;
+        const origErr = console.error;
+        console.log = function (...args) {
+          append(outEl, args.join(" "));
+          origLog.apply(console, args);
+        };
+        console.error = function (...args) {
+          append(errEl, args.join(" "));
+          origErr.apply(console, args);
+        };
+      })();
+
+      const bfs = new BrowserFS();
+
+      async function initAndRun() {
+        outEl._raw = "";
+        errEl._raw = "";
+        outEl.innerHTML = "";
+        errEl.innerHTML = "";
+
+        const go = new Go();
+        const resp = await fetch("main.wasm");
+        const result = await WebAssembly.instantiateStreaming(resp, go.importObject);
+
+        runBtn.disabled = true;
+        try {
+          // This runs the Go wasm module, which sets window.run.
+          go.run(result.instance);
+        } catch (e) {
+          append(errEl, String(e));
+          runBtn.disabled = false;
+          return;
+        }
+
+        if (typeof window.run !== "function") {
+          append(
+            errEl,
+            "Go wasm did not export global 'run'. Check build/output."
+          );
+          runBtn.disabled = false;
+          return;
+        }
+
+        const path = pathInput.value || "main.bal";
+        try {
+          const res = window.run(bfs, path);
+          if (res && res.error) {
+            append(errEl, res.error);
+          }
+        } catch (e) {
+          append(errEl, String(e));
+        } finally {
+          // For a simple demo, allow reloading the page to run again.
+          runBtn.disabled = false;
+        }
+      }
+
+      runBtn.addEventListener("click", () => {
+        initAndRun();
+      });
+
+      // Enable the button once the page is fully loaded.
+      runBtn.disabled = false;
+    </script>
+  </body>
+</html>
+
