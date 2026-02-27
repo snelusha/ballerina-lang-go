@@ -2398,5 +2398,245 @@
         ]
       }
     ]
+  },
+  {
+    "kind": "dir",
+    "name": "subset5",
+    "children": [
+      {
+        "kind": "dir",
+        "name": "05-list",
+        "children": [
+          {
+            "kind": "file",
+            "name": "1-v.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\nimport ballerina/io;\n\npublic function main() {\n    [int, float, string, boolean, decimal] foo = [1, 1.5, \"foo\", true, 1.23d];\n    io:println(foo); // @output [1,1.5,\"foo\",true,1.23]\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "cycle-e.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\ntype T [T]; // @error\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "cycle-v.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\nimport ballerina/io;\n\ntype T [int, T...];\n\npublic function main() {\n    T t = [1, [2, [3]]];\n    io:println(t); // @output [1,[2,[3]]]\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "cycle2-v.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\nimport ballerina/io;\n\ntype T [T]|int;\n\npublic function main() {\n    T t = [1];\n    io:println(t); // @output [1]\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "iter-e.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\nimport ballerina/io;\n\ntype Foo [int, byte, string];\n\npublic function main() {\n    Foo f = [1, 2, \"foo\"];\n    foreach int i in f { // @error\n        io:println(i);\n    }\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "iter-v.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\nimport ballerina/io;\n\ntype Foo [int, byte, string];\n\npublic function main() {\n    Foo f = [1, 2, \"foo\"];\n    foreach int|string i in f {\n        io:println(i); // @output 1\n        // @output 2\n        // @output foo\n    }\n}\n",
+            "children": null
+          }
+        ]
+      },
+      {
+        "kind": "dir",
+        "name": "05-record",
+        "children": [
+          {
+            "kind": "file",
+            "name": "1-v.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\nimport ballerina/io;\n\npublic function main() {\n    record {|int foo; string bar;|} r = {foo: 5, bar: \"ff\"};\n    io:println(r); // @output {\"foo\":5,\"bar\":\"ff\"}\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "cyclic-v.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\nimport ballerina/io;\n\ntype R record {|\n    int x;\n    R...;\n|};\n\npublic function main() {\n    R r = {x: 1, \"y\": {x: 2}};\n    io:println(r); // @output {\"x\":1,\"y\":{\"x\":2}}\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "field-access-1-v.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\nimport ballerina/io;\n\ntype R record {\n    int x;\n    int y;\n};\n\npublic function main() {\n    R r = {x: 1, y: 2};\n    io:println(r.x); // @output 1\n    anydata z = r[\"z\"];\n    io:println(z); // @output\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "field-access-2-v.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\nimport ballerina/io;\n\ntype R record {\n    int x;\n    int y;\n};\n\ntype R1 record {\n    int x;\n    string y;\n};\n\npublic function main() {\n    R|R1 r = {x: 1, y: 2};\n    int x = r.x;\n    io:println(x); // @output 1\n    anydata z = r[\"z\"];\n    io:println(z); // @output\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "field-access-3-e.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\ntype R record {|\n    int x;\n    int y;\n|};\n\npublic function main() {\n    R r = {x: 1, y: 2};\n    anydata z = r.z; // @error\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "field-access-4-e.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\nimport ballerina/io;\n\ntype R record {\n    int x;\n    int y;\n};\n\npublic function main() {\n    R r = {x: 1, y: 2};\n    anydata z = r.z; // @error\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "inclusion-cycle-e.bal",
+            "language": "ballerina",
+            "content": "\n// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\ntype A record {| // @error\n    *B;\n    int x;\n|};\n\ntype B record {|\n    *A;\n    string y;\n|};\n\npublic function main() {\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "inclusion-dup-e.bal",
+            "language": "ballerina",
+            "content": "\n// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\ntype R1 record {|\n    int x;\n|};\n\ntype R2 record {|\n    string x;\n|};\n\ntype R3 record {|\n    *R1;\n    *R2; // @error\n|};\n\npublic function main() {\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "inclusion-dup-override-e.bal",
+            "language": "ballerina",
+            "content": "\n// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\ntype R1 record {|\n    int x;\n    string y;\n|};\n\ntype R2 record {|\n    float x;\n    boolean z;\n|};\n\ntype R3 record {|\n    *R1;\n    *R2;\n    string x; // @error\n|};\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "inclusion-nonrecord-e.bal",
+            "language": "ballerina",
+            "content": "\n// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\ntype Foo int;\n\ntype Bar record {|\n    *Foo; // @error\n    string y;\n|};\n\npublic function main() {\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "inclusion-override-e.bal",
+            "language": "ballerina",
+            "content": "\n// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\ntype Base record {|\n    int x;\n    string y;\n|};\n\ntype Derived record {|\n    *Base;\n    string x; // @error\n    string z;\n|};\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "inclusion-rest-conflict-e.bal",
+            "language": "ballerina",
+            "content": "\n// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\ntype R1 record {|\n    int x;\n    int...;\n|};\n\ntype R2 record {|\n    string y;\n    string...;\n|};\n\ntype R3 record {|\n    *R1;\n    *R2; // @error\n|};\n\npublic function main() {\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "inclusion-rest-v.bal",
+            "language": "ballerina",
+            "content": "\n// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\nimport ballerina/io;\n\ntype Base record {|\n    int x;\n    int...;\n|};\n\ntype Derived record {|\n    *Base;\n    string y;\n|};\n\npublic function main() {\n    Derived d = {x: 1, y: \"hello\"};\n    io:println(d); // @output {\"x\":1,\"y\":\"hello\"}\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "inclusion-self-e.bal",
+            "language": "ballerina",
+            "content": "\n// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\ntype R1 record {| // @error\n    *R1;\n    int x;\n|};\n\npublic function main() {\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "inclusion-v.bal",
+            "language": "ballerina",
+            "content": "\n// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\nimport ballerina/io;\n\ntype R1 record {|\n    int foo;\n|};\n\ntype R2 record {\n    float bar;\n};\n\ntype R3 record {|\n    *R1;\n    *R2;\n    string baz;\n|};\n\npublic function main() {\n    R3 r3 = {foo: 1, bar: 1.5, baz: \"baz\"};\n    io:println(r3); // @output {\"foo\":1,\"bar\":1.5,\"baz\":\"baz\"}\n}\n",
+            "children": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "dir",
+    "name": "subset6",
+    "children": [
+      {
+        "kind": "dir",
+        "name": "06-float",
+        "children": [
+          {
+            "kind": "file",
+            "name": "01-e.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\n// @productions equality equality-expr floating-point-literal\nimport ballerina/io;\n\npublic function main() {\n    io:println(1.0 == 2.0); // @error\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "03-e.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\n// @productions equality equality-expr floating-point-literal int-literal\nimport ballerina/io;\n\npublic function main() {\n    io:println(1 == 2.0); // @error\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "04-v.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\n// @productions floating-point-literal\nimport ballerina/io;\n\npublic function main() {\n    io:println(0.375); // @output 0.375\n    io:println(100.375f); // @output 100.375\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "06-v.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\n// @productions float boolean if-else-stmt floating-point-literal boolean-literal return-stmt any function-call-expr\nimport ballerina/io;\n\npublic function main() {\n    io:println(aa(true, 1.375, 0.375)); // @output 1.375\n    io:println(aa(false, 1.375, 0.375)); // @output 0.375\n    io:println(fa(true, 17.75, 2.75)); // @output 17.75\n    io:println(fa(false, 17.75, 2.75)); // @output 2.75\n    io:println(ff(true, 1.5, 0.5)); // @output 1.5\n    io:println(ff(false, 1.5, 0.5)); // @output 0.5\n}\n\nfunction aa(boolean b, any x, any y) returns any {\n    if b {\n        return x;\n    }\n    else {\n        return y;\n    }\n}\n\nfunction fa(boolean b, float x, float y) returns any {\n    if b {\n        return x;\n    }\n    else {\n        return y;\n    }\n}\n\nfunction ff(boolean b, float x, float y) returns float {\n    if b {\n        return x;\n    }\n    else {\n        return y;\n    }\n}",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "11-e.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\n// @productions floating-point-literal additive-expr local-var-decl-stmt int-literal\n\nimport ballerina/io;\n\npublic function main() {\n    float f = 0.0;\n    int i = 0;\n    io:println(f + i); // @error\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "13-e.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\n// @productions floating-point-literal additive-expr local-var-decl-stmt int-literal\n\nimport ballerina/io;\n\npublic function main() {\n    float f = 0.0;\n    int i = 0;\n    io:println(i - f); // @error\n\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "15-e.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\n// @productions multiplicative-expr floating-point-literal local-var-decl-stmt int-literal\n\nimport ballerina/io;\n\npublic function main() {\n    float f = 10f;\n    int i = 2;\n    io:println(i / f); // @error\n\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "17-e.bal",
+            "language": "ballerina",
+            "content": "// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\n\n// @productions floating-point-literal relational-expr local-var-decl-stmt int-literal\n\nimport ballerina/io;\n\npublic function main() {\n    float f = 1.0;\n    int i = 0;\n    io:println(i \u003e f); // @error\n}\n",
+            "children": null
+          },
+          {
+            "kind": "file",
+            "name": "float-value.bal",
+            "language": "ballerina",
+            "content": "\n// Copyright (c) 2026, WSO2 LLC. (http://www.wso2.com).\n//\n// WSO2 LLC. licenses this file to you under the Apache License,\n// Version 2.0 (the \"License\"); you may not use this file except\n// in compliance with the License.\n// You may obtain a copy of the License at\n//\n// http://www.apache.org/licenses/LICENSE-2.0\n//\n// Unless required by applicable law or agreed to in writing,\n// software distributed under the License is distributed on an\n// \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n// KIND, either express or implied.  See the License for the\n// specific language governing permissions and limitations\n// under the License.\nimport ballerina/io;\n\nfunction testFloatValue() {\n    float b;\n    b = 10.1;\n    io:println(b); // @output 10.1\n}\n\nfunction testNegativeFloatValue() {\n    float y;\n    y = -10.1;\n    io:println(y); // @output -10.1\n}\n\nfunction testFloatAddition() {\n    float b;\n    float a;\n    a = 9.9;\n    b = 10.1;\n    io:println(a + b); // @output 20.0\n}\n\nfunction testFloatMultiplication() {\n    float b;\n    float a;\n    a = 2.5;\n    b = 5.5;\n    io:println(a * b); // @output 13.75\n}\n\nfunction testFloatSubtraction() {\n    float b;\n    float a;\n    a = 25.5;\n    b = 15.5;\n    io:println(a - b); // @output 10.0\n}\n\nfunction testFloatDivision() {\n    float b;\n    float a;\n    a = 25.5;\n    b = 5.1;\n    io:println(a / b); // @output 5.0\n}\n\nfunction testFloatParameter(float a) {\n    float b;\n    b = a;\n    io:println(b); // @output 5.3\n}\n\nfunction testFloatValues() {\n    float a = 123.4;\n    float b = 1.234e2;\n    io:println(a); // @output 123.4\n    io:println(b); // @output 123.4\n}\n\nfunction testHexFloatingPointLiterals() {\n    float a = 0X12Ab.0;\n    float b = 0x8.0;\n    float c = 0xaP-1;\n    float d = 0x3p2;\n    io:println(a); // @output 4779.0\n    io:println(b); // @output 8.0\n    io:println(c); // @output 5.0\n    io:println(d); // @output 12.0\n}\n\nfunction testIntLiteralAssignment() {\n    float x = 12;\n    float y = 15;\n    io:println(x); // @output 12.0\n    io:println(y); // @output 15.0\n}\n\nfunction testDiscriminatedFloatLiteral() {\n    float a = 1.0f;\n    var b = 1.0f;\n    float d = 2.2e3f;\n    io:println(a); // @output 1.0\n    io:println(b); // @output 1.0\n    io:println(d); // @output 2200.0\n}\n\nfunction testHexaDecimalLiteralsWithFloat() {\n    float f1 = 0x5;\n    float f2 = 0x555;\n    io:println(5.0 == f1); // @output true\n    io:println(1365.0 == f2); // @output true\n}\n\nfunction testOutOfRangeIntWithFloat() {\n    float f1 = 999999999999999999999999999999;\n    io:println(1.0E30 == f1); // @output true\n}\n\npublic function main() {\n    testFloatValue();\n    testNegativeFloatValue();\n    testFloatAddition();\n    testFloatMultiplication();\n    testFloatSubtraction();\n    testFloatDivision();\n    testFloatParameter(5.3);\n    testFloatValues();\n    testHexFloatingPointLiterals();\n    testIntLiteralAssignment();\n    testDiscriminatedFloatLiteral();\n    testHexaDecimalLiteralsWithFloat();\n    testOutOfRangeIntWithFloat();\n}\n",
+            "children": null
+          }
+        ]
+      }
+    ]
   }
 ]

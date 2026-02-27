@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 )
 
 type FileNode struct {
@@ -17,27 +18,7 @@ type FileNode struct {
 
 const corpusBalBaseDir = "corpus/bal"
 
-var skipTestsMap = makeSkipTestsMap([]string{
-	"subset5/05-record/1-v.bal",
-	"subset5/05-record/cyclic-v.bal",
-	"subset5/05-record/field-access-1-v.bal",
-	"subset5/05-record/field-access-2-v.bal",
-	"subset5/05-record/field-access-3-e.bal",
-	"subset5/05-record/field-access-4-e.bal",
-	"subset5/05-record/inclusion-v.bal",
-	"subset5/05-record/inclusion-override-v.bal",
-	"subset5/05-record/inclusion-dup-override-v.bal",
-	"subset5/05-record/inclusion-rest-v.bal",
-	"subset5/06-float/01-e.bal",
-	"subset5/06-float/03-e.bal",
-	"subset5/06-float/04-v.bal",
-	"subset5/06-float/06-v.bal",
-	"subset5/06-float/11-e.bal",
-	"subset5/06-float/13-e.bal",
-	"subset5/06-float/15-e.bal",
-	"subset5/06-float/17-e.bal",
-	"subset5/06-float/float-value.bal",
-})
+var skipTestsMap = makeSkipTestsMap([]string{})
 
 func getLanguage(filename string) string {
 	ext := filepath.Ext(filename)
@@ -126,12 +107,7 @@ func hasFiles(node FileNode) bool {
 	if node.Kind == "file" {
 		return true
 	}
-	for _, child := range node.Children {
-		if hasFiles(child) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(node.Children, hasFiles)
 }
 
 func main() {
@@ -140,6 +116,8 @@ func main() {
 		"corpus/bal/subset2",
 		"corpus/bal/subset3",
 		"corpus/bal/subset4",
+		"corpus/bal/subset5",
+		"corpus/bal/subset6",
 	}
 	var roots []FileNode
 
