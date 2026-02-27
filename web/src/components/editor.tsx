@@ -28,6 +28,138 @@ import { cn } from "@/lib/utils";
 
 import { MinimalEditor } from "./minimal-editor";
 
+type AnsiStyleState = {
+	color?: string;
+	fontWeight?: "normal" | "bold";
+};
+
+const ANSI_PATTERN = /\x1b\[(\d+(?:;\d+)*)m/g;
+
+function ansiCodesToStyle(prev: AnsiStyleState, codes: number[]): AnsiStyleState {
+	let next: AnsiStyleState = { ...prev };
+
+	for (const code of codes) {
+		if (code === 0) {
+			next = {};
+			continue;
+		}
+
+		if (code === 1) {
+			next.fontWeight = "bold";
+			continue;
+		}
+
+		if (code === 22) {
+			next.fontWeight = "normal";
+			continue;
+		}
+
+		if (code === 39) {
+			delete next.color;
+			continue;
+		}
+
+		switch (code) {
+			case 30:
+				next.color = "#6b7280";
+				break;
+			case 31:
+				next.color = "#dc2626";
+				break;
+			case 32:
+				next.color = "#16a34a";
+				break;
+			case 33:
+				next.color = "#ca8a04";
+				break;
+			case 34:
+				next.color = "#2563eb";
+				break;
+			case 35:
+				next.color = "#7c3aed";
+				break;
+			case 36:
+				next.color = "#0891b2";
+				break;
+			case 37:
+				next.color = "#e5e7eb";
+				break;
+			case 90:
+				next.color = "#9ca3af";
+				break;
+			case 91:
+				next.color = "#f97373";
+				break;
+			case 92:
+				next.color = "#4ade80";
+				break;
+			case 93:
+				next.color = "#facc15";
+				break;
+			case 94:
+				next.color = "#60a5fa";
+				break;
+			case 95:
+				next.color = "#a855f7";
+				break;
+			case 96:
+				next.color = "#22d3ee";
+				break;
+			case 97:
+				next.color = "#f9fafb";
+				break;
+		}
+	}
+
+	return next;
+}
+
+function renderAnsi(output: string) {
+	if (!output) {
+		return null;
+	}
+
+	const nodes: React.ReactNode[] = [];
+	let lastIndex = 0;
+	let match: RegExpExecArray | null;
+	let state: AnsiStyleState = {};
+	let key = 0;
+
+	while ((match = ANSI_PATTERN.exec(output)) !== null) {
+		if (match.index > lastIndex) {
+			const text = output.slice(lastIndex, match.index);
+			if (text) {
+				nodes.push(
+					<span key={key++} style={state}>
+						{text}
+					</span>,
+				);
+			}
+		}
+
+		const codes = match[1]
+			.split(";")
+			.map((c) => Number.parseInt(c, 10))
+			.filter((n) => !Number.isNaN(n));
+
+		state = ansiCodesToStyle(state, codes);
+		lastIndex = ANSI_PATTERN.lastIndex;
+	}
+
+	if (lastIndex < output.length) {
+		const text = output.slice(lastIndex);
+		if (text) {
+			nodes.push(
+				<span key={key++} style={state}>
+					{text}
+				</span>,
+			);
+		}
+	}
+
+	return nodes;
+}
+
 function EditorContent() {
 	const [output, setOutput] = React.useState("");
 	const [outputOpen, setOutputOpen] = React.useState(false);
@@ -225,7 +357,7 @@ function EditorContent() {
 							)}
 						>
 							<pre className="text-[13px] font-sans whitespace-pre-wrap wrap-break-word">
-								{output}
+								{renderAnsi(output)}
 							</pre>
 						</div>
 					</div>

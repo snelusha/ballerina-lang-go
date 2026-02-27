@@ -12,8 +12,39 @@ type FileNode struct {
 	Name     string     `json:"name"`
 	Language string     `json:"language,omitempty"`
 	Content  string     `json:"content,omitempty"`
-	Children []FileNode `json:"children,omitempty"`
+	Children []FileNode `json:"children"`
 }
+
+const corpusBalBaseDir = "corpus/bal"
+
+var skipTestsMap = makeSkipTestsMap([]string{
+	"subset4/04-map/01-e.bal",
+	"subset4/04-map/02-v.bal",
+	"subset4/04-map/03-e.bal",
+	"subset4/04-map/04-v.bal",
+	"subset4/04-map/05-v.bal",
+	"subset4/04-map/06-v.bal",
+	"subset4/04-map/07-v.bal",
+	"subset4/04-map/08-v.bal",
+	"subset4/04-map/09-v.bal",
+	"subset4/04-map/11-v.bal",
+	"subset4/04-map/12-v.bal",
+	"subset4/04-map/simple-e.bal",
+	"subset4/04-map/simple-v.bal",
+	"subset4/04-map/union1-v.bal",
+	"subset4/04-map/union2-e.bal",
+	"subset4/04-map/union3-v.bal",
+	"subset5/05-record/1-v.bal",
+	"subset5/05-record/cyclic-v.bal",
+	"subset5/05-record/field-access-1-v.bal",
+	"subset5/05-record/field-access-2-v.bal",
+	"subset5/05-record/field-access-3-e.bal",
+	"subset5/05-record/field-access-4-e.bal",
+	"subset5/05-record/inclusion-v.bal",
+	"subset5/05-record/inclusion-override-v.bal",
+	"subset5/05-record/inclusion-dup-override-v.bal",
+	"subset5/05-record/inclusion-rest-v.bal",
+})
 
 func getLanguage(filename string) string {
 	ext := filepath.Ext(filename)
@@ -29,10 +60,10 @@ func getLanguage(filename string) string {
 	}
 }
 
-func buildTree(rootPath string) (FileNode, error) {
+func buildTree(rootPath string) (FileNode, bool, error) {
 	info, err := os.Stat(rootPath)
 	if err != nil {
-		return FileNode{}, err
+		return FileNode{}, false, err
 	}
 
 	node := FileNode{
@@ -43,28 +74,71 @@ func buildTree(rootPath string) (FileNode, error) {
 		node.Kind = "dir"
 		entries, err := os.ReadDir(rootPath)
 		if err != nil {
-			return FileNode{}, err
+			return FileNode{}, false, err
 		}
 
 		for _, entry := range entries {
 			childPath := filepath.Join(rootPath, entry.Name())
-			childNode, err := buildTree(childPath)
+			childNode, skip, err := buildTree(childPath)
 			if err != nil {
-				return FileNode{}, err
+				return FileNode{}, false, err
+			}
+			if skip {
+				continue
 			}
 			node.Children = append(node.Children, childNode)
 		}
+		if node.Children == nil {
+			node.Children = make([]FileNode, 0)
+		}
+		// If this directory (recursively) does not contain any files,
+		// skip it so the UI does not show empty folders.
+		if !hasFiles(node) {
+			return FileNode{}, true, nil
+		}
 	} else {
+		if isFileSkipped(rootPath) {
+			return FileNode{}, true, nil
+		}
 		node.Kind = "file"
 		node.Language = getLanguage(node.Name)
 		content, err := os.ReadFile(rootPath)
 		if err != nil {
-			return FileNode{}, err
+			return FileNode{}, false, err
 		}
 		node.Content = string(content)
 	}
 
-	return node, nil
+	return node, false, nil
+}
+
+func isFileSkipped(filePath string) bool {
+	relPath, err := filepath.Rel(corpusBalBaseDir, filePath)
+	if err != nil {
+		return false
+	}
+	relPath = filepath.ToSlash(relPath)
+	return skipTestsMap[relPath]
+}
+
+func makeSkipTestsMap(paths []string) map[string]bool {
+	m := make(map[string]bool, len(paths))
+	for _, path := range paths {
+		m[filepath.ToSlash(path)] = true
+	}
+	return m
+}
+
+func hasFiles(node FileNode) bool {
+	if node.Kind == "file" {
+		return true
+	}
+	for _, child := range node.Children {
+		if hasFiles(child) {
+			return true
+		}
+	}
+	return false
 }
 
 func main() {
@@ -130,7 +204,7 @@ version = "0.1.0"`,
 		// I'll group them under their subset names for clarity, or just merge them?
 		// Let's group them by subset name as the user suggested.
 
-		node, err := buildTree(dir)
+		node, _, err := buildTree(dir)
 		if err != nil {
 			fmt.Printf("Error building tree for %s: %v\n", dir, err)
 			continue
