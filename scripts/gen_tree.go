@@ -18,22 +18,6 @@ type FileNode struct {
 const corpusBalBaseDir = "corpus/bal"
 
 var skipTestsMap = makeSkipTestsMap([]string{
-	"subset4/04-map/01-e.bal",
-	"subset4/04-map/02-v.bal",
-	"subset4/04-map/03-e.bal",
-	"subset4/04-map/04-v.bal",
-	"subset4/04-map/05-v.bal",
-	"subset4/04-map/06-v.bal",
-	"subset4/04-map/07-v.bal",
-	"subset4/04-map/08-v.bal",
-	"subset4/04-map/09-v.bal",
-	"subset4/04-map/11-v.bal",
-	"subset4/04-map/12-v.bal",
-	"subset4/04-map/simple-e.bal",
-	"subset4/04-map/simple-v.bal",
-	"subset4/04-map/union1-v.bal",
-	"subset4/04-map/union2-e.bal",
-	"subset4/04-map/union3-v.bal",
 	"subset5/05-record/1-v.bal",
 	"subset5/05-record/cyclic-v.bal",
 	"subset5/05-record/field-access-1-v.bal",
@@ -44,6 +28,15 @@ var skipTestsMap = makeSkipTestsMap([]string{
 	"subset5/05-record/inclusion-override-v.bal",
 	"subset5/05-record/inclusion-dup-override-v.bal",
 	"subset5/05-record/inclusion-rest-v.bal",
+	"subset5/06-float/01-e.bal",
+	"subset5/06-float/03-e.bal",
+	"subset5/06-float/04-v.bal",
+	"subset5/06-float/06-v.bal",
+	"subset5/06-float/11-e.bal",
+	"subset5/06-float/13-e.bal",
+	"subset5/06-float/15-e.bal",
+	"subset5/06-float/17-e.bal",
+	"subset5/06-float/float-value.bal",
 })
 
 func getLanguage(filename string) string {
