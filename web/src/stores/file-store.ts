@@ -104,7 +104,7 @@ export function allFilePaths(tree: FileNode[], prefix = ""): FilePath[] {
 }
 const DEFAULT_TREE: FileNode[] = balTree as FileNode[];
 
-const DEFAULT_SELECTED: FilePath = "fibonacci/main.bal";
+const DEFAULT_SELECTED: FilePath = "api-response/main.bal";
 
 export const useFileStore = create<FileState>((set) => ({
 	tree: DEFAULT_TREE,

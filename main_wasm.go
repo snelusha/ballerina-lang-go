@@ -17,7 +17,7 @@ import (
 	"ballerina-lang-go/runtime"
 	"ballerina-lang-go/tools/diagnostics"
 
-	_ "ballerina-lang-go/lib/io/runtime"
+	_ "ballerina-lang-go/lib/rt"
 )
 
 // var memFsys *bfs.MemFS
