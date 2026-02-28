@@ -39,15 +39,8 @@ public function main() {
         if result is int {
             int count = <int>result;
             io:println("  Count: ", count);
-            if count > 100 {
-                io:println("  Volume: High");
-            } else {
-                io:println("  Volume: Normal");
-            }
-        }
-        if result is string {
+        } else if result is string {
             io:println("  Info: ", result);
         }
     }
 }
-

@@ -92,18 +92,11 @@ public function main() {
         if result is int {
             int count = <int>result;
             io:println("  Count: ", count);
-            if count > 100 {
-                io:println("  Volume: High");
-            } else {
-                io:println("  Volume: Normal");
-            }
-        }
-        if result is string {
+        } else if result is string {
             io:println("  Info: ", result);
         }
     }
 }
-
 `,children:null}]},{kind:"dir",name:"03-fibonacci",children:[{kind:"file",name:"Ballerina.toml",language:"toml",content:`[package]
 org = "wso2"
 name = "ballerina"
