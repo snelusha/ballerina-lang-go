@@ -8,6 +8,48 @@ export type FileNode =
 
 export type FilePath = string;
 
+const EMPTY_BALLERINA_TOML = `[package]
+org = "wso2"
+name = "ballerina"
+version = "0.1.0"`;
+
+const EMPTY_MAIN_BAL = `import ballerina/io;
+
+public function main() {
+		io:println("Hello, World!");
+}`;
+
+function makeEmptyProjectDir(name: string): FileNode {
+	return {
+		kind: "dir",
+		name,
+		children: [
+			{
+				kind: "file",
+				name: "Ballerina.toml",
+				language: "toml",
+				content: EMPTY_BALLERINA_TOML,
+			},
+			{
+				kind: "file",
+				name: "main.bal",
+				language: "ballerina",
+				content: EMPTY_MAIN_BAL,
+			},
+		],
+	};
+}
+
+function uniqueProjectName(tree: FileNode[], base = "new-project"): string {
+	const topNames = new Set(tree.map((n) => n.name));
+	let name = base;
+	let i = 1;
+	while (topNames.has(name)) {
+		name = `${base}-${++i}`;
+	}
+	return name;
+}
+
 export interface FileState {
 	tree: FileNode[];
 	selectedFilePath: FilePath | null;
@@ -16,6 +58,7 @@ export interface FileState {
 	selectFile: (path: FilePath) => void;
 	updateFileContent: (path: FilePath, content: string) => void;
 	addNode: (parentPath: FilePath | null, node: FileNode) => void;
+	createEmptyProject: () => void;
 	deleteNode: (path: FilePath) => void;
 	renameNode: (path: FilePath, newName: string) => void;
 }
@@ -136,6 +179,17 @@ export const useFileStore = create<FileState>((set) => ({
 		set((state) => ({
 			tree: addNodeAt(state.tree, parentPath, node),
 		})),
+
+	createEmptyProject: () =>
+		set((state) => {
+			const name = uniqueProjectName(state.tree);
+			const project = makeEmptyProjectDir(name);
+			const newTree = [project, ...state.tree];
+			return {
+				tree: newTree,
+				selectedFilePath: `${name}/main.bal`,
+			};
+		}),
 
 	deleteNode: (path) =>
 		set((state) => {

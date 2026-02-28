@@ -5,8 +5,10 @@ import {
 	FolderIcon,
 	File01Icon,
 	ChevronDown,
+	PlusSignIcon,
 } from "@hugeicons/core-free-icons";
 
+import { Button } from "@/components/ui/button";
 import {
 	Collapsible,
 	CollapsibleContent,
@@ -34,12 +36,26 @@ import type { FileNode, FilePath } from "@/stores/file-store";
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const tree = useFileStore((s) => s.tree);
 	const selectedFilePath = useFileStore((s) => s.selectedFilePath);
+	const createEmptyProject = useFileStore((s) => s.createEmptyProject);
 
 	return (
 		<Sidebar {...props}>
 			<SidebarContent>
 				<SidebarGroup>
-					<SidebarGroupLabel>Files</SidebarGroupLabel>
+					<div className="flex items-center justify-between">
+						<SidebarGroupLabel>Files</SidebarGroupLabel>
+						<Button
+							className="h-full rounded-none"
+							variant="ghost"
+							onClick={createEmptyProject}
+							title="New project"
+						>
+							<HugeiconsIcon
+								icon={PlusSignIcon}
+								strokeWidth={1.5}
+							/>
+						</Button>
+					</div>
 					<SidebarGroupContent className="mt-2">
 						<SidebarMenu>
 							{tree.map((node, index) => (
@@ -68,7 +84,11 @@ function TreeNode({
 	node,
 	path,
 	defaultOpen = false,
-}: { node: FileNode; path: FilePath; defaultOpen?: boolean }) {
+}: {
+	node: FileNode;
+	path: FilePath;
+	defaultOpen?: boolean;
+}) {
 	const selectFile = useFileStore((s) => s.selectFile);
 	const selectedFilePath = useFileStore((s) => s.selectedFilePath);
 

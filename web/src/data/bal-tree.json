@@ -38,5 +38,25 @@
         "children": null
       }
     ]
+  },
+  {
+    "kind": "dir",
+    "name": "order-summary",
+    "children": [
+      {
+        "kind": "file",
+        "name": "Ballerina.toml",
+        "language": "toml",
+        "content": "[package]\norg = \"wso2\"\nname = \"ballerina\"\nversion = \"0.1.0\"",
+        "children": null
+      },
+      {
+        "kind": "file",
+        "name": "main.bal",
+        "language": "ballerina",
+        "content": "import ballerina/io;\n\n// Shows the delivery schedule of pending orders\ntype Order record {|\n    string id;\n    string customer;\n    int amount;\n    int areaCode;\n|};\n\npublic function main() {\n    Order order1 = {id: \"ORD001\", customer: \"Alice\", amount: 150, areaCode: 1};\n    Order order2 = {id: \"ORD002\", customer: \"Bob\", amount: 75, areaCode: 2};\n    Order order3 = {id: \"ORD003\", customer: \"Carol\", amount: 200, areaCode: 1};\n\n    Order[] orders = [order1, order2, order3];\n    map\u003cint\u003e deliveryFee = {\"Downtown\": 5, \"Suburb\": 10};\n\n    io:println(\"=== Delivery Schedule ===\");\n    foreach int code in 1 ... 2 {\n        if code == 1 {\n            io:println(\"\\nDowntown (fee: $\", deliveryFee[\"Downtown\"], \")\");\n        }\n        if code == 2 {\n            io:println(\"\\nSuburb (fee: $\", deliveryFee[\"Suburb\"], \")\");\n        }\n        foreach Order ord in orders {\n            if ord.areaCode == code {\n                io:println(\"  \", ord.id, \" | \", ord.customer, \" | $\", ord.amount);\n            }\n        }\n    }\n}\n",
+        "children": null
+      }
+    ]
   }
 ]
