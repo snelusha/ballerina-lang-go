@@ -147,7 +147,7 @@ export function allFilePaths(tree: FileNode[], prefix = ""): FilePath[] {
 }
 const DEFAULT_TREE: FileNode[] = balTree as FileNode[];
 
-const DEFAULT_SELECTED: FilePath = "api-response/main.bal";
+const DEFAULT_SELECTED: FilePath = "01-orders/main.bal";
 
 export const useFileStore = create<FileState>((set) => ({
 	tree: DEFAULT_TREE,
@@ -159,8 +159,7 @@ export const useFileStore = create<FileState>((set) => ({
 			return {
 				tree,
 				selectedFilePath:
-					state.selectedFilePath &&
-					paths.includes(state.selectedFilePath)
+					state.selectedFilePath && paths.includes(state.selectedFilePath)
 						? state.selectedFilePath
 						: (paths[0] ?? null),
 			};
@@ -218,9 +217,7 @@ export const useFileStore = create<FileState>((set) => ({
 			return {
 				tree: newTree,
 				selectedFilePath:
-					state.selectedFilePath === path
-						? newPath
-						: state.selectedFilePath,
+					state.selectedFilePath === path ? newPath : state.selectedFilePath,
 			};
 		}),
 }));
