@@ -226,6 +226,7 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 
 	rt := runtime.NewRuntime()
 	if err := rt.Interpret(*birPkg); err != nil {
+		fmt.Println("Program terminated with error:", err)
 		return err
 	}
 	return nil

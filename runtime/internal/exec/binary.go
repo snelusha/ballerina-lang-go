@@ -17,10 +17,11 @@
 package exec
 
 import (
-	"ballerina-lang-go/bir"
-	"ballerina-lang-go/values"
 	"fmt"
 	"math"
+
+	"ballerina-lang-go/bir"
+	"ballerina-lang-go/values"
 )
 
 func execBinaryOpAdd(binaryOp *bir.BinaryOp, frame *Frame) {
@@ -94,6 +95,8 @@ func execBinaryOpMul(binaryOp *bir.BinaryOp, frame *Frame) {
 }
 
 func execBinaryOpDiv(binaryOp *bir.BinaryOp, frame *Frame) {
+	fmt.Println("Executing division operation")
+	fmt.Println(binaryOp.BIRInstructionBase.Pos)
 	op1, op2, lhsOp := getBinaryOperands(binaryOp, frame)
 	if handleNilLifting(op1, op2, lhsOp, frame) {
 		return
@@ -102,7 +105,8 @@ func execBinaryOpDiv(binaryOp *bir.BinaryOp, frame *Frame) {
 	case int64:
 		v2 := op2.(int64)
 		if v2 == 0 {
-			panic("divide by zero")
+			fmt.Println("here")
+			panic(fmt.Sprintf("divide by zero\nat %v\n", binaryOp.BIRInstructionBase.Pos))
 		}
 		if v1 == math.MinInt64 && v2 == -1 {
 			panic("arithmetic overflow")
@@ -111,7 +115,8 @@ func execBinaryOpDiv(binaryOp *bir.BinaryOp, frame *Frame) {
 	case float64:
 		v2 := op2.(float64)
 		if v2 == 0 {
-			panic("divide by zero")
+			fmt.Println("here")
+			panic(fmt.Sprintf("divide by zero\nat %v\n", binaryOp.BIRInstructionBase.Pos))
 		}
 		frame.SetOperand(lhsOp, v1/v2)
 	default:
@@ -128,13 +133,15 @@ func execBinaryOpMod(binaryOp *bir.BinaryOp, frame *Frame) {
 	case int64:
 		v2 := op2.(int64)
 		if v2 == 0 {
-			panic("divide by zero")
+			fmt.Println("here")
+			panic(fmt.Sprintf("divide by zero\nat %v\n", binaryOp.BIRInstructionBase.Pos))
 		}
 		frame.SetOperand(lhsOp, v1%v2)
 	case float64:
 		v2 := op2.(float64)
 		if v2 == 0 {
-			panic("divide by zero")
+			fmt.Println("here")
+			panic(fmt.Sprintf("divide by zero\nat %v\n", binaryOp.BIRInstructionBase.Pos))
 		}
 		frame.SetOperand(lhsOp, math.Mod(v1, v2))
 	default:
@@ -341,7 +348,6 @@ func execUnaryOpBitwiseComplement(unaryOp *bir.UnaryOp, frame *Frame) {
 }
 
 func execBinaryOpBitwise(binaryOp *bir.BinaryOp, frame *Frame, bitOp func(a, b int64) int64, isShift bool) {
-
 	op1, op2, lhsOp := getBinaryOperands(binaryOp, frame)
 	if handleNilLifting(op1, op2, lhsOp, frame) {
 		return
@@ -356,7 +362,8 @@ func execBinaryOpBitwise(binaryOp *bir.BinaryOp, frame *Frame, bitOp func(a, b i
 
 func execBinaryOpCompare(binaryOp *bir.BinaryOp, frame *Frame,
 	intCmp func(a, b int64) bool, floatCmp func(a, b float64) bool,
-	boolCmp func(a, b bool) bool, nilEqualsNil bool) {
+	boolCmp func(a, b bool) bool, nilEqualsNil bool,
+) {
 	op1, op2, lhsOp := getBinaryOperands(binaryOp, frame)
 	switch v1 := op1.(type) {
 	case nil:

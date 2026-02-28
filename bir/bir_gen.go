@@ -803,6 +803,7 @@ func binaryExpressionInner(ctx *stmtContext, curBB *BIRBasicBlock, opKind model.
 	binaryOp := &BinaryOp{}
 	binaryOp.Kind = kind
 	binaryOp.LhsOp = resultOperand
+	binaryOp.BIRInstructionBase.Pos = lhsExpr.GetPosition()
 	op1Effect := handleExpression(ctx, curBB, lhsExpr)
 	curBB = op1Effect.block
 	op2Effect := handleExpression(ctx, curBB, rhsExpr)
