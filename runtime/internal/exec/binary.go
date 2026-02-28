@@ -18,8 +18,8 @@ package exec
 
 import (
 	"ballerina-lang-go/bir"
+	"ballerina-lang-go/tools/diagnostics"
 	"ballerina-lang-go/values"
-	"fmt"
 	"math"
 )
 
@@ -32,10 +32,10 @@ func execBinaryOpAdd(binaryOp *bir.BinaryOp, frame *Frame) {
 	case int64:
 		v2 := op2.(int64)
 		if v1 > 0 && v2 > 0 && v1 > math.MaxInt64-v2 {
-			panic("arithmetic overflow")
+			panicAt(binaryOp.Pos, "arithmetic overflow")
 		}
 		if v1 < 0 && v2 < 0 && v1 < math.MinInt64-v2 {
-			panic("arithmetic overflow")
+			panicAt(binaryOp.Pos, "arithmetic overflow")
 		}
 		frame.SetOperand(lhsOp, v1+v2)
 	case float64:
@@ -45,7 +45,7 @@ func execBinaryOpAdd(binaryOp *bir.BinaryOp, frame *Frame) {
 		v2 := op2.(string)
 		frame.SetOperand(lhsOp, v1+v2)
 	default:
-		panic(fmt.Sprintf("unsupported type combination: %T + %T", op1, op2))
+		panicAt(binaryOp.Pos, "unsupported type combination: %T + %T", op1, op2)
 	}
 }
 
@@ -58,17 +58,17 @@ func execBinaryOpSub(binaryOp *bir.BinaryOp, frame *Frame) {
 	case int64:
 		v2 := op2.(int64)
 		if v2 > 0 && v1 < math.MinInt64+v2 {
-			panic("arithmetic overflow")
+			panicAt(binaryOp.Pos, "arithmetic overflow")
 		}
 		if v2 < 0 && v1 > math.MaxInt64+v2 {
-			panic("arithmetic overflow")
+			panicAt(binaryOp.Pos, "arithmetic overflow")
 		}
 		frame.SetOperand(lhsOp, v1-v2)
 	case float64:
 		v2 := op2.(float64)
 		frame.SetOperand(lhsOp, v1-v2)
 	default:
-		panic(fmt.Sprintf("unsupported type combination: %T - %T", op1, op2))
+		panicAt(binaryOp.Pos, "unsupported type combination: %T - %T", op1, op2)
 	}
 }
 
@@ -82,14 +82,14 @@ func execBinaryOpMul(binaryOp *bir.BinaryOp, frame *Frame) {
 		v2 := op2.(int64)
 		result := v1 * v2
 		if v1 != 0 && v2 != 0 && ((v1 == math.MinInt64 && v2 == -1) || (v1 == -1 && v2 == math.MinInt64) || result/v2 != v1) {
-			panic("arithmetic overflow")
+			panicAt(binaryOp.Pos, "arithmetic overflow")
 		}
 		frame.SetOperand(lhsOp, result)
 	case float64:
 		v2 := op2.(float64)
 		frame.SetOperand(lhsOp, v1*v2)
 	default:
-		panic(fmt.Sprintf("unsupported type combination: %T * %T", op1, op2))
+		panicAt(binaryOp.Pos, "unsupported type combination: %T * %T", op1, op2)
 	}
 }
 
@@ -102,20 +102,20 @@ func execBinaryOpDiv(binaryOp *bir.BinaryOp, frame *Frame) {
 	case int64:
 		v2 := op2.(int64)
 		if v2 == 0 {
-			panic("divide by zero")
+			panicAt(binaryOp.Pos, "divide by zero")
 		}
 		if v1 == math.MinInt64 && v2 == -1 {
-			panic("arithmetic overflow")
+			panicAt(binaryOp.Pos, "arithmetic overflow")
 		}
 		frame.SetOperand(lhsOp, v1/v2)
 	case float64:
 		v2 := op2.(float64)
 		if v2 == 0 {
-			panic("divide by zero")
+			panicAt(binaryOp.Pos, "divide by zero")
 		}
 		frame.SetOperand(lhsOp, v1/v2)
 	default:
-		panic(fmt.Sprintf("unsupported type combination: %T / %T", op1, op2))
+		panicAt(binaryOp.Pos, "unsupported type combination: %T / %T", op1, op2)
 	}
 }
 
@@ -128,17 +128,17 @@ func execBinaryOpMod(binaryOp *bir.BinaryOp, frame *Frame) {
 	case int64:
 		v2 := op2.(int64)
 		if v2 == 0 {
-			panic("divide by zero")
+			panicAt(binaryOp.Pos, "divide by zero")
 		}
 		frame.SetOperand(lhsOp, v1%v2)
 	case float64:
 		v2 := op2.(float64)
 		if v2 == 0 {
-			panic("divide by zero")
+			panicAt(binaryOp.Pos, "divide by zero")
 		}
 		frame.SetOperand(lhsOp, math.Mod(v1, v2))
 	default:
-		panic(fmt.Sprintf("unsupported type combination: %T %% %T", op1, op2))
+		panicAt(binaryOp.Pos, "unsupported type combination: %T %% %T", op1, op2)
 	}
 }
 
@@ -320,13 +320,13 @@ func execUnaryOpNegate(unaryOp *bir.UnaryOp, frame *Frame) {
 	switch v := op.(type) {
 	case int64:
 		if v == math.MinInt64 {
-			panic("arithmetic overflow")
+			panicAt(unaryOp.Pos, "arithmetic overflow")
 		}
 		frame.SetOperand(lhsOp, -v)
 	case float64:
 		frame.SetOperand(lhsOp, -v)
 	default:
-		panic(fmt.Sprintf("unsupported type: %T (expected int64 or float64)", op))
+		panicAt(unaryOp.Pos, "unsupported type: %T (expected int64 or float64)", op)
 	}
 }
 
@@ -335,13 +335,12 @@ func execUnaryOpBitwiseComplement(unaryOp *bir.UnaryOp, frame *Frame) {
 	op := frame.GetOperand(rhsOp)
 	v, ok := op.(int64)
 	if !ok {
-		panic(fmt.Sprintf("unsupported type: %T (expected int64)", op))
+		panicAt(unaryOp.Pos, "unsupported type: %T (expected int64)", op)
 	}
 	frame.SetOperand(lhsOp, ^v)
 }
 
 func execBinaryOpBitwise(binaryOp *bir.BinaryOp, frame *Frame, bitOp func(a, b int64) int64, isShift bool) {
-
 	op1, op2, lhsOp := getBinaryOperands(binaryOp, frame)
 	if handleNilLifting(op1, op2, lhsOp, frame) {
 		return
@@ -349,7 +348,7 @@ func execBinaryOpBitwise(binaryOp *bir.BinaryOp, frame *Frame, bitOp func(a, b i
 	v1 := op1.(int64)
 	v2 := op2.(int64)
 	if isShift {
-		validateShiftAmount(v2)
+		validateShiftAmount(binaryOp.Pos, v2)
 	}
 	frame.SetOperand(lhsOp, bitOp(v1, v2))
 }
@@ -372,7 +371,7 @@ func execBinaryOpCompare(binaryOp *bir.BinaryOp, frame *Frame,
 		case int64:
 			frame.SetOperand(lhsOp, intCmp(v1, v2))
 		default:
-			panic(fmt.Sprintf("type mismatch: int64 vs %T", op2))
+			panicAt(binaryOp.Pos, "type mismatch: int64 vs %T", op2)
 		}
 	case float64:
 		switch v2 := op2.(type) {
@@ -381,7 +380,7 @@ func execBinaryOpCompare(binaryOp *bir.BinaryOp, frame *Frame,
 		case float64:
 			frame.SetOperand(lhsOp, floatCmp(v1, v2))
 		default:
-			panic(fmt.Sprintf("type mismatch: float64 vs %T", op2))
+			panicAt(binaryOp.Pos, "type mismatch: float64 vs %T", op2)
 		}
 	case bool:
 		switch v2 := op2.(type) {
@@ -390,10 +389,10 @@ func execBinaryOpCompare(binaryOp *bir.BinaryOp, frame *Frame,
 		case bool:
 			frame.SetOperand(lhsOp, boolCmp(v1, v2))
 		default:
-			panic(fmt.Sprintf("type mismatch: bool vs %T", op2))
+			panicAt(binaryOp.Pos, "type mismatch: bool vs %T", op2)
 		}
 	default:
-		panic(fmt.Sprintf("unsupported type: %T", op1))
+		panicAt(binaryOp.Pos, "unsupported type: %T", op1)
 	}
 }
 
@@ -410,9 +409,9 @@ func extractUnaryOpIndices(unaryOp *bir.UnaryOp) (rhsOp, lhsOp int) {
 	return
 }
 
-func validateShiftAmount(amount int64) {
+func validateShiftAmount(loc diagnostics.Location, amount int64) {
 	if amount < 0 || amount >= 64 {
-		panic(fmt.Sprintf("invalid shift amount: %d (must be 0-63)", amount))
+		panicAt(loc, "invalid shift amount: %d (must be 0-63)", amount)
 	}
 }
 

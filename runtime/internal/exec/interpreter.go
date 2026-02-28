@@ -19,12 +19,31 @@ package exec
 import (
 	"ballerina-lang-go/bir"
 	"ballerina-lang-go/runtime/internal/modules"
+	"fmt"
+	"os"
 )
 
 func Interpret(pkg bir.BIRPackage, reg *modules.Registry) {
 	reg.RegisterModule(pkg.PackageID, modules.NewBIRModule(&pkg))
 	if pkg.MainFunction != nil {
 		callStack := &callStack{elements: make([]*Frame, 0, 32)}
-		executeFunction(*pkg.MainFunction, nil, reg, callStack)
+		runWithRecovery(func() {
+			executeFunction(*pkg.MainFunction, nil, reg, callStack)
+		})
 	}
+}
+
+func runWithRecovery(fn func()) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		if rp, ok := r.(RuntimePanic); ok {
+			fmt.Fprintln(os.Stderr, FormatRuntimeDiagnostic(rp))
+			os.Exit(1)
+		}
+		panic(r)
+	}()
+	fn()
 }

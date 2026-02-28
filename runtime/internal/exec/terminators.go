@@ -45,7 +45,7 @@ func executeCall(callInfo *bir.Call, args []values.BalValue, reg *modules.Regist
 	if callInfo.CachedNativeFunc != nil {
 		result, err := callInfo.CachedNativeFunc(args)
 		if err != nil {
-			panic(err)
+			panicAt(callInfo.Pos, "%s", err.Error())
 		}
 		return result
 	}
@@ -63,11 +63,12 @@ func lookupAndExecute(callInfo *bir.Call, args []values.BalValue, reg *modules.R
 		callInfo.CachedNativeFunc = externFn.Impl
 		result, err := externFn.Impl(args)
 		if err != nil {
-			panic(err)
+			panicAt(callInfo.Pos, "%s", err.Error())
 		}
 		return result
 	}
-	panic("function not found: " + callInfo.Name.Value())
+	panicAt(callInfo.Pos, "function not found: %s", callInfo.Name.Value())
+	return nil
 }
 
 func extractArgs(args []bir.BIROperand, frame *Frame) []values.BalValue {

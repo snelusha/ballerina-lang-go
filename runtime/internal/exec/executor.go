@@ -39,7 +39,7 @@ func executeFunction(birFunc bir.BIRFunction, args []values.BalValue, reg *modul
 	callStack.Push(frame)
 	defer callStack.Pop()
 	if len(callStack.elements) > maxRecursionDepth {
-		panic("stack overflow")
+		panicAt(nil, "stack overflow")
 	}
 	bb := &birFunc.BasicBlocks[0]
 	for {
