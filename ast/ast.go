@@ -269,7 +269,8 @@ type (
 
 	BLangBlockFunctionBody struct {
 		BLangFunctionBodyBase
-		Stmts []BLangStatement
+		Stmts         []BLangStatement
+		closeBracePos diagnostics.Location
 	}
 
 	BLangExprFunctionBody struct {
@@ -709,6 +710,10 @@ func (this *BLangAnnotation) SetMarkdownDocumentationAttachment(documentationNod
 func (this *BLangBlockFunctionBody) GetKind() model.NodeKind {
 	// migrated from BLangBlockFunctionBody.java:73:5
 	return model.NodeKind_BLOCK_FUNCTION_BODY
+}
+
+func (b *BLangBlockFunctionBody) CloseBracePosition() diagnostics.Location {
+	return b.closeBracePos
 }
 
 func (this *BLangExprFunctionBody) GetKind() model.NodeKind {

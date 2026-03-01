@@ -2322,6 +2322,9 @@ func (n *NodeBuilder) TransformFunctionBodyBlock(functionBodyBlockNode *tree.Fun
 
 	bLFuncBody.Stmts = stmtList
 	bLFuncBody.pos = getPosition(functionBodyBlockNode)
+	if closeBrace := functionBodyBlockNode.CloseBraceToken(); closeBrace != nil {
+		bLFuncBody.closeBracePos = getPosition(closeBrace)
+	}
 	n.isInLocalContext = false
 	return bLFuncBody
 }

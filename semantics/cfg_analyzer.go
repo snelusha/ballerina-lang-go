@@ -162,5 +162,10 @@ func positionForMissingReturn(bb basicBlock, fn *ast.BLangFunction) diagnostics.
 	if len(bb.nodes) > 0 {
 		return bb.nodes[len(bb.nodes)-1].GetPosition()
 	}
+	if body, ok := fn.Body.(*ast.BLangBlockFunctionBody); ok {
+		if loc := body.CloseBracePosition(); loc != nil {
+			return loc
+		}
+	}
 	return fn.GetPosition()
 }

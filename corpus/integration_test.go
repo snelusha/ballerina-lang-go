@@ -17,11 +17,14 @@
 package corpus
 
 import (
+	"bufio"
 	"bytes"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -58,6 +61,8 @@ var (
 
 	// Skip tests that cause unrecoverable Go runtime errors
 	skipTestsMap = makeSkipTestsMap([]string{})
+
+	diagnosticLocationRe = regexp.MustCompile(`-->\s+([^:]+):(\d+):(\d+)`)
 )
 
 type failedTest struct {
@@ -166,6 +171,16 @@ func TestIntegrationSuite(t *testing.T) {
 			defer resultsMu.Unlock()
 
 			result := runTest(balFile, expectedStdout, expectedStderr)
+			if result.success && isErrorTest(balFile) {
+				missingLines, err := verifyErrorLocations(balFile, result.actualStderr)
+				if err != nil {
+					result.success = false
+					result.actualStderr = fmt.Sprintf("failed to verify error locations: %v", err)
+				} else if len(missingLines) > 0 {
+					result.success = false
+					result.actualStderr = fmt.Sprintf("error expected on line(s) %v but no diagnostic reported there", missingLines)
+				}
+			}
 			if result.success {
 				passedTotal++
 				fmt.Printf("\t--- %sPASS%s: %s\n", colorGreen, colorReset, filePath)
@@ -410,4 +425,58 @@ func makeSkipTestsMap(paths []string) map[string]bool {
 		m[filepath.ToSlash(path)] = true
 	}
 	return m
+}
+
+func isErrorTest(balFile string) bool {
+	return strings.HasSuffix(filepath.Base(balFile), "-e.bal")
+}
+
+func parseErrorLinesFromBal(balFile string) ([]int, error) {
+	f, err := os.Open(balFile)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	var lines []int
+	s := bufio.NewScanner(f)
+	for lineNum := 1; s.Scan(); lineNum++ {
+		if strings.Contains(s.Text(), "// @error") {
+			lines = append(lines, lineNum)
+		}
+	}
+	return lines, s.Err()
+}
+
+func parseErrorLineNumbersFromStderr(stderr, baseFileName string) map[int]bool {
+	reported := make(map[int]bool)
+	for _, submatches := range diagnosticLocationRe.FindAllStringSubmatch(stderr, -1) {
+		if len(submatches) != 4 {
+			continue
+		}
+		fileName := submatches[1]
+		if filepath.Base(fileName) != baseFileName {
+			continue
+		}
+		line, err := strconv.Atoi(submatches[2])
+		if err != nil {
+			continue
+		}
+		reported[line] = true
+	}
+	return reported
+}
+
+func verifyErrorLocations(balFile, actualStderr string) (missingLines []int, err error) {
+	expectedLines, err := parseErrorLinesFromBal(balFile)
+	if err != nil {
+		return nil, err
+	}
+	reported := parseErrorLineNumbersFromStderr(actualStderr, filepath.Base(balFile))
+	for _, line := range expectedLines {
+		if !reported[line] {
+			missingLines = append(missingLines, line)
+		}
+	}
+	return missingLines, nil
 }
