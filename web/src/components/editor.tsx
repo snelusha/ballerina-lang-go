@@ -35,7 +35,10 @@ type AnsiStyleState = {
 
 const ANSI_PATTERN = /\x1b\[(\d+(?:;\d+)*)m/g;
 
-function ansiCodesToStyle(prev: AnsiStyleState, codes: number[]): AnsiStyleState {
+function ansiCodesToStyle(
+	prev: AnsiStyleState,
+	codes: number[],
+): AnsiStyleState {
 	let next: AnsiStyleState = { ...prev };
 
 	for (const code of codes) {
@@ -229,7 +232,7 @@ function EditorContent() {
 		return (
 			<div className="w-full flex items-center justify-center min-h-dvh">
 				<div className="text-sm text-muted-foreground">
-					Getting Ready!
+					Loading WASM binary...
 				</div>
 			</div>
 		);
