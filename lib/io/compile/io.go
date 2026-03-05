@@ -31,6 +31,7 @@ func GetIoSymbols(ctx *context.CompilerContext) model.ExportedSymbolSpace {
 		model.Name("0.0.1"),
 	)
 	space := ctx.NewSymbolSpace(*pkg)
+
 	printLnSignature := model.FunctionSignature{
 		RestParamType: &semtypes.ANY,
 		ReturnType:    &semtypes.NIL,
@@ -39,6 +40,16 @@ func GetIoSymbols(ctx *context.CompilerContext) model.ExportedSymbolSpace {
 	space.AddSymbol("println", printLnSymbol)
 	printLnRef, _ := space.GetSymbol("println")
 	ctx.SetSymbolType(printLnRef, libcommon.FunctionSignatureToSemType(ctx.GetTypeEnv(), &printLnSignature))
+
+	fileReadStringSignature := model.FunctionSignature{
+		ParamTypes: []semtypes.SemType{&semtypes.STRING},
+		ReturnType: &semtypes.STRING,
+	}
+	fileReadStringSymbol := model.NewFunctionSymbol("fileReadString", fileReadStringSignature, true)
+	space.AddSymbol("fileReadString", fileReadStringSymbol)
+	fileReadStringRef, _ := space.GetSymbol("fileReadString")
+	ctx.SetSymbolType(fileReadStringRef, libcommon.FunctionSignatureToSemType(ctx.GetTypeEnv(), &fileReadStringSignature))
+
 	return model.ExportedSymbolSpace{
 		Main: space,
 	}

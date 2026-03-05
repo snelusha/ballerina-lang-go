@@ -17,11 +17,12 @@
 package io
 
 import (
-	"ballerina-lang-go/runtime"
-	"ballerina-lang-go/values"
 	"fmt"
 	"os"
 	"strings"
+
+	"ballerina-lang-go/runtime"
+	"ballerina-lang-go/values"
 )
 
 const (
@@ -44,8 +45,24 @@ func printlnExtern(args []values.BalValue) (values.BalValue, error) {
 	return nil, nil
 }
 
+func FileReadString(path values.BalValue) values.BalValue {
+	content, err := os.ReadFile(values.String(path, nil))
+	if err != nil {
+		panic(err)
+	}
+	return string(content)
+}
+
+func fileReadStringExtern(args []values.BalValue) (values.BalValue, error) {
+	if len(args) != 1 {
+		return nil, fmt.Errorf("fileReadString expects exactly one argument")
+	}
+	return FileReadString(args[0]), nil
+}
+
 func initIOModule(rt *runtime.Runtime) {
-	runtime.RegisterExternFunction(rt, orgName, moduleName, funcName, printlnExtern)
+	runtime.RegisterExternFunction(rt, orgName, moduleName, "println", printlnExtern)
+	runtime.RegisterExternFunction(rt, orgName, moduleName, "fileReadString", fileReadStringExtern)
 }
 
 func init() {
