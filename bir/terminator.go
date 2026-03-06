@@ -19,6 +19,7 @@ package bir
 import (
 	"ballerina-lang-go/common"
 	"ballerina-lang-go/model"
+	"ballerina-lang-go/tools/diagnostics"
 	"ballerina-lang-go/values"
 )
 
@@ -70,12 +71,54 @@ func (g *Goto) GetKind() InstructionKind {
 	return INSTRUCTION_KIND_GOTO
 }
 
+func NewReturn(pos diagnostics.Location) *Return {
+	return &Return{
+		BIRTerminatorBase: BIRTerminatorBase{
+			BIRInstructionBase: BIRInstructionBase{
+				BIRNodeBase: BIRNodeBase{
+					Pos: pos,
+				},
+			},
+		},
+	}
+}
+
+func NewGoto(pos diagnostics.Location, thenBB *BIRBasicBlock) *Goto {
+	return &Goto{
+		BIRTerminatorBase: BIRTerminatorBase{
+			BIRInstructionBase: BIRInstructionBase{
+				BIRNodeBase: BIRNodeBase{
+					Pos: pos,
+				},
+			},
+			ThenBB: thenBB,
+		},
+	}
+}
+
 func (c *Call) GetKind() InstructionKind {
 	return c.Kind
 }
 
 func (c *Call) GetLhsOperand() *BIROperand {
 	return c.LhsOp
+}
+
+func NewCall(pos diagnostics.Location, kind InstructionKind, args []BIROperand, name model.Name, thenBB *BIRBasicBlock, lhsOp *BIROperand) *Call {
+	return &Call{
+		BIRTerminatorBase: BIRTerminatorBase{
+			BIRInstructionBase: BIRInstructionBase{
+				BIRNodeBase: BIRNodeBase{
+					Pos: pos,
+				},
+				LhsOp: lhsOp,
+			},
+			ThenBB: thenBB,
+		},
+		Kind: kind,
+		Args: args,
+		Name: name,
+	}
 }
 
 func (r *Return) GetKind() InstructionKind {
