@@ -83,7 +83,7 @@ func NewReturn(pos diagnostics.Location) *Return {
 	}
 }
 
-func NewGoto(pos diagnostics.Location, thenBB *BIRBasicBlock) *Goto {
+func NewGoto(thenBB *BIRBasicBlock, pos diagnostics.Location) *Goto {
 	return &Goto{
 		BIRTerminatorBase: BIRTerminatorBase{
 			BIRInstructionBase: BIRInstructionBase{
@@ -104,7 +104,7 @@ func (c *Call) GetLhsOperand() *BIROperand {
 	return c.LhsOp
 }
 
-func NewCall(pos diagnostics.Location, kind InstructionKind, args []BIROperand, name model.Name, thenBB *BIRBasicBlock, lhsOp *BIROperand) *Call {
+func NewCall(kind InstructionKind, args []BIROperand, name model.Name, thenBB *BIRBasicBlock, lhsOp *BIROperand, pos diagnostics.Location) *Call {
 	return &Call{
 		BIRTerminatorBase: BIRTerminatorBase{
 			BIRInstructionBase: BIRInstructionBase{
@@ -127,4 +127,20 @@ func (r *Return) GetKind() InstructionKind {
 
 func (b *Branch) GetKind() InstructionKind {
 	return INSTRUCTION_KIND_BRANCH
+}
+
+func NewBranch(op *BIROperand, trueBB, falseBB *BIRBasicBlock, pos diagnostics.Location) *Branch {
+	return &Branch{
+		BIRTerminatorBase: BIRTerminatorBase{
+			BIRInstructionBase: BIRInstructionBase{
+				BIRNodeBase: BIRNodeBase{
+					Pos: pos,
+				},
+			},
+			ThenBB: trueBB,
+		},
+		Op:      op,
+		TrueBB:  trueBB,
+		FalseBB: falseBB,
+	}
 }
