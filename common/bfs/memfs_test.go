@@ -1,3 +1,5 @@
+package bfs
+
 // Copyright (c) 2025, WSO2 LLC. (http://www.wso2.com).
 //
 // WSO2 LLC. licenses this file to you under the Apache License,
@@ -13,8 +15,6 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-
-package bfs
 
 import (
 	"bytes"
@@ -255,5 +255,39 @@ func TestMkdirAll_ReadDir(t *testing.T) {
 	}
 	if !entryMap["sub2"].IsDir() {
 		t.Errorf("sub2 should be a directory")
+	}
+}
+
+func TestMemFS_WindowsStylePaths(t *testing.T) {
+	fsys := NewMemFS()
+
+	name := "win\\dir\\sub\\file.txt"
+	content := []byte("windows style path")
+
+	if err := WriteFile(fsys, name, content, 0o644); err != nil {
+		t.Fatalf("WriteFile with backslashes error: %v", err)
+	}
+
+	for _, p := range []string{name, "win/dir/sub/file.txt"} {
+		f, err := fsys.Open(p)
+		if err != nil {
+			t.Fatalf("Open(%q) error: %v", p, err)
+		}
+		data, err := io.ReadAll(f)
+		f.Close()
+		if err != nil {
+			t.Fatalf("ReadAll(%q) error: %v", p, err)
+		}
+		if string(data) != string(content) {
+			t.Fatalf("content mismatch for %q: got %q want %q", p, string(data), string(content))
+		}
+	}
+
+	entries, err := fs.ReadDir(fsys, "win\\dir")
+	if err != nil {
+		t.Fatalf("ReadDir with backslashes error: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "sub" || !entries[0].IsDir() {
+		t.Fatalf("unexpected ReadDir entries for win\\dir: %+v", entries)
 	}
 }

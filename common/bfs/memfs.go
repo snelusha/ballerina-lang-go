@@ -52,6 +52,24 @@ type memDirHandle struct {
 	offset  int
 }
 
+// normalizePath converts any OS-specific separators to "/" and
+// cleans simple leading "./" prefixes while preserving ".".
+func normalizePath(name string) string {
+	if name == "" || name == "." {
+		return name
+	}
+
+	// Convert backslashes to forward slashes so that all internal
+	// bookkeeping uses a consistent separator, regardless of OS.
+	name = strings.ReplaceAll(name, "\\", "/")
+
+	for strings.HasPrefix(name, "./") {
+		name = strings.TrimPrefix(name, "./")
+	}
+
+	return name
+}
+
 func NewMemFS() *memFS {
 	return &memFS{
 		entries: make(map[string]*memEntry),
@@ -94,6 +112,7 @@ func (mfs *memFS) mkdirAllInternal(dirPath string, perm fs.FileMode) {
 }
 
 func (mfs *memFS) Create(name string) (fs.File, error) {
+	name = normalizePath(name)
 	if !fs.ValidPath(name) {
 		return nil, &fs.PathError{Op: "create", Path: name, Err: fs.ErrInvalid}
 	}
@@ -118,6 +137,7 @@ func (mfs *memFS) Create(name string) (fs.File, error) {
 }
 
 func (mfs *memFS) MkdirAll(dirPath string, perm fs.FileMode) error {
+	dirPath = normalizePath(dirPath)
 	if !fs.ValidPath(dirPath) {
 		return &fs.PathError{Op: "mkdir", Path: dirPath, Err: fs.ErrInvalid}
 	}
@@ -127,9 +147,7 @@ func (mfs *memFS) MkdirAll(dirPath string, perm fs.FileMode) error {
 }
 
 func (mfs *memFS) Open(name string) (fs.File, error) {
-	if !fs.ValidPath(name) {
-		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrInvalid}
-	}
+	name = normalizePath(name)
 
 	// Handle root directory
 	if name == "." {
@@ -141,6 +159,10 @@ func (mfs *memFS) Open(name string) (fs.File, error) {
 			},
 			entries: mfs.readDirEntries("."),
 		}, nil
+	}
+
+	if !fs.ValidPath(name) {
+		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrInvalid}
 	}
 
 	entry, ok := mfs.entries[name]
@@ -162,6 +184,7 @@ func (mfs *memFS) Open(name string) (fs.File, error) {
 }
 
 func (mfs *memFS) OpenFile(name string, flag int, perm fs.FileMode) (fs.File, error) {
+	name = normalizePath(name)
 	if !fs.ValidPath(name) {
 		return nil, &fs.PathError{Op: "openfile", Path: name, Err: fs.ErrInvalid}
 	}
@@ -189,13 +212,15 @@ func (mfs *memFS) OpenFile(name string, flag int, perm fs.FileMode) (fs.File, er
 }
 
 func (mfs *memFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	if !fs.ValidPath(name) {
-		return nil, &fs.PathError{Op: "readdir", Path: name, Err: fs.ErrInvalid}
-	}
+	name = normalizePath(name)
 
 	// For root directory
 	if name == "." {
 		return mfs.readDirEntries("."), nil
+	}
+
+	if !fs.ValidPath(name) {
+		return nil, &fs.PathError{Op: "readdir", Path: name, Err: fs.ErrInvalid}
 	}
 
 	entry, ok := mfs.entries[name]
@@ -212,6 +237,8 @@ func (mfs *memFS) ReadDir(name string) ([]fs.DirEntry, error) {
 
 // readDirEntries returns direct children of a directory.
 func (mfs *memFS) readDirEntries(dirPath string) []fs.DirEntry {
+	dirPath = normalizePath(dirPath)
+
 	var prefix string
 	if dirPath == "." {
 		prefix = ""
@@ -267,6 +294,8 @@ func (mfs *memFS) readDirEntries(dirPath string) []fs.DirEntry {
 
 // Remove removes a file or directory and all its contents.
 func (mfs *memFS) Remove(name string) error {
+	name = normalizePath(name)
+
 	removed := false
 
 	// Remove the entry itself if it exists
@@ -293,6 +322,9 @@ func (mfs *memFS) Remove(name string) error {
 
 // Move moves a file or directory from oldpath to newpath.
 func (mfs *memFS) Move(oldpath, newpath string) error {
+	oldpath = normalizePath(oldpath)
+	newpath = normalizePath(newpath)
+
 	type moveItem struct {
 		oldName string
 		newName string
@@ -339,6 +371,7 @@ func (mfs *memFS) Move(oldpath, newpath string) error {
 
 // WriteFile writes data to a file, creating it if necessary.
 func (mfs *memFS) WriteFile(name string, data []byte, perm fs.FileMode) error {
+	name = normalizePath(name)
 	if !fs.ValidPath(name) {
 		return &fs.PathError{Op: "writefile", Path: name, Err: fs.ErrInvalid}
 	}
