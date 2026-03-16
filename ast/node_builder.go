@@ -100,7 +100,7 @@ func NewNodeBuilder(cx *context.CompilerContext) *NodeBuilder {
 }
 
 func getBuiltinPos() diagnostics.Location {
-	return nil
+	return diagnostics.NewBLangDiagnosticLocation("<builtin>", 0, 0, 0, 0, 0, 0)
 }
 
 var _ tree.NodeTransformer[BLangNode] = &NodeBuilder{}
@@ -675,6 +675,7 @@ func getPositionWithoutMetadata(node tree.Node) Location {
 
 func createIdentifier(pos Location, value, originalValue *string) BLangIdentifier {
 	bLIdentifer := BLangIdentifier{}
+	bLIdentifer.pos = pos
 	if value == nil {
 		return bLIdentifer
 	}
@@ -692,8 +693,9 @@ func createIdentifier(pos Location, value, originalValue *string) BLangIdentifie
 		bLIdentifer.SetLiteral(false)
 	}
 
-	bLIdentifer.SetOriginalValue(*originalValue)
-	bLIdentifer.pos = pos
+	if originalValue != nil {
+		bLIdentifer.SetOriginalValue(*originalValue)
+	}
 	return bLIdentifer
 }
 
@@ -1332,7 +1334,13 @@ func (n *NodeBuilder) populateFuncSignature(bLFunction *BLangFunction, funcSigna
 		}
 	} else {
 		// Default return type is nil when not specified
-		bLFunction.SetReturnTypeDescriptor(&BLangValueType{TypeKind: model.TypeKind_NIL})
+		nilType := &BLangValueType{TypeKind: model.TypeKind_NIL}
+		pos := getPosition(funcSignature)
+		if pos == nil {
+			pos = getBuiltinPos()
+		}
+		nilType.pos = pos
+		bLFunction.SetReturnTypeDescriptor(nilType)
 	}
 }
 
@@ -1424,6 +1432,9 @@ func (n *NodeBuilder) TransformImportDeclaration(importDeclarationNode *tree.Imp
 	if orgNameNode != nil && !orgNameNode.IsMissing() {
 		orgNamePos = getPosition(orgNameNode)
 	}
+	if orgNamePos == nil {
+		orgNamePos = getBuiltinPos()
+	}
 	var orgNameStr *string
 	if orgNameToken != nil {
 		text := orgNameToken.Text()
@@ -1433,7 +1444,7 @@ func (n *NodeBuilder) TransformImportDeclaration(importDeclarationNode *tree.Imp
 	importDcl.OrgName = &orgIdentifier
 
 	// 7. Set version (always empty for import declarations)
-	emptyVersion := createIdentifier(nil, nil, nil)
+	emptyVersion := createIdentifier(getBuiltinPos(), nil, nil)
 	importDcl.Version = &emptyVersion
 
 	// 8. Handle alias/prefix
@@ -1633,6 +1644,7 @@ func (n *NodeBuilder) generateAndAddBLangStatements(statementNodes tree.NodeList
 			if j == lastStmtIndex {
 				// Add an empty block statement if there are no statements following the `if` statement.
 				emptyBlock := &BLangBlockStmt{}
+				emptyBlock.pos = getPosition(endNode)
 				*statements = append(*statements, emptyBlock)
 				break
 			}
@@ -2229,6 +2241,7 @@ func (n *NodeBuilder) TransformNilTypeDescriptor(nilTypeDescriptorNode *tree.Nil
 func (n *NodeBuilder) TransformOptionalTypeDescriptor(optionalTypeDescriptorNode *tree.OptionalTypeDescriptorNode) BLangNode {
 	typeDesc := optionalTypeDescriptorNode.TypeDescriptor()
 	nilType := &BLangValueType{TypeKind: model.TypeKind_NIL}
+	nilType.pos = getPosition(optionalTypeDescriptorNode)
 	bLUnionType := &BLangUnionTypeNode{
 		lhs: model.TypeData{
 			TypeDescriptor: n.createTypeNode(typeDesc),

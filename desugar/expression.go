@@ -191,6 +191,8 @@ func walkFieldBaseAccess(cx *FunctionContext, expr *ast.BLangFieldBaseAccess) de
 		Value:         name,
 		OriginalValue: name,
 	}
+	// Propagate position from the original field access to the synthetic literal.
+	lit.SetPosition(expr.GetPosition())
 	s := semtypes.STRING
 	lit.SetDeterminedType(&s)
 
@@ -199,6 +201,7 @@ func walkFieldBaseAccess(cx *FunctionContext, expr *ast.BLangFieldBaseAccess) de
 	}
 	indexAccess.Expr = expr.Expr
 	indexAccess.SetDeterminedType(expr.GetDeterminedType())
+	indexAccess.SetPosition(expr.GetPosition())
 
 	return desugaredNode[model.ExpressionNode]{
 		initStmts:       initStmts,
@@ -465,6 +468,7 @@ func walkMappingConstructorExpr(cx *FunctionContext, expr *ast.BLangMappingConst
 					Value:         name,
 					OriginalValue: name,
 				}
+				lit.SetPosition(varRef.GetPosition())
 				s := semtypes.STRING
 				lit.SetDeterminedType(&s)
 				kv.Key.Expr = lit

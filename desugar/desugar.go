@@ -23,6 +23,7 @@ import (
 	"ballerina-lang-go/desugar/internal/dcontext"
 	"ballerina-lang-go/model"
 	"ballerina-lang-go/semtypes"
+	"ballerina-lang-go/tools/diagnostics"
 	"fmt"
 	"sync"
 )
@@ -52,6 +53,14 @@ func (ctx *FunctionContext) getImportedSymbolSpace(pkgName string) (model.Export
 }
 
 func (ctx *FunctionContext) addImplicitImport(pkgName string, imp ast.BLangImportPackage) {
+	// Ensure implicit imports always have a non-nil position. If the caller
+	// didn't set one, fall back to a builtin synthetic location.
+	if imp.GetPosition() == nil {
+		imp.SetPosition(ast.Location(diagnostics.NewBLangDiagnosticLocation(
+			"<implicit-import>",
+			0, 0, 0, 0, 0, 0,
+		)))
+	}
 	ctx.pkgCtx.AddImplicitImport(pkgName, imp)
 }
 

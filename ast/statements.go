@@ -60,7 +60,7 @@ type (
 	BLangDo struct {
 		bLangStatementBase
 		Body         BLangBlockStmt
-		OnFailClause BLangOnFailClause
+		OnFailClause *BLangOnFailClause
 	}
 
 	BLangExpressionStmt struct {
@@ -81,7 +81,7 @@ type (
 		scope        model.Scope
 		Expr         BLangExpression
 		Body         BLangBlockStmt
-		OnFailClause BLangOnFailClause
+		OnFailClause *BLangOnFailClause
 	}
 
 	BLangForeach struct {
@@ -281,16 +281,16 @@ func (this *BLangDo) SetBody(body model.BlockStatementNode) {
 
 func (this *BLangDo) GetOnFailClause() model.OnFailClauseNode {
 	// migrated from BLangDo.java:57:5
-	return &this.OnFailClause
+	return this.OnFailClause
 }
 
 func (this *BLangDo) SetOnFailClause(onFailClause model.OnFailClauseNode) {
 	// migrated from BLangDo.java:62:5
 	if onFailClause, ok := onFailClause.(*BLangOnFailClause); ok {
-		this.OnFailClause = *onFailClause
+		this.OnFailClause = onFailClause
 		return
 	}
-	panic("onFailClause is not a BLangOnFailClause")
+	panic("onFailClause is not a *BLangOnFailClause")
 }
 
 func (this *BLangDo) GetKind() model.NodeKind {
@@ -396,16 +396,16 @@ func (this *BLangWhile) SetBody(body model.BlockStatementNode) {
 
 func (this *BLangWhile) GetOnFailClause() model.OnFailClauseNode {
 	// migrated from BLangWhile.java:70:5
-	return &this.OnFailClause
+	return this.OnFailClause
 }
 
 func (this *BLangWhile) SetOnFailClause(onFailClause model.OnFailClauseNode) {
 	// migrated from BLangWhile.java:75:5
 	if onFailClause, ok := onFailClause.(*BLangOnFailClause); ok {
-		this.OnFailClause = *onFailClause
+		this.OnFailClause = onFailClause
 		return
 	}
-	panic("onFailClause is not a BLangOnFailClause")
+	panic("onFailClause is not a *BLangOnFailClause")
 }
 
 func (this *BLangWhile) GetKind() model.NodeKind {

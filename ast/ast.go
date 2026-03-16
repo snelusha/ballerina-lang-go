@@ -1929,6 +1929,8 @@ func GetCompilationUnit(cx *context.CompilerContext, syntaxTree *tree.SyntaxTree
 func ToPackage(compilationUnit *BLangCompilationUnit) *BLangPackage {
 	p := BLangPackage{}
 	p.PackageID = compilationUnit.packageID
+	// Derive a package-level position from the compilation unit so the root node is locatable.
+	p.SetPosition(compilationUnit.GetPosition())
 	for _, node := range compilationUnit.TopLevelNodes {
 		switch node := node.(type) {
 		case *BLangImportPackage:

@@ -366,7 +366,12 @@ func buildBLangPackage(cx *context.CompilerContext, syntaxTrees []*tree.SyntaxTr
 		if dumpAST {
 			fmt.Fprintln(os.Stderr, prettyPrinter.Print(cu))
 		}
-		return ast.ToPackage(cu)
+		pkg := ast.ToPackage(cu)
+		// Derive a package position from the compilation unit so the root also has a location.
+		if pkg.GetPosition() == nil {
+			pkg.SetPosition(cu.GetPosition())
+		}
+		return pkg
 	}
 
 	pkg := &ast.BLangPackage{}
@@ -377,6 +382,8 @@ func buildBLangPackage(cx *context.CompilerContext, syntaxTrees []*tree.SyntaxTr
 		}
 		if pkg.PackageID == nil {
 			pkg.PackageID = cu.GetPackageID()
+			// Initialize package position based on the first compilation unit.
+			pkg.SetPosition(cu.GetPosition())
 		}
 		for _, node := range cu.GetTopLevelNodes() {
 			switch n := node.(type) {

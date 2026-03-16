@@ -18,10 +18,12 @@ package desugar_test
 
 import (
 	"flag"
+	"fmt"
 	"testing"
 
 	"ballerina-lang-go/ast"
 	"ballerina-lang-go/context"
+	"ballerina-lang-go/model"
 	"ballerina-lang-go/semtypes"
 	"ballerina-lang-go/test_util"
 	"ballerina-lang-go/test_util/testphases"
@@ -30,6 +32,28 @@ import (
 )
 
 var update = flag.Bool("update", false, "update expected desugared AST files")
+
+type positionTestVisitor struct {
+	missingPositions []string
+	missingCount     int
+}
+
+func (v *positionTestVisitor) Visit(node ast.BLangNode) ast.Visitor {
+	if node == nil {
+		return nil
+	}
+	if node.GetPosition() == nil {
+		v.missingCount++
+		if len(v.missingPositions) < 25 {
+			v.missingPositions = append(v.missingPositions, fmt.Sprintf("%T", node))
+		}
+	}
+	return v
+}
+
+func (v *positionTestVisitor) VisitTypeData(typeData *model.TypeData) ast.Visitor {
+	return v
+}
 
 func TestDesugar(t *testing.T) {
 	flag.Parse()
@@ -57,6 +81,19 @@ func testDesugar(t *testing.T, testCase test_util.TestCase) {
 	if err != nil {
 		t.Errorf("pipeline failed for %s: %v", testCase.InputPath, err)
 		return
+	}
+
+	// Ensure every visited AST node in the desugared tree has position info.
+	posVisitor := &positionTestVisitor{}
+	ast.Walk(posVisitor, result.Package)
+	if posVisitor.missingCount > 0 {
+		t.Errorf(
+			"found %d desugared AST nodes without position for %s (showing up to %d types): %v",
+			posVisitor.missingCount,
+			testCase.InputPath,
+			len(posVisitor.missingPositions),
+			posVisitor.missingPositions,
+		)
 	}
 
 	// Serialize AST after desugaring

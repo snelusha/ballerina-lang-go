@@ -254,7 +254,7 @@ func handleBlockFunctionBody(ctx *stmtContext, ast *ast.BLangBlockFunctionBody) 
 	}
 	// Add implicit return
 	if curBB != nil {
-		curBB.Terminator = NewReturn(curBB.Pos)
+		curBB.Terminator = NewReturn(ast.GetPosition())
 	}
 }
 

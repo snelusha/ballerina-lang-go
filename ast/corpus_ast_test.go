@@ -109,6 +109,28 @@ func (v *walkTestVisitor) VisitTypeData(typeData *model.TypeData) ast.Visitor {
 	return v
 }
 
+type positionTestVisitor struct {
+	missingPositions []string
+	missingCount     int
+}
+
+func (v *positionTestVisitor) Visit(node ast.BLangNode) ast.Visitor {
+	if node == nil {
+		return nil
+	}
+	if node.GetPosition() == nil {
+		v.missingCount++
+		if len(v.missingPositions) < 25 {
+			v.missingPositions = append(v.missingPositions, fmt.Sprintf("%T", node))
+		}
+	}
+	return v
+}
+
+func (v *positionTestVisitor) VisitTypeData(typeData *model.TypeData) ast.Visitor {
+	return v
+}
+
 func TestWalkTraversal(t *testing.T) {
 	flag.Parse()
 
@@ -142,6 +164,18 @@ func testWalkTraversal(t *testing.T, testCase test_util.TestCase) {
 
 	if visitor.nodeCount == 0 {
 		t.Errorf("Walk visited 0 nodes for %s", testCase.InputPath)
+	}
+
+	posVisitor := &positionTestVisitor{}
+	ast.Walk(posVisitor, result.CompilationUnit)
+	if posVisitor.missingCount > 0 {
+		t.Errorf(
+			"found %d AST nodes without position for %s (showing up to %d types): %v",
+			posVisitor.missingCount,
+			testCase.InputPath,
+			len(posVisitor.missingPositions),
+			posVisitor.missingPositions,
+		)
 	}
 
 	if testing.Verbose() {

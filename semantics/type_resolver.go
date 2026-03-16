@@ -235,7 +235,9 @@ func (t *TypeResolver) resolveStatementInner(chain *binding, stmt ast.BLangState
 			return defaultStmtEffect(chain), false
 		}
 		s.Body.SetDeterminedType(&semtypes.NEVER)
-		t.resolveOnFailClause(chain, &s.OnFailClause)
+		if s.OnFailClause != nil {
+			t.resolveOnFailClause(chain, s.OnFailClause)
+		}
 		result := exprEffect.ifFalse
 		if !bodyEffect.nonCompletion {
 			result = mergeChains(t.ctx, result, bodyEffect.binding, semtypes.Union)

@@ -319,7 +319,9 @@ func Walk(v Visitor, node BLangNode) {
 			Walk(v, node.Expr.(BLangNode))
 		}
 		Walk(v, &node.Body)
-		Walk(v, &node.OnFailClause)
+		if node.OnFailClause != nil {
+			Walk(v, node.OnFailClause)
+		}
 
 	case *BLangForeach:
 		if node.Collection != nil {
@@ -335,7 +337,9 @@ func Walk(v Visitor, node BLangNode) {
 
 	case *BLangDo:
 		Walk(v, &node.Body)
-		Walk(v, &node.OnFailClause)
+		if node.OnFailClause != nil {
+			Walk(v, node.OnFailClause)
+		}
 
 	case *BLangMatchStatement:
 		if node.Expr != nil {
