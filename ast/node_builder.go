@@ -17,16 +17,17 @@
 package ast
 
 import (
-	"ballerina-lang-go/context"
-	"ballerina-lang-go/model"
-	"ballerina-lang-go/parser/common"
-	"ballerina-lang-go/parser/tree"
-	"ballerina-lang-go/tools/diagnostics"
 	"fmt"
 	"math"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"ballerina-lang-go/context"
+	"ballerina-lang-go/model"
+	"ballerina-lang-go/parser/common"
+	"ballerina-lang-go/parser/tree"
+	"ballerina-lang-go/tools/diagnostics"
 
 	balCommon "ballerina-lang-go/common"
 )
@@ -661,14 +662,7 @@ func getPositionWithoutMetadata(node tree.Node) Location {
 
 // getDocumentationString extracts the documentation string from metadata
 func getDocumentationString(metadata *tree.MetadataNode) tree.Node {
-	if metadata == nil || metadata.IsMissing() {
-		return nil
-	}
-	docString := metadata.DocumentationString()
-	if docString == nil || docString.IsMissing() {
-		return nil
-	}
-	return docString
+	return metadata.DocumentationString()
 }
 
 // createMarkdownDocumentationAttachment creates a BLangMarkdownDocumentation from a documentation string node

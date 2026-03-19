@@ -1,0 +1,11 @@
+module $anon.. v 0.0.0;
+basicFunction() -> nil{
+  bb0 {
+    return;
+  }
+}
+main() -> nil{
+  bb0 {
+    return;
+  }
+}
