@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Benchmark Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+:root {
+	--black: #000000;
+	--white: #ffffff;
+	--border: #e7e3e4;
+	--dim: #888888;
+	--faster: #000000;
+	--slower: #888888;
+	--failed: #000000;
+}
+
+html, body {
+	background: var(--white);
+	color: var(--black);
+	font-family: 'JetBrains Mono', monospace;
+	font-size: 13px;
+	line-height: 1.6;
+	-webkit-font-smoothing: antialiased;
+}
+
+body {
+	padding: 48px 40px;
+	max-width: 980px;
+	margin: 0 auto;
+}
+
+header {
+	border-bottom: 1px solid var(--border);
+	padding-bottom: 24px;
+	margin-bottom: 40px;
+}
+
+.header-title {
+	font-size: 11px;
+	font-weight: 400;
+	color: var(--dim);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	margin-bottom: 8px;
+}
+
+.header-refs {
+	font-size: 18px;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+}
+
+.header-refs .sep {
+	font-weight: 300;
+	color: var(--dim);
+	margin: 0 10px;
+}
+
+.header-meta {
+	margin-top: 8px;
+	font-size: 11px;
+	color: var(--dim);
+	display: flex;
+	gap: 24px;
+}
+
+.section-label {
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--dim);
+	margin-bottom: 12px;
+}
+
+.benchmarks {
+	margin-bottom: 48px;
+}
+
+.benchmark-group {
+	margin-bottom: 32px;
+	border: 1px solid var(--border);
+}
+
+.benchmark-group-header {
+	padding: 10px 16px;
+	background: var(--black);
+	color: var(--white);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+thead tr {
+	border-bottom: 1px solid var(--border);
+}
+
+thead th {
+	padding: 10px 16px;
+	text-align: left;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--dim);
+	white-space: nowrap;
+}
+
+thead th:not(:first-child) {
+	text-align: right;
+}
+
+tbody tr {
+	border-bottom: 1px solid var(--border);
+}
+
+tbody tr:last-child {
+	border-bottom: none;
+}
+
+tbody td {
+	padding: 12px 16px;
+	font-size: 12px;
+	vertical-align: middle;
+}
+
+tbody td:not(:first-child) {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.ref-tag {
+	display: inline-block;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	padding: 2px 6px;
+	background: var(--black);
+	color: var(--white);
+}
+
+.ref-tag.head {
+	background: var(--white);
+	color: var(--black);
+	border: 1px solid var(--black);
+}
+
+.val-primary {
+	font-weight: 700;
+}
+
+.val-secondary {
+	color: var(--dim);
+}
+
+.failures-badge {
+	display: inline-block;
+	font-size: 10px;
+	font-weight: 600;
+	padding: 1px 5px;
+	background: var(--black);
+	color: var(--white);
+	margin-left: 6px;
+}
+
+.all-failed {
+	color: var(--dim);
+	font-style: italic;
+	font-size: 11px;
+}
+
+.summary {
+	border: 1px solid var(--border);
+}
+
+.summary-header {
+	padding: 10px 16px;
+	background: var(--black);
+	color: var(--white);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+}
+
+.summary-row {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	padding: 14px 16px;
+	border-bottom: 1px solid var(--border);
+}
+
+.summary-row:last-child {
+	border-bottom: none;
+}
+
+.summary-label {
+	font-size: 11px;
+	color: var(--dim);
+	flex-shrink: 0;
+	margin-right: 16px;
+}
+
+.summary-label .ref-tag {
+	margin: 0 3px;
+}
+
+.summary-value {
+	font-size: 14px;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+}
+
+.summary-value.faster {
+	color: var(--black);
+}
+
+.summary-value.slower {
+	color: var(--dim);
+}
+
+footer {
+	margin-top: 40px;
+	padding-top: 16px;
+	border-top: 1px solid var(--border);
+	font-size: 10px;
+	color: var(--dim);
+	letter-spacing: 0.04em;
+}
+</style>
+</head>
+<body>
+
+<header>
+	<div class="header-title">Benchmark Report</div>
+	<div class="header-refs">
+		<span>v0.2.0</span>
+		<span class="sep">vs</span>
+		<span>v0.3.0</span>
+	</div>
+	<div class="header-meta">
+		<span>3 benchmarks</span>
+		<span>generated 2026-03-28 16:26:27 UTC</span>
+	</div>
+</header>
+
+<div class="benchmarks">
+	<div class="section-label">Results</div>
+	
+	<div class="benchmark-group">
+		<div class="benchmark-group-header">first.bal</div>
+		<table>
+			<thead>
+				<tr>
+					<th>ref</th>
+					<th>mean</th>
+					<th>σ</th>
+					<th>min</th>
+					<th>max</th>
+					<th>runs</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><span class="ref-tag">v0.2.0</span></td>
+					
+					<td><span class="val-primary">8.0</span> <span class="val-secondary">ms</span></td>
+					<td><span class="val-secondary">8.3 ms</span></td>
+					<td><span class="val-secondary">0.0 ms</span></td>
+					<td><span class="val-secondary">20.0 ms</span></td>
+					<td><span class="val-secondary">10</span></td>
+					
+				</tr>
+				<tr>
+					<td><span class="ref-tag head">v0.3.0</span></td>
+					
+					<td><span class="val-primary">7.6</span> <span class="val-secondary">ms</span></td>
+					<td><span class="val-secondary">7.8 ms</span></td>
+					<td><span class="val-secondary">0.0 ms</span></td>
+					<td><span class="val-secondary">17.0 ms</span></td>
+					<td><span class="val-secondary">10</span></td>
+					
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	
+	<div class="benchmark-group">
+		<div class="benchmark-group-header">second.bal</div>
+		<table>
+			<thead>
+				<tr>
+					<th>ref</th>
+					<th>mean</th>
+					<th>σ</th>
+					<th>min</th>
+					<th>max</th>
+					<th>runs</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><span class="ref-tag">v0.2.0</span></td>
+					
+					<td><span class="val-primary">8.1</span> <span class="val-secondary">ms</span></td>
+					<td><span class="val-secondary">8.3 ms</span></td>
+					<td><span class="val-secondary">0.0 ms</span></td>
+					<td><span class="val-secondary">18.0 ms</span></td>
+					<td><span class="val-secondary">10</span></td>
+					
+				</tr>
+				<tr>
+					<td><span class="ref-tag head">v0.3.0</span></td>
+					
+					<td><span class="val-primary">7.6</span> <span class="val-secondary">ms</span></td>
+					<td><span class="val-secondary">7.9 ms</span></td>
+					<td><span class="val-secondary">0.0 ms</span></td>
+					<td><span class="val-secondary">18.0 ms</span></td>
+					<td><span class="val-secondary">10</span></td>
+					
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	
+	<div class="benchmark-group">
+		<div class="benchmark-group-header">third.bal</div>
+		<table>
+			<thead>
+				<tr>
+					<th>ref</th>
+					<th>mean</th>
+					<th>σ</th>
+					<th>min</th>
+					<th>max</th>
+					<th>runs</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><span class="ref-tag">v0.2.0</span></td>
+					
+					<td><span class="val-primary">7.1</span> <span class="val-secondary">ms</span></td>
+					<td><span class="val-secondary">7.3 ms</span></td>
+					<td><span class="val-secondary">0.0 ms</span></td>
+					<td><span class="val-secondary">17.0 ms</span></td>
+					<td><span class="val-secondary">10</span></td>
+					
+				</tr>
+				<tr>
+					<td><span class="ref-tag head">v0.3.0</span></td>
+					
+					<td><span class="val-primary">7.8</span> <span class="val-secondary">ms</span></td>
+					<td><span class="val-secondary">8.0 ms</span></td>
+					<td><span class="val-secondary">0.0 ms</span></td>
+					<td><span class="val-secondary">17.0 ms</span></td>
+					<td><span class="val-secondary">10</span></td>
+					
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	
+</div>
+
+
+<div class="summary">
+	<div class="summary-header">Summary</div>
+	
+	<div class="summary-row">
+		<div class="summary-label">
+			<span class="ref-tag head">v0.3.0</span>
+			&nbsp;(first.bal) is faster than&nbsp;
+			<span class="ref-tag head">v0.2.0</span>
+		</div>
+		<div class="summary-value faster">
+			1.05×&nbsp;<span style="font-weight:400;font-size:11px;color:#888">± 1.53</span>
+		</div>
+	</div>
+	
+	<div class="summary-row">
+		<div class="summary-label">
+			<span class="ref-tag head">v0.3.0</span>
+			&nbsp;(second.bal) is faster than&nbsp;
+			<span class="ref-tag head">v0.2.0</span>
+		</div>
+		<div class="summary-value faster">
+			1.06×&nbsp;<span style="font-weight:400;font-size:11px;color:#888">± 1.55</span>
+		</div>
+	</div>
+	
+	<div class="summary-row">
+		<div class="summary-label">
+			<span class="ref-tag">v0.2.0</span>
+			&nbsp;(third.bal) is faster than&nbsp;
+			<span class="ref-tag">v0.3.0</span>
+		</div>
+		<div class="summary-value slower">
+			1.10×&nbsp;<span style="font-weight:400;font-size:11px;color:#888">± 1.10</span>
+		</div>
+	</div>
+	
+</div>
+
+
+<footer>bal-bench &mdash; benchmark report</footer>
+
+</body>
+</html>

@@ -39,6 +39,14 @@ func run() error {
 	}
 
 	printReport(result)
+
+	if cfg.htmlOutput != "" {
+		if err := writeHTMLReport(result, cfg.htmlOutput); err != nil {
+			return fmt.Errorf("failed to write html report: %w", err)
+		}
+		fmt.Printf("HTML report written to %q\n", cfg.htmlOutput)
+	}
+
 	return nil
 }
 
@@ -49,6 +57,7 @@ type config struct {
 	runs        int
 	warmup      int
 	sleepMs     int
+	htmlOutput  string
 }
 
 func (c *config) validate() error {
@@ -85,6 +94,7 @@ func parseFlags() (*config, error) {
 	runs := fs.Int("runs", 10, "Number of benchmark runs per command")
 	warmup := fs.Int("warmup", 0, "Number of warmup runs (excluded from results)")
 	sleepMs := fs.Int("sleep", 0, "Milliseconds to sleep between runs")
+	htmlOutput := fs.String("html", "", "Write an HTML report to the given file path")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] <base-ref> <head-ref> <input>\n\n", os.Args[0])
@@ -109,5 +119,6 @@ func parseFlags() (*config, error) {
 		runs:        *runs,
 		warmup:      *warmup,
 		sleepMs:     *sleepMs,
+		htmlOutput:  *htmlOutput,
 	}, nil
 }
