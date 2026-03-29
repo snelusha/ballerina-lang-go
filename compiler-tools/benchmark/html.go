@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const htmlTemplate = `<!DOCTYPE html>
+const reportHTMLTemplate = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -29,10 +29,7 @@ const htmlTemplate = `<!DOCTYPE html>
 	--black: #000000;
 	--white: #ffffff;
 	--border: #e7e3e4;
-	--dim: #888888;
-	--faster: #000000;
-	--slower: #888888;
-	--failed: #000000;
+	--dim: #999999;
 }
 
 html, body {
@@ -46,7 +43,7 @@ html, body {
 
 body {
 	padding: 48px 40px;
-	max-width: 980px;
+	max-width: 960px;
 	margin: 0 auto;
 }
 
@@ -56,17 +53,17 @@ header {
 	margin-bottom: 40px;
 }
 
-.header-title {
-	font-size: 11px;
-	font-weight: 400;
+.header-eyebrow {
+	font-size: 10px;
+	font-weight: 500;
 	color: var(--dim);
-	letter-spacing: 0.08em;
+	letter-spacing: 0.1em;
 	text-transform: uppercase;
 	margin-bottom: 8px;
 }
 
 .header-refs {
-	font-size: 18px;
+	font-size: 20px;
 	font-weight: 700;
 	letter-spacing: -0.02em;
 }
@@ -78,11 +75,11 @@ header {
 }
 
 .header-meta {
-	margin-top: 8px;
+	margin-top: 6px;
 	font-size: 11px;
 	color: var(--dim);
 	display: flex;
-	gap: 24px;
+	gap: 20px;
 }
 
 .section-label {
@@ -91,25 +88,15 @@ header {
 	letter-spacing: 0.12em;
 	text-transform: uppercase;
 	color: var(--dim);
-	margin-bottom: 12px;
+	margin-bottom: 16px;
 }
 
 .benchmarks {
 	margin-bottom: 48px;
 }
 
-.benchmark-group {
-	margin-bottom: 32px;
+.benchmark-block {
 	border: 1px solid var(--border);
-}
-
-.benchmark-group-header {
-	padding: 10px 16px;
-	background: var(--black);
-	color: var(--white);
-	font-size: 11px;
-	font-weight: 600;
-	letter-spacing: 0.06em;
 }
 
 table {
@@ -117,24 +104,35 @@ table {
 	border-collapse: collapse;
 }
 
-thead tr {
-	border-bottom: 1px solid var(--border);
-}
-
-thead th {
-	padding: 10px 16px;
-	text-align: left;
+thead tr.row-groups th {
+	padding: 8px 16px 4px;
 	font-size: 10px;
 	font-weight: 600;
 	letter-spacing: 0.1em;
 	text-transform: uppercase;
 	color: var(--dim);
+	text-align: center;
+	border-bottom: 1px solid var(--border);
+}
+
+thead tr.row-groups th.left  { text-align: left; }
+thead tr.row-groups th.right { text-align: right; }
+thead tr.row-groups th.sep   { border-left: 1px solid var(--border); }
+
+thead tr.row-subs th {
+	padding: 5px 16px 8px;
+	font-size: 10px;
+	font-weight: 500;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--dim);
+	text-align: right;
+	border-bottom: 1px solid var(--border);
 	white-space: nowrap;
 }
 
-thead th:not(:first-child) {
-	text-align: right;
-}
+thead tr.row-subs th.left { text-align: left; }
+thead tr.row-subs th.sep  { border-left: 1px solid var(--border); }
 
 tbody tr {
 	border-bottom: 1px solid var(--border);
@@ -145,49 +143,29 @@ tbody tr:last-child {
 }
 
 tbody td {
-	padding: 12px 16px;
+	padding: 13px 16px;
 	font-size: 12px;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
 	vertical-align: middle;
 }
 
-tbody td:not(:first-child) {
-	text-align: right;
-	font-variant-numeric: tabular-nums;
-}
+tbody td.left { text-align: left; }
+tbody td.sep  { border-left: 1px solid var(--border); }
 
 .ref-tag {
 	display: inline-block;
 	font-size: 10px;
-	font-weight: 600;
-	letter-spacing: 0.04em;
-	padding: 2px 6px;
-	background: var(--black);
-	color: var(--white);
-}
-
-.ref-tag.head {
-	background: var(--white);
-	color: var(--black);
-	border: 1px solid var(--black);
-}
-
-.val-primary {
 	font-weight: 700;
+	letter-spacing: 0.04em;
+	padding: 2px 7px;
+	border: 1px solid var(--black);
+	color: var(--black);
+	background: var(--white);
 }
 
-.val-secondary {
-	color: var(--dim);
-}
-
-.failures-badge {
-	display: inline-block;
-	font-size: 10px;
-	font-weight: 600;
-	padding: 1px 5px;
-	background: var(--black);
-	color: var(--white);
-	margin-left: 6px;
-}
+.val-strong { font-weight: 700; }
+.val-dim    { color: var(--dim); }
 
 .all-failed {
 	color: var(--dim);
@@ -195,59 +173,70 @@ tbody td:not(:first-child) {
 	font-size: 11px;
 }
 
+.failures-badge {
+	font-size: 10px;
+	font-weight: 600;
+	padding: 1px 5px;
+	border: 1px solid var(--black);
+	color: var(--black);
+	margin-left: 6px;
+}
+
+.delta          { font-weight: 700; color: var(--black); }
+.delta-faster   { color: var(--black); }
+.delta-slower   { color: var(--black); }
+.delta-na       { color: var(--dim); font-weight: 400; font-style: italic; font-size: 11px; }
+.delta-err      { font-size: 11px; font-weight: 400; color: var(--dim); }
+.delta-winner   { display: block; font-size: 10px; font-weight: 600; color: var(--dim); letter-spacing: 0.04em; margin-top: 3px; }
+
 .summary {
 	border: 1px solid var(--border);
 }
 
-.summary-header {
-	padding: 10px 16px;
-	background: var(--black);
-	color: var(--white);
+.summary-block-header {
+	padding: 9px 16px;
+	border-bottom: 1px solid var(--border);
 	font-size: 11px;
 	font-weight: 600;
-	letter-spacing: 0.06em;
+	letter-spacing: 0.04em;
 }
 
-.summary-row {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	padding: 14px 16px;
+.summary table thead th {
+	padding: 6px 16px 8px;
+	font-size: 10px;
+	font-weight: 500;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--dim);
+	border-bottom: 1px solid var(--border);
+	text-align: left;
+}
+
+.summary table thead th:last-child { text-align: right; }
+
+.summary table tbody td {
+	padding: 13px 16px;
+	font-size: 12px;
+	vertical-align: middle;
+	text-align: left;
+}
+
+.summary table tbody td:last-child { text-align: right; }
+
+.summary table tbody tr {
 	border-bottom: 1px solid var(--border);
 }
 
-.summary-row:last-child {
-	border-bottom: none;
-}
+.summary table tbody tr:last-child { border-bottom: none; }
 
-.summary-label {
-	font-size: 11px;
-	color: var(--dim);
-	flex-shrink: 0;
-	margin-right: 16px;
-}
+.summary-sentence { color: var(--dim); font-size: 11px; }
+.summary-sentence .ref-tag { margin: 0 4px; }
 
-.summary-label .ref-tag {
-	margin: 0 3px;
-}
-
-.summary-value {
-	font-size: 14px;
-	font-weight: 800;
-	letter-spacing: -0.02em;
-	white-space: nowrap;
-}
-
-.summary-value.faster {
-	color: var(--black);
-}
-
-.summary-value.slower {
-	color: var(--dim);
-}
+.summary-ratio       { font-size: 14px; font-weight: 800; letter-spacing: -0.02em; }
+.summary-uncertainty { font-size: 11px; font-weight: 400; color: var(--dim); margin-left: 4px; }
 
 footer {
-	margin-top: 40px;
+	margin-top: 48px;
 	padding-top: 16px;
 	border-top: 1px solid var(--border);
 	font-size: 10px;
@@ -259,7 +248,7 @@ footer {
 <body>
 
 <header>
-	<div class="header-title">Benchmark Report</div>
+	<div class="header-eyebrow">Benchmark Report</div>
 	<div class="header-refs">
 		<span>{{.BaseRef}}</span>
 		<span class="sep">vs</span>
@@ -267,74 +256,103 @@ footer {
 	</div>
 	<div class="header-meta">
 		<span>{{.TotalBenchmarks}} benchmark{{if ne .TotalBenchmarks 1}}s{{end}}</span>
+		<span>{{.Runs}} runs each</span>
 		<span>generated {{.GeneratedAt}}</span>
 	</div>
 </header>
 
 <div class="benchmarks">
 	<div class="section-label">Results</div>
-	{{range .Groups}}
-	<div class="benchmark-group">
-		<div class="benchmark-group-header">{{.Label}}</div>
+
+	<div class="benchmark-block">
 		<table>
 			<thead>
-				<tr>
-					<th>ref</th>
-					<th>mean</th>
-					<th>σ</th>
-					<th>min</th>
-					<th>max</th>
-					<th>runs</th>
+				<tr class="row-groups">
+					<th class="left" rowspan="2">benchmark</th>
+					<th class="sep" colspan="2">{{.BaseRef}}</th>
+					<th class="sep" colspan="2">{{.HeadRef}}</th>
+					<th class="sep right" rowspan="2">delta</th>
+				</tr>
+				<tr class="row-subs">
+					<th class="sep">mean</th>
+					<th class="sep">stddev</th>
+					<th class="sep">mean</th>
+					<th class="sep">stddev</th>
 				</tr>
 			</thead>
 			<tbody>
+				{{range .Groups}}
 				<tr>
-					<td><span class="ref-tag">{{$.BaseRef}}</span></td>
+					<td class="left">{{.Label}}</td>
+
 					{{if .Base.AllFailed}}
-					<td colspan="5"><span class="all-failed">all {{.Base.Runs}} runs failed</span></td>
+					<td class="sep" colspan="2"><span class="all-failed">all runs failed</span></td>
 					{{else}}
-					<td><span class="val-primary">{{.Base.MeanFmt}}</span> <span class="val-secondary">ms</span></td>
-					<td><span class="val-secondary">{{.Base.StddevFmt}} ms</span></td>
-					<td><span class="val-secondary">{{.Base.MinFmt}} ms</span></td>
-					<td><span class="val-secondary">{{.Base.MaxFmt}} ms</span></td>
-					<td><span class="val-secondary">{{.Base.SuccessRuns}}{{if .Base.HasFailures}}<span class="failures-badge">{{.Base.Failures}} failed</span>{{end}}</span></td>
+					<td class="sep">
+						<span class="val-strong">{{.Base.MeanFmt}}</span>
+						<span class="val-dim"> ms</span>
+						{{if .Base.HasFailures}}<span class="failures-badge">{{.Base.Failures}} failed</span>{{end}}
+					</td>
+					<td class="sep"><span class="val-dim">{{.Base.StddevFmt}} ms</span></td>
 					{{end}}
-				</tr>
-				<tr>
-					<td><span class="ref-tag head">{{$.HeadRef}}</span></td>
-					{{if .Head.AllFailed}}
-					<td colspan="5"><span class="all-failed">all {{.Head.Runs}} runs failed</span></td>
-					{{else if .Head.NoData}}
-					<td colspan="5"><span class="all-failed">no data</span></td>
+
+					{{if .Head.NoData}}
+					<td class="sep" colspan="2"><span class="all-failed">no data</span></td>
+					{{else if .Head.AllFailed}}
+					<td class="sep" colspan="2"><span class="all-failed">all runs failed</span></td>
 					{{else}}
-					<td><span class="val-primary">{{.Head.MeanFmt}}</span> <span class="val-secondary">ms</span></td>
-					<td><span class="val-secondary">{{.Head.StddevFmt}} ms</span></td>
-					<td><span class="val-secondary">{{.Head.MinFmt}} ms</span></td>
-					<td><span class="val-secondary">{{.Head.MaxFmt}} ms</span></td>
-					<td><span class="val-secondary">{{.Head.SuccessRuns}}{{if .Head.HasFailures}}<span class="failures-badge">{{.Head.Failures}} failed</span>{{end}}</span></td>
+					<td class="sep">
+						<span class="val-strong">{{.Head.MeanFmt}}</span>
+						<span class="val-dim"> ms</span>
+						{{if .Head.HasFailures}}<span class="failures-badge">{{.Head.Failures}} failed</span>{{end}}
+					</td>
+					<td class="sep"><span class="val-dim">{{.Head.StddevFmt}} ms</span></td>
 					{{end}}
+
+					<td class="sep">
+						{{if .Delta.Available}}
+						<span class="delta">{{.Delta.RatioFmt}}×</span>
+						<span class="delta-err"> ± {{.Delta.UncertaintyFmt}}</span>
+						<span class="delta-winner">{{.Delta.WinnerRef}}</span>
+						{{else}}
+						<span class="delta-na">—</span>
+						{{end}}
+					</td>
 				</tr>
+				{{end}}
 			</tbody>
 		</table>
 	</div>
-	{{end}}
 </div>
 
 {{if .Summaries}}
 <div class="summary">
-	<div class="summary-header">Summary</div>
-	{{range .Summaries}}
-	<div class="summary-row">
-		<div class="summary-label">
-			<span class="ref-tag{{if .HeadFaster}} head{{end}}">{{.FasterRef}}</span>
-			&nbsp;({{.Label}}) is faster than&nbsp;
-			<span class="ref-tag{{if not .HeadFaster}}{{else}} head{{end}}">{{.SlowerRef}}</span>
-		</div>
-		<div class="summary-value{{if .HeadFaster}} faster{{else}} slower{{end}}">
-			{{.RatioFmt}}×&nbsp;<span style="font-weight:400;font-size:11px;color:#888">± {{.UncertaintyFmt}}</span>
-		</div>
-	</div>
-	{{end}}
+	<div class="summary-block-header">Summary</div>
+	<table>
+		<thead>
+			<tr>
+				<th>comparison</th>
+				<th>speedup</th>
+			</tr>
+		</thead>
+		<tbody>
+			{{range .Summaries}}
+			<tr>
+				<td>
+					<span class="summary-sentence">
+						<span class="ref-tag">{{.FasterRef}}</span>
+						({{.Label}}) is faster than
+						<span class="ref-tag">{{.SlowerRef}}</span>
+					</span>
+				</td>
+				<td>
+					<span class="summary-ratio">{{.RatioFmt}}×</span>
+					<span class="summary-uncertainty">± {{.UncertaintyFmt}}</span>
+				</td>
+			</tr>
+			{{end}}
+		</tbody>
+	</table>
 </div>
 {{end}}
 
@@ -343,39 +361,49 @@ footer {
 </body>
 </html>`
 
+// htmlReportData is the top-level data passed to reportHTMLTemplate.
 type htmlReportData struct {
 	BaseRef         string
 	HeadRef         string
 	TotalBenchmarks int
+	Runs            int
 	GeneratedAt     string
 	Groups          []htmlGroup
 	Summaries       []htmlSummary
 }
 
+// htmlGroup holds the rendered stats for one benchmark target (one file/package).
 type htmlGroup struct {
 	Label string
 	Base  htmlStats
 	Head  htmlStats
+	Delta htmlDelta
 }
 
+// htmlStats holds pre-formatted strings for a single ref's measurements.
 type htmlStats struct {
 	MeanFmt     string
 	StddevFmt   string
-	MinFmt      string
-	MaxFmt      string
-	Runs        int
 	Failures    int
-	SuccessRuns int
 	HasFailures bool
 	AllFailed   bool
 	NoData      bool
 }
 
+// htmlDelta holds the pre-formatted speedup ratio between base and head.
+type htmlDelta struct {
+	Available      bool
+	HeadFaster     bool
+	WinnerRef      string // the ref that ran faster
+	RatioFmt       string
+	UncertaintyFmt string
+}
+
+// htmlSummary holds one row of the summary table.
 type htmlSummary struct {
 	Label          string
 	FasterRef      string
 	SlowerRef      string
-	HeadFaster     bool
 	RatioFmt       string
 	UncertaintyFmt string
 }
@@ -384,11 +412,7 @@ func toHTMLStats(s fileStats) htmlStats {
 	return htmlStats{
 		MeanFmt:     fmt.Sprintf("%.1f", s.mean),
 		StddevFmt:   fmt.Sprintf("%.1f", s.stddev),
-		MinFmt:      fmt.Sprintf("%.1f", s.min),
-		MaxFmt:      fmt.Sprintf("%.1f", s.max),
-		Runs:        s.runs,
 		Failures:    s.failures,
-		SuccessRuns: s.runs - s.failures,
 		HasFailures: s.failures > 0,
 		AllFailed:   s.failures == s.runs,
 	}
@@ -398,6 +422,12 @@ func buildHTMLReport(r *benchmarkResult) htmlReportData {
 	headByLabel := make(map[string]fileStats, len(r.head))
 	for _, s := range r.head {
 		headByLabel[s.label] = s
+	}
+
+	// Infer shared run count from base; all targets run the same number of times.
+	runs := 0
+	if len(r.base) > 0 {
+		runs = r.base[0].runs
 	}
 
 	var groups []htmlGroup
@@ -411,10 +441,33 @@ func buildHTMLReport(r *benchmarkResult) htmlReportData {
 			headStats = htmlStats{NoData: true}
 		}
 
+		delta := htmlDelta{}
+		if hasHead && base.mean > 0 && base.failures < base.runs && head.failures < head.runs {
+			ratio, ratioErr := speedupRatio(base, head)
+			// ratio >= 1.0 means head is faster (base.mean / head.mean >= 1)
+			headFaster := ratio >= 1.0
+			winnerRef := r.headRef
+			if !headFaster {
+				winnerRef = r.baseRef
+			}
+			if ratio < 1.0 {
+				ratio = 1.0 / ratio
+				ratioErr = ratioErr / (ratio * ratio)
+			}
+			delta = htmlDelta{
+				Available:      true,
+				HeadFaster:     headFaster,
+				WinnerRef:      winnerRef,
+				RatioFmt:       fmt.Sprintf("%.2f", ratio),
+				UncertaintyFmt: fmt.Sprintf("%.2f", math.Abs(ratioErr)),
+			}
+		}
+
 		groups = append(groups, htmlGroup{
 			Label: base.label,
 			Base:  toHTMLStats(base),
 			Head:  headStats,
+			Delta: delta,
 		})
 	}
 
@@ -427,19 +480,16 @@ func buildHTMLReport(r *benchmarkResult) htmlReportData {
 
 		ratio, ratioErr := speedupRatio(base, head)
 		fasterRef, slowerRef := r.headRef, r.baseRef
-		headFaster := true
 		if ratio < 1.0 {
 			ratio = 1.0 / ratio
 			ratioErr = ratioErr / (ratio * ratio)
 			fasterRef, slowerRef = r.baseRef, r.headRef
-			headFaster = false
 		}
 
 		summaries = append(summaries, htmlSummary{
 			Label:          base.label,
 			FasterRef:      fasterRef,
 			SlowerRef:      slowerRef,
-			HeadFaster:     headFaster,
 			RatioFmt:       fmt.Sprintf("%.2f", ratio),
 			UncertaintyFmt: fmt.Sprintf("%.2f", math.Abs(ratioErr)),
 		})
@@ -449,6 +499,7 @@ func buildHTMLReport(r *benchmarkResult) htmlReportData {
 		BaseRef:         r.baseRef,
 		HeadRef:         r.headRef,
 		TotalBenchmarks: len(groups),
+		Runs:            runs,
 		GeneratedAt:     time.Now().UTC().Format("2006-01-02 15:04:05 UTC"),
 		Groups:          groups,
 		Summaries:       summaries,
@@ -456,11 +507,7 @@ func buildHTMLReport(r *benchmarkResult) htmlReportData {
 }
 
 func writeHTMLReport(r *benchmarkResult, outputPath string) error {
-	funcMap := template.FuncMap{
-		"not": func(b bool) bool { return !b },
-	}
-
-	tmpl, err := template.New("report").Funcs(funcMap).Parse(htmlTemplate)
+	tmpl, err := template.New("report").Parse(reportHTMLTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse html template: %w", err)
 	}
