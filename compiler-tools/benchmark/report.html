@@ -178,52 +178,6 @@ tbody td.sep  { border-left: 1px solid var(--border); }
 .delta-err      { font-size: 11px; font-weight: 400; color: var(--dim); }
 .delta-winner   { display: block; font-size: 10px; font-weight: 600; color: var(--dim); letter-spacing: 0.04em; margin-top: 3px; }
 
-.summary {
-	border: 1px solid var(--border);
-}
-
-.summary-block-header {
-	padding: 9px 16px;
-	border-bottom: 1px solid var(--border);
-	font-size: 11px;
-	font-weight: 600;
-	letter-spacing: 0.04em;
-}
-
-.summary table thead th {
-	padding: 6px 16px 8px;
-	font-size: 10px;
-	font-weight: 500;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-	color: var(--dim);
-	border-bottom: 1px solid var(--border);
-	text-align: left;
-}
-
-.summary table thead th:last-child { text-align: right; }
-
-.summary table tbody td {
-	padding: 13px 16px;
-	font-size: 12px;
-	vertical-align: middle;
-	text-align: left;
-}
-
-.summary table tbody td:last-child { text-align: right; }
-
-.summary table tbody tr {
-	border-bottom: 1px solid var(--border);
-}
-
-.summary table tbody tr:last-child { border-bottom: none; }
-
-.summary-sentence { color: var(--dim); font-size: 11px; }
-.summary-sentence .ref-tag { margin: 0 4px; }
-
-.summary-ratio       { font-size: 14px; font-weight: 800; letter-spacing: -0.02em; }
-.summary-uncertainty { font-size: 11px; font-weight: 400; color: var(--dim); margin-left: 4px; }
-
 footer {
 	margin-top: 48px;
 	padding-top: 16px;
@@ -246,7 +200,7 @@ footer {
 	<div class="header-meta">
 		<span>3 benchmarks</span>
 		<span>10 runs each</span>
-		<span>generated 2026-03-29 04:55:25 UTC</span>
+		<span>generated 2026-03-29 05:00:49 UTC</span>
 	</div>
 </header>
 
@@ -276,63 +230,12 @@ footer {
 
 					
 					<td class="sep">
-						<span class="val-strong">6.0</span>
+						<span class="val-strong">9.3</span>
 						<span class="val-dim"> ms</span>
 						
 					</td>
-					<td class="sep"><span class="val-dim">6.3 ms</span></td>
+					<td class="sep"><span class="val-dim">9.6 ms</span></td>
 					
-
-					
-					<td class="sep">
-						<span class="val-strong">6.1</span>
-						<span class="val-dim"> ms</span>
-						
-					</td>
-					<td class="sep"><span class="val-dim">6.3 ms</span></td>
-					
-
-					<td class="sep">
-						
-						<span class="delta">1.01×</span>
-						<span class="delta-err"> ± 1.43</span>
-						<span class="delta-winner">v0.2.0</span>
-						
-					</td>
-				</tr>
-				
-				<tr>
-					<td class="left">second.bal</td>
-
-					
-					<td class="sep">
-						<span class="val-strong">5.8</span>
-						<span class="val-dim"> ms</span>
-						
-					</td>
-					<td class="sep"><span class="val-dim">6.0 ms</span></td>
-					
-
-					
-					<td class="sep">
-						<span class="val-strong">5.8</span>
-						<span class="val-dim"> ms</span>
-						
-					</td>
-					<td class="sep"><span class="val-dim">6.0 ms</span></td>
-					
-
-					<td class="sep">
-						
-						<span class="delta">1.00×</span>
-						<span class="delta-err"> ± 1.46</span>
-						<span class="delta-winner">v0.3.0</span>
-						
-					</td>
-				</tr>
-				
-				<tr>
-					<td class="left">third.bal</td>
 
 					
 					<td class="sep">
@@ -343,19 +246,70 @@ footer {
 					<td class="sep"><span class="val-dim">6.7 ms</span></td>
 					
 
+					<td class="sep">
+						
+						<span class="delta">1.45×</span>
+						<span class="delta-err"> ± 2.12</span>
+						<span class="delta-winner">v0.3.0</span>
+						
+					</td>
+				</tr>
+				
+				<tr>
+					<td class="left">second.bal</td>
+
 					
 					<td class="sep">
-						<span class="val-strong">6.1</span>
+						<span class="val-strong">8.1</span>
 						<span class="val-dim"> ms</span>
 						
 					</td>
-					<td class="sep"><span class="val-dim">6.3 ms</span></td>
+					<td class="sep"><span class="val-dim">8.3 ms</span></td>
+					
+
+					
+					<td class="sep">
+						<span class="val-strong">6.3</span>
+						<span class="val-dim"> ms</span>
+						
+					</td>
+					<td class="sep"><span class="val-dim">6.5 ms</span></td>
 					
 
 					<td class="sep">
 						
-						<span class="delta">1.07×</span>
-						<span class="delta-err"> ± 1.56</span>
+						<span class="delta">1.28×</span>
+						<span class="delta-err"> ± 1.87</span>
+						<span class="delta-winner">v0.3.0</span>
+						
+					</td>
+				</tr>
+				
+				<tr>
+					<td class="left">third.bal</td>
+
+					
+					<td class="sep">
+						<span class="val-strong">7.4</span>
+						<span class="val-dim"> ms</span>
+						
+					</td>
+					<td class="sep"><span class="val-dim">8.0 ms</span></td>
+					
+
+					
+					<td class="sep">
+						<span class="val-strong">6.2</span>
+						<span class="val-dim"> ms</span>
+						
+					</td>
+					<td class="sep"><span class="val-dim">6.4 ms</span></td>
+					
+
+					<td class="sep">
+						
+						<span class="delta">1.19×</span>
+						<span class="delta-err"> ± 1.79</span>
 						<span class="delta-winner">v0.3.0</span>
 						
 					</td>
@@ -365,65 +319,6 @@ footer {
 		</table>
 	</div>
 </div>
-
-
-<div class="summary">
-	<div class="summary-block-header">Summary</div>
-	<table>
-		<thead>
-			<tr>
-				<th>comparison</th>
-				<th>speedup</th>
-			</tr>
-		</thead>
-		<tbody>
-			
-			<tr>
-				<td>
-					<span class="summary-sentence">
-						<span class="ref-tag">v0.2.0</span>
-						(first.bal) is faster than
-						<span class="ref-tag">v0.3.0</span>
-					</span>
-				</td>
-				<td>
-					<span class="summary-ratio">1.01×</span>
-					<span class="summary-uncertainty">± 1.43</span>
-				</td>
-			</tr>
-			
-			<tr>
-				<td>
-					<span class="summary-sentence">
-						<span class="ref-tag">v0.3.0</span>
-						(second.bal) is faster than
-						<span class="ref-tag">v0.2.0</span>
-					</span>
-				</td>
-				<td>
-					<span class="summary-ratio">1.00×</span>
-					<span class="summary-uncertainty">± 1.46</span>
-				</td>
-			</tr>
-			
-			<tr>
-				<td>
-					<span class="summary-sentence">
-						<span class="ref-tag">v0.3.0</span>
-						(third.bal) is faster than
-						<span class="ref-tag">v0.2.0</span>
-					</span>
-				</td>
-				<td>
-					<span class="summary-ratio">1.07×</span>
-					<span class="summary-uncertainty">± 1.56</span>
-				</td>
-			</tr>
-			
-		</tbody>
-	</table>
-</div>
-
 
 <footer>bal-bench &mdash; benchmark report</footer>
 

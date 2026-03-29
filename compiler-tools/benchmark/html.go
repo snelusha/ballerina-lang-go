@@ -189,52 +189,6 @@ tbody td.sep  { border-left: 1px solid var(--border); }
 .delta-err      { font-size: 11px; font-weight: 400; color: var(--dim); }
 .delta-winner   { display: block; font-size: 10px; font-weight: 600; color: var(--dim); letter-spacing: 0.04em; margin-top: 3px; }
 
-.summary {
-	border: 1px solid var(--border);
-}
-
-.summary-block-header {
-	padding: 9px 16px;
-	border-bottom: 1px solid var(--border);
-	font-size: 11px;
-	font-weight: 600;
-	letter-spacing: 0.04em;
-}
-
-.summary table thead th {
-	padding: 6px 16px 8px;
-	font-size: 10px;
-	font-weight: 500;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-	color: var(--dim);
-	border-bottom: 1px solid var(--border);
-	text-align: left;
-}
-
-.summary table thead th:last-child { text-align: right; }
-
-.summary table tbody td {
-	padding: 13px 16px;
-	font-size: 12px;
-	vertical-align: middle;
-	text-align: left;
-}
-
-.summary table tbody td:last-child { text-align: right; }
-
-.summary table tbody tr {
-	border-bottom: 1px solid var(--border);
-}
-
-.summary table tbody tr:last-child { border-bottom: none; }
-
-.summary-sentence { color: var(--dim); font-size: 11px; }
-.summary-sentence .ref-tag { margin: 0 4px; }
-
-.summary-ratio       { font-size: 14px; font-weight: 800; letter-spacing: -0.02em; }
-.summary-uncertainty { font-size: 11px; font-weight: 400; color: var(--dim); margin-left: 4px; }
-
 footer {
 	margin-top: 48px;
 	padding-top: 16px;
@@ -325,37 +279,6 @@ footer {
 	</div>
 </div>
 
-{{if .Summaries}}
-<div class="summary">
-	<div class="summary-block-header">Summary</div>
-	<table>
-		<thead>
-			<tr>
-				<th>comparison</th>
-				<th>speedup</th>
-			</tr>
-		</thead>
-		<tbody>
-			{{range .Summaries}}
-			<tr>
-				<td>
-					<span class="summary-sentence">
-						<span class="ref-tag">{{.FasterRef}}</span>
-						({{.Label}}) is faster than
-						<span class="ref-tag">{{.SlowerRef}}</span>
-					</span>
-				</td>
-				<td>
-					<span class="summary-ratio">{{.RatioFmt}}×</span>
-					<span class="summary-uncertainty">± {{.UncertaintyFmt}}</span>
-				</td>
-			</tr>
-			{{end}}
-		</tbody>
-	</table>
-</div>
-{{end}}
-
 <footer>bal-bench &mdash; benchmark report</footer>
 
 </body>
@@ -369,7 +292,6 @@ type htmlReportData struct {
 	Runs            int
 	GeneratedAt     string
 	Groups          []htmlGroup
-	Summaries       []htmlSummary
 }
 
 // htmlGroup holds the rendered stats for one benchmark target (one file/package).
@@ -395,15 +317,6 @@ type htmlDelta struct {
 	Available      bool
 	HeadFaster     bool
 	WinnerRef      string // the ref that ran faster
-	RatioFmt       string
-	UncertaintyFmt string
-}
-
-// htmlSummary holds one row of the summary table.
-type htmlSummary struct {
-	Label          string
-	FasterRef      string
-	SlowerRef      string
 	RatioFmt       string
 	UncertaintyFmt string
 }
@@ -471,30 +384,6 @@ func buildHTMLReport(r *benchmarkResult) htmlReportData {
 		})
 	}
 
-	var summaries []htmlSummary
-	for _, base := range r.base {
-		head, hasHead := headByLabel[base.label]
-		if !hasHead || base.mean <= 0 || base.failures == base.runs || head.failures == head.runs {
-			continue
-		}
-
-		ratio, ratioErr := speedupRatio(base, head)
-		fasterRef, slowerRef := r.headRef, r.baseRef
-		if ratio < 1.0 {
-			ratio = 1.0 / ratio
-			ratioErr = ratioErr / (ratio * ratio)
-			fasterRef, slowerRef = r.baseRef, r.headRef
-		}
-
-		summaries = append(summaries, htmlSummary{
-			Label:          base.label,
-			FasterRef:      fasterRef,
-			SlowerRef:      slowerRef,
-			RatioFmt:       fmt.Sprintf("%.2f", ratio),
-			UncertaintyFmt: fmt.Sprintf("%.2f", math.Abs(ratioErr)),
-		})
-	}
-
 	return htmlReportData{
 		BaseRef:         r.baseRef,
 		HeadRef:         r.headRef,
@@ -502,7 +391,6 @@ func buildHTMLReport(r *benchmarkResult) htmlReportData {
 		Runs:            runs,
 		GeneratedAt:     time.Now().UTC().Format("2006-01-02 15:04:05 UTC"),
 		Groups:          groups,
-		Summaries:       summaries,
 	}
 }
 
