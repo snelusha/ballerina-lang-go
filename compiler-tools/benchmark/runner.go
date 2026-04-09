@@ -91,10 +91,7 @@ func (b *benchmark) runDirectoryBenchmarks(baseTree, headTree string, tgt *bench
 	sort.Strings(paths)
 
 	for _, p := range paths {
-		cmds := []string{
-			benchCommand(filepath.Join(baseTree, baseInterpreterName), p),
-			benchCommand(filepath.Join(headTree, headInterpreterName), p),
-		}
+		cmds := benchmarkPair(baseTree, headTree, p)
 		if _, err := b.runHyperfine(cmds, ""); err != nil {
 			return err
 		}
@@ -105,9 +102,7 @@ func (b *benchmark) runDirectoryBenchmarks(baseTree, headTree string, tgt *bench
 func (b *benchmark) benchmarkCommands(baseTree, headTree string, tgt *benchmarkTarget) ([]string, error) {
 	switch tgt.mode {
 	case singleFileMode, packageMode:
-		base := benchCommand(filepath.Join(baseTree, baseInterpreterName), tgt.paths[0])
-		head := benchCommand(filepath.Join(headTree, headInterpreterName), tgt.paths[0])
-		return []string{base, head}, nil
+		return benchmarkPair(baseTree, headTree, tgt.paths[0]), nil
 	default:
 		return nil, fmt.Errorf("unknown target mode %v", tgt.mode)
 	}
@@ -134,6 +129,13 @@ func (b *benchmark) runHyperfine(cmds []string, jsonOut string) (*hyperfineExpor
 
 func benchCommand(interpreter, balPath string) string {
 	return fmt.Sprintf("%s run %s", shellQuote(interpreter), shellQuote(balPath))
+}
+
+func benchmarkPair(baseTree, headTree, balPath string) []string {
+	return []string{
+		benchCommand(filepath.Join(baseTree, baseInterpreterName), balPath),
+		benchCommand(filepath.Join(headTree, headInterpreterName), balPath),
+	}
 }
 
 func shellQuote(s string) string {
@@ -246,10 +248,7 @@ func (b *benchmark) runWebReport(baseTree, headTree string, tgt *benchmarkTarget
 			}
 
 			jsonOut := filepath.Join(jsonDir, outBase+"-"+sanitizeFilename(display)+".json")
-			cmds := []string{
-				benchCommand(filepath.Join(baseTree, baseInterpreterName), p),
-				benchCommand(filepath.Join(headTree, headInterpreterName), p),
-			}
+			cmds := benchmarkPair(baseTree, headTree, p)
 			exp, err := b.runHyperfine(cmds, jsonOut)
 			if err != nil {
 				return err
