@@ -35,6 +35,7 @@ const (
 type benchmarkTarget struct {
 	mode  targetMode
 	label string
+	root  string
 	paths []string
 }
 
@@ -51,6 +52,7 @@ func resolveTarget(path string) (*benchmarkTarget, error) {
 		return &benchmarkTarget{
 			mode:  singleFileMode,
 			label: info.Name(),
+			root:  "",
 			paths: []string{path},
 		}, nil
 	}
@@ -59,6 +61,7 @@ func resolveTarget(path string) (*benchmarkTarget, error) {
 		return &benchmarkTarget{
 			mode:  packageMode,
 			label: info.Name(),
+			root:  path,
 			paths: []string{path},
 		}, nil
 	}
@@ -73,6 +76,7 @@ func resolveTarget(path string) (*benchmarkTarget, error) {
 	return &benchmarkTarget{
 		mode:  multipleFilesMode,
 		label: info.Name(),
+		root:  path,
 		paths: files,
 	}, nil
 }

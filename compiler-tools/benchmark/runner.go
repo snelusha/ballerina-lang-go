@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -68,16 +69,21 @@ func (b *benchmark) run() error {
 		return fmt.Errorf("resolve target: %w", err)
 	}
 
-	switch tgt.mode {
-	case multipleFilesMode:
-		return b.runDirectoryBenchmarks(baseTree, headTree, tgt)
-	default:
-		cmds, err := b.benchmarkCommands(baseTree, headTree, tgt)
-		if err != nil {
+	if !b.web {
+		switch tgt.mode {
+		case multipleFilesMode:
+			return b.runDirectoryBenchmarks(baseTree, headTree, tgt)
+		default:
+			cmds, err := b.benchmarkCommands(baseTree, headTree, tgt)
+			if err != nil {
+				return err
+			}
+			_, err = b.runHyperfine(cmds, "")
 			return err
 		}
-		return b.runHyperfine(cmds)
 	}
+
+	return b.runWebReport(baseTree, headTree, tgt)
 }
 
 func (b *benchmark) runDirectoryBenchmarks(baseTree, headTree string, tgt *benchmarkTarget) error {
@@ -89,7 +95,7 @@ func (b *benchmark) runDirectoryBenchmarks(baseTree, headTree string, tgt *bench
 			benchCommand(filepath.Join(baseTree, baseInterpreterName), p),
 			benchCommand(filepath.Join(headTree, headInterpreterName), p),
 		}
-		if err := b.runHyperfine(cmds); err != nil {
+		if _, err := b.runHyperfine(cmds, ""); err != nil {
 			return err
 		}
 	}
@@ -107,10 +113,23 @@ func (b *benchmark) benchmarkCommands(baseTree, headTree string, tgt *benchmarkT
 	}
 }
 
-func (b *benchmark) runHyperfine(cmds []string) error {
+func (b *benchmark) runHyperfine(cmds []string, jsonOut string) (*hyperfineExport, error) {
 	args := b.hyperfineFlags()
+	if jsonOut != "" {
+		args = append(args, "--export-json", jsonOut)
+	}
 	args = append(args, cmds...)
-	return runCmd(".", "hyperfine", args...)
+	if err := runCmd(".", "hyperfine", args...); err != nil {
+		return nil, err
+	}
+	if jsonOut == "" {
+		return nil, nil
+	}
+	exp, err := readHyperfineExport(jsonOut)
+	if err != nil {
+		return nil, err
+	}
+	return exp, nil
 }
 
 func benchCommand(interpreter, balPath string) string {
@@ -139,6 +158,10 @@ func (b *benchmark) hyperfineFlags() []string {
 }
 
 func (b *benchmark) checkoutWorktree(ref string) (string, error) {
+	if err := ensureRefAvailable(ref); err != nil {
+		return "", err
+	}
+
 	path := filepath.Join(b.workRoot, "worktree-"+sanitizeRef(ref))
 	b.removeWorktree(path)
 
@@ -146,6 +169,21 @@ func (b *benchmark) checkoutWorktree(ref string) (string, error) {
 		return "", fmt.Errorf("checkout worktree for ref %q: %w", ref, err)
 	}
 	return path, nil
+}
+
+func ensureRefAvailable(ref string) error {
+	if err := runCmdSilent(".", "git", "rev-parse", "--verify", ref+"^{commit}"); err == nil {
+		return nil
+	}
+
+	if err := runCmd(".", "git", "fetch", "--all", "--tags"); err != nil {
+		return fmt.Errorf("failed to fetch tags while resolving ref %q: %w", ref, err)
+	}
+
+	if err := runCmdSilent(".", "git", "rev-parse", "--verify", ref+"^{commit}"); err != nil {
+		return fmt.Errorf("git ref %q not found locally (even after fetching tags)", ref)
+	}
+	return nil
 }
 
 func sanitizeRef(ref string) string {
@@ -157,6 +195,95 @@ func sanitizeRef(ref string) string {
 			return r
 		}
 	}, ref)
+}
+
+func sanitizeFilename(s string) string {
+	if s == "" {
+		return "output"
+	}
+	s = strings.Map(func(r rune) rune {
+		switch r {
+		case '/', '\\', ':':
+			return '-'
+		default:
+			return r
+		}
+	}, s)
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "output"
+	}
+	return s
+}
+
+func (b *benchmark) runWebReport(baseTree, headTree string, tgt *benchmarkTarget) error {
+	outDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	jsonDir, err := os.MkdirTemp("", "bal-bench-json-*")
+	if err != nil {
+		return fmt.Errorf("create temp json directory: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(jsonDir) }()
+
+	stamp := time.Now().Format("20060102-150405")
+	outBase := sanitizeFilename(tgt.label) + "-" + stamp
+
+	var runs []webRun
+
+	switch tgt.mode {
+	case multipleFilesMode:
+		paths := append([]string(nil), tgt.paths...)
+		sort.Strings(paths)
+
+		for _, p := range paths {
+			display := p
+			if tgt.root != "" {
+				if rel, err := filepath.Rel(tgt.root, p); err == nil && rel != "." && !strings.HasPrefix(rel, "..") {
+					display = rel
+				}
+			}
+
+			jsonOut := filepath.Join(jsonDir, outBase+"-"+sanitizeFilename(display)+".json")
+			cmds := []string{
+				benchCommand(filepath.Join(baseTree, baseInterpreterName), p),
+				benchCommand(filepath.Join(headTree, headInterpreterName), p),
+			}
+			exp, err := b.runHyperfine(cmds, jsonOut)
+			if err != nil {
+				return err
+			}
+			runs = append(runs, webRun{Label: display, Export: exp})
+		}
+	default:
+		jsonOut := filepath.Join(jsonDir, outBase+".json")
+		cmds, err := b.benchmarkCommands(baseTree, headTree, tgt)
+		if err != nil {
+			return err
+		}
+		exp, err := b.runHyperfine(cmds, jsonOut)
+		if err != nil {
+			return err
+		}
+		runs = append(runs, webRun{Label: tgt.label, Export: exp})
+	}
+
+	htmlOut := filepath.Join(outDir, outBase+".html")
+	report := webReport{
+		Title:     "Ballerina benchmark",
+		BaseRef:   b.baseRef,
+		HeadRef:   b.headRef,
+		Target:    tgt.label,
+		Generated: time.Now(),
+		Runs:      runs,
+	}
+	if err := writeHTMLReport(htmlOut, report); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(os.Stdout, "web report: %s\n", htmlOut)
+	return nil
 }
 
 func (b *benchmark) removeWorktree(path string) {

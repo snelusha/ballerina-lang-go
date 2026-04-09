@@ -28,6 +28,7 @@ type config struct {
 	target  string
 	warmup  int
 	runs    int
+	web     bool
 }
 
 func parseConfig() (*config, error) {
@@ -39,6 +40,7 @@ func parseConfig() (*config, error) {
 
 	warmup := fs.Int("warmup", 0, "number of warmup runs (passed to hyperfine)")
 	runs := fs.Int("runs", 10, "number of benchmark runs (passed to hyperfine)")
+	web := fs.Bool("web", false, "export a HTML report (via hyperfine JSON export)")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, err
@@ -56,6 +58,7 @@ func parseConfig() (*config, error) {
 		target:  args[2],
 		warmup:  *warmup,
 		runs:    *runs,
+		web:     *web,
 	}, nil
 }
 
