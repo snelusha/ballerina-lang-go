@@ -19,6 +19,7 @@ package corpus
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -78,7 +79,7 @@ func testBIRSerializationRoundtrip(t *testing.T, testPair test_util.TestCase) {
 
 	// Step 4: Execute the deserialized BIR.
 	var rtStdoutBuf, rtStderrBuf bytes.Buffer
-	runInterpretPhase(deserialized, &rtStdoutBuf, &rtStderrBuf)
+	runInterpretPhase(deserialized, &rtStdoutBuf, &rtStderrBuf, filepath.Dir(testPair.InputPath))
 
 	// Step 5: Compare against expected output.
 	expectedStdout, expectedStderr, err := test_util.LoadTxtarStdoutStderr(testPair.ExpectedPath)

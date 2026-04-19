@@ -40,7 +40,6 @@ import (
 	"ballerina-lang-go/semantics"
 	"ballerina-lang-go/semtypes"
 	"ballerina-lang-go/test_util"
-	"ballerina-lang-go/values"
 
 	_ "ballerina-lang-go/lib/rt"
 )
@@ -48,10 +47,6 @@ import (
 const (
 	corpusProjectBaseDir            = "../corpus/project"
 	corpusProjectIntegrationBaseDir = "../corpus/integration/project"
-
-	externOrgName    = "ballerina"
-	externModuleName = "io"
-	externFuncName   = "println"
 
 	panicPrefix = "panic: "
 )
@@ -210,7 +205,7 @@ func runIntegrationCase(balFile string) (stdout, stderr string) {
 		return stdoutBuf.String(), stderrBuf.String()
 	}
 
-	runInterpretPhase(birPkg, &stdoutBuf, &stderrBuf)
+	runInterpretPhase(birPkg, &stdoutBuf, &stderrBuf, filepath.Dir(balFile))
 	return stdoutBuf.String(), stderrBuf.String()
 }
 
@@ -254,29 +249,17 @@ func runCompilePhase(balFile string, stdoutBuf, stderrBuf *bytes.Buffer) (pkg *b
 	return backend.BIR(), nil
 }
 
-func runInterpretPhase(birPkg *bir.BIRPackage, stdoutBuf, stderrBuf *bytes.Buffer) {
+func runInterpretPhase(birPkg *bir.BIRPackage, stdoutBuf, stderrBuf *bytes.Buffer, fsRoot string) {
 	if birPkg == nil {
 		return
 	}
-	rt := runtime.NewRuntime()
-	runtime.RegisterExternFunction(rt, externOrgName, externModuleName, externFuncName, capturePrintlnOutput(stdoutBuf))
+	rt := runtime.NewRuntimeWithHost(runtime.Host{
+		FS:     os.DirFS(fsRoot),
+		Stdout: stdoutBuf,
+	})
 	if err := rt.Interpret(*birPkg); err != nil {
 		// For now just write the error string to stderr to match corpus expectations
 		fmt.Fprintln(stderrBuf, err.Error())
-	}
-}
-
-func capturePrintlnOutput(stdoutBuf *bytes.Buffer) func(args []values.BalValue) (values.BalValue, error) {
-	return func(args []values.BalValue) (values.BalValue, error) {
-		var b strings.Builder
-		visited := make(map[uintptr]bool)
-		for _, arg := range args {
-			b.WriteString(values.String(arg, visited))
-		}
-		b.WriteByte('\n')
-		stdoutBuf.WriteString(b.String())
-
-		return nil, nil
 	}
 }
 
@@ -355,7 +338,7 @@ func runProjectIntegrationCase(projectDir string) (stdout, stderr string) {
 		return stdoutBuf.String(), stderrBuf.String()
 	}
 
-	runProjectInterpretPhase(birPkgs, &stdoutBuf, &stderrBuf)
+	runProjectInterpretPhase(birPkgs, &stdoutBuf, &stderrBuf, projectDir)
 	return stdoutBuf.String(), stderrBuf.String()
 }
 
@@ -388,12 +371,14 @@ func runProjectCompilePhase(projectDir string, stdoutBuf, stderrBuf *bytes.Buffe
 	return backend.BIRPackages(), nil
 }
 
-func runProjectInterpretPhase(birPkgs []*bir.BIRPackage, stdoutBuf, stderrBuf *bytes.Buffer) {
+func runProjectInterpretPhase(birPkgs []*bir.BIRPackage, stdoutBuf, stderrBuf *bytes.Buffer, projectDir string) {
 	if len(birPkgs) == 0 {
 		return
 	}
-	rt := runtime.NewRuntime()
-	runtime.RegisterExternFunction(rt, externOrgName, externModuleName, externFuncName, capturePrintlnOutput(stdoutBuf))
+	rt := runtime.NewRuntimeWithHost(runtime.Host{
+		FS:     os.DirFS(projectDir),
+		Stdout: stdoutBuf,
+	})
 	for _, birPkg := range birPkgs {
 		if err := rt.Interpret(*birPkg); err != nil {
 			fmt.Fprintln(stderrBuf, err.Error())
@@ -569,7 +554,7 @@ func runProjectSerializationRoundtrip(projectDir string) (stdout, stderr string)
 
 	deserialized = append(deserialized, mainBirPkg)
 
-	runProjectInterpretPhase(deserialized, &stdoutBuf, &stderrBuf)
+	runProjectInterpretPhase(deserialized, &stdoutBuf, &stderrBuf, projectDir)
 	return stdoutBuf.String(), stderrBuf.String()
 }
 

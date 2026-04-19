@@ -39,5 +39,24 @@ func GetIoSymbols(ctx *context.CompilerContext) model.ExportedSymbolSpace {
 	space.AddSymbol("println", printLnSymbol)
 	printLnRef, _ := space.GetSymbol("println")
 	ctx.SetSymbolType(printLnRef, libcommon.FunctionSignatureToSemType(ctx.GetTypeEnv(), &printLnSignature))
+
+	fileReadStringSignature := model.FunctionSignature{
+		ParamTypes: []semtypes.SemType{semtypes.STRING},
+		ReturnType: semtypes.Union(semtypes.STRING, semtypes.ERROR),
+	}
+	fileReadStringSymbol := model.NewFunctionSymbol("fileReadString", fileReadStringSignature, true)
+	space.AddSymbol("fileReadString", fileReadStringSymbol)
+	fileReadStringRef, _ := space.GetSymbol("fileReadString")
+	ctx.SetSymbolType(fileReadStringRef, libcommon.FunctionSignatureToSemType(ctx.GetTypeEnv(), &fileReadStringSignature))
+
+	// fileWriteStringSignature := model.FunctionSignature{
+	// 	ParamTypes: []semtypes.SemType{semtypes.STRING, semtypes.STRING},
+	// 	ReturnType: semtypes.Union(semtypes.NIL, semtypes.ERROR),
+	// }
+	// fileWriteStringSymbol := model.NewFunctionSymbol("fileWriteString", fileWriteStringSignature, true)
+	// space.AddSymbol("fileWriteString", fileWriteStringSymbol)
+	// fileWriteStringRef, _ := space.GetSymbol("fileWriteString")
+	// ctx.SetSymbolType(fileWriteStringRef, libcommon.FunctionSignatureToSemType(ctx.GetTypeEnv(), &fileWriteStringSignature))
+
 	return model.NewExportedSymbolSpace(space, nil)
 }

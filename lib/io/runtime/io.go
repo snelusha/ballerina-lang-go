@@ -17,35 +17,55 @@
 package io
 
 import (
+	"fmt"
+	"io"
+	"io/fs"
+	"path/filepath"
+	"strings"
+
 	"ballerina-lang-go/runtime"
 	"ballerina-lang-go/values"
-	"fmt"
-	"os"
-	"strings"
 )
 
 const (
 	orgName    = "ballerina"
 	moduleName = "io"
-	funcName   = "println"
 )
 
-func Println(vals ...values.BalValue) {
+func printLnTo(w io.Writer, vals []values.BalValue) {
 	parts := make([]string, len(vals))
 	visited := make(map[uintptr]bool)
 	for i, v := range vals {
 		parts[i] = values.String(v, visited)
 	}
-	_, _ = fmt.Fprintln(os.Stdout, strings.Join(parts, ""))
+	_, _ = fmt.Fprintln(w, strings.Join(parts, ""))
 }
 
-func printlnExtern(args []values.BalValue) (values.BalValue, error) {
-	Println(args...)
-	return nil, nil
+func printlnExtern(rt *runtime.Runtime) func([]values.BalValue) (values.BalValue, error) {
+	return func(args []values.BalValue) (values.BalValue, error) {
+		printLnTo(rt.Host().Stdout, args)
+		return nil, nil
+	}
+}
+
+func fileReadStringExtern(rt *runtime.Runtime) func([]values.BalValue) (values.BalValue, error) {
+	return func(args []values.BalValue) (values.BalValue, error) {
+		pathStr := args[0].(string)
+		name := filepath.ToSlash(filepath.Clean(pathStr))
+		if !fs.ValidPath(name) {
+			return values.NewErrorWithMessage(fmt.Sprintf("invalid path: %q", pathStr)), nil
+		}
+		data, err := fs.ReadFile(rt.Host().FS, name)
+		if err != nil {
+			return values.NewErrorWithMessage(fmt.Sprintf("failed to read file: %v", err)), nil
+		}
+		return string(data), nil
+	}
 }
 
 func initIOModule(rt *runtime.Runtime) {
-	runtime.RegisterExternFunction(rt, orgName, moduleName, funcName, printlnExtern)
+	runtime.RegisterExternFunction(rt, orgName, moduleName, "println", printlnExtern(rt))
+	runtime.RegisterExternFunction(rt, orgName, moduleName, "fileReadString", fileReadStringExtern(rt))
 }
 
 func init() {

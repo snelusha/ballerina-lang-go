@@ -218,7 +218,10 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	rt := runtime.NewRuntime()
+	rt := runtime.NewRuntimeWithHost(runtime.Host{
+		FS:     fsys,
+		Stdout: os.Stdout,
+	})
 	for _, birPkg := range birPkgs {
 		if err := rt.Interpret(*birPkg); err != nil {
 			printRuntimeError(err)

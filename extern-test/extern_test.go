@@ -59,18 +59,9 @@ func TestExternValid(t *testing.T) {
 	birPkg := backend.BIR()
 
 	var stdoutBuf bytes.Buffer
-	rt := runtime.NewRuntime()
-
-	// Register println to capture output
-	runtime.RegisterExternFunction(rt, "ballerina", "io", "println", func(args []values.BalValue) (values.BalValue, error) {
-		var b strings.Builder
-		visited := make(map[uintptr]bool)
-		for _, arg := range args {
-			b.WriteString(values.String(arg, visited))
-		}
-		b.WriteByte('\n')
-		stdoutBuf.WriteString(b.String())
-		return nil, nil
+	rt := runtime.NewRuntimeWithHost(runtime.Host{
+		FS:     fsys,
+		Stdout: &stdoutBuf,
 	})
 
 	// Register foo() returns "$foo"
@@ -183,17 +174,9 @@ func TestExternHandle(t *testing.T) {
 	birPkg := backend.BIR()
 
 	var stdoutBuf bytes.Buffer
-	rt := runtime.NewRuntime()
-
-	runtime.RegisterExternFunction(rt, "ballerina", "io", "println", func(args []values.BalValue) (values.BalValue, error) {
-		var b strings.Builder
-		visited := make(map[uintptr]bool)
-		for _, arg := range args {
-			b.WriteString(values.String(arg, visited))
-		}
-		b.WriteByte('\n')
-		stdoutBuf.WriteString(b.String())
-		return nil, nil
+	rt := runtime.NewRuntimeWithHost(runtime.Host{
+		FS:     fsys,
+		Stdout: &stdoutBuf,
 	})
 
 	type myHandle struct {

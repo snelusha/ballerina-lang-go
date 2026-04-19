@@ -28,6 +28,7 @@ import (
 // and is used as the execution context for interpreting BIR packages.
 type Runtime struct {
 	registry *modules.Registry
+	host     Host
 }
 
 // ModuleInitializer is a function that can install modules (e.g. stdlibs) into
@@ -36,16 +37,29 @@ type ModuleInitializer func(*Runtime)
 
 var moduleInitializers []ModuleInitializer
 
-// NewRuntime constructs a new runtime with an empty registry and runs all
-// registered module initializers.
+// NewRuntime constructs a new runtime with DefaultHost, an empty registry,
+// and runs all registered module initializers.
 func NewRuntime() *Runtime {
+	return NewRuntimeWithHost(DefaultHost())
+}
+
+// NewRuntimeWithHost constructs a new runtime with the given host. Nil FS or
+// Stdout are replaced with the same defaults as DefaultHost.
+func NewRuntimeWithHost(h Host) *Runtime {
+	h = normalizeHost(h)
 	rt := &Runtime{
 		registry: modules.NewRegistry(),
+		host:     h,
 	}
 	for _, init := range moduleInitializers {
 		init(rt)
 	}
 	return rt
+}
+
+// Host returns the execution host (filesystem, stdout, and future capabilities).
+func (rt *Runtime) Host() Host {
+	return rt.host
 }
 
 // Interpret interprets a BIR package using this runtime instance.
