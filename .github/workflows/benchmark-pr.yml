@@ -69,7 +69,7 @@ jobs:
               /<td>\s*([\d.]+×)\s*±\s*([\d.]+)\s*([^\n<]+?)\s*<\/td>/g,
               (_match, ratio, margin, winnerRef) => {
                 const winner = winnerRef.trim();
-                const winnerMsg = winner === "tie" ? "Both are equal" : `${winner}`;
+                const winnerMsg = winner === "tie" ? "Both are equal" : winner;
                 return `<td>${ratio} ± ${margin}\n\n${winnerMsg}\n</td>`;
               }
             );
