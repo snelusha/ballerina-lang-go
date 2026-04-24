@@ -79,7 +79,7 @@ type NodeBuilder struct {
 	PackageID            *model.PackageID
 	anonTypeNameSuffixes []string // Stack for anonymous type name suffixes
 	additionalStatements []BLangStatement
-	additionalTopLevel   []model.TopLevelNode
+	currentCompUnit      *BLangCompilationUnit
 	CurrentCompUnitName  string
 	isInLocalContext     bool
 	isInFiniteContext    bool
@@ -1328,6 +1328,8 @@ func (n *NodeBuilder) createSimpleLiteralInner(literal tree.Node, isFiniteType b
 
 func (n *NodeBuilder) TransformModulePart(modulePartNode *tree.ModulePart) BLangNode {
 	compilationUnit := BLangCompilationUnit{}
+	n.currentCompUnit = &compilationUnit
+	defer func() { n.currentCompUnit = nil }()
 	compilationUnit.Name = n.CurrentCompUnitName
 	compilationUnit.packageID = n.PackageID
 	pos := getPosition(n.de(), modulePartNode)
@@ -1347,12 +1349,6 @@ func (n *NodeBuilder) TransformModulePart(modulePartNode *tree.ModulePart) BLang
 		// Dispatch to TransformSyntaxNode which handles all node types
 		var memberNode tree.Node = member
 		transformedNode := n.TransformSyntaxNode(memberNode)
-		if len(n.additionalTopLevel) > 0 {
-			for _, topLevelNode := range n.additionalTopLevel {
-				compilationUnit.AddTopLevelNode(topLevelNode)
-			}
-			n.additionalTopLevel = nil
-		}
 		node := transformedNode.(model.TopLevelNode)
 
 		// Special handling for XML namespace declarations
@@ -3232,7 +3228,11 @@ func (n *NodeBuilder) TransformEnumDeclaration(enumDeclarationNode *tree.EnumDec
 			continue
 		}
 		constantNode := n.transformEnumMember(enumMember, publicQualifier)
-		n.additionalTopLevel = append(n.additionalTopLevel, constantNode)
+		if n.currentCompUnit == nil {
+			n.cx.InternalError("enum constants can only be added at module level", getPosition(n.de(), enumMember))
+			continue
+		}
+		n.currentCompUnit.AddTopLevelNode(constantNode)
 		memberTypeNodes = append(memberTypeNodes, n.createTypeNode(enumMember.Identifier()))
 	}
 
