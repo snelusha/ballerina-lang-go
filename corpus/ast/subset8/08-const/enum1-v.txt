@@ -1,13 +1,21 @@
 (compilation-unit  regular-source
 (package-id $anon . 0.0.0)
   (import-package ballerina io (as io))
-  (enum-declaration Color
-    (enum-member RED
-      (literal RED))
-    (enum-member GREEN
-      (literal green))
-    (enum-member BLUE
-      (literal BLUE)))
+  (const public RED (
+    (value-type string)) (
+    (literal RED)))
+  (const public GREEN (
+    (value-type string)) (
+    (literal green)))
+  (const public BLUE (
+    (value-type string)) (
+    (literal BLUE)))
+  (type-definition Color
+    (union-type
+      (user-defined-type RED)
+      (union-type
+        (user-defined-type GREEN)
+        (user-defined-type BLUE))))
   (function main () (
     (value-type null))
     (block-function-body

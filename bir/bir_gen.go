@@ -208,11 +208,6 @@ func GenBir(ctx *context.CompilerContext, ast *ast.BLangPackage) *BIRPackage {
 	for _, constant := range ast.Constants {
 		addGlobalVar(birPkg, transformConstantAsGlobal(genCtx, &constant))
 	}
-	for i := range ast.Enums {
-		for j := range ast.Enums[i].Members {
-			addGlobalVar(birPkg, transformEnumMemberAsGlobal(genCtx, &ast.Enums[i].Members[j]))
-		}
-	}
 	if ast.InitFunction != nil {
 		birPkg.InitFunction = TransformFunction(genCtx, ast.InitFunction)
 	}
@@ -313,19 +308,6 @@ func transformConstantAsGlobal(ctx *Context, c *ast.BLangConstant) BIRGlobalVari
 	dcl.PkgId = ctx.packageID
 	dcl.Type = ctx.CompilerContext.SymbolType(c.Symbol())
 	dcl.Flags = flagSetToInt64(c.GetFlags())
-	dcl.Origin = model.SymbolOrigin_SOURCE
-	dcl.GlobalVarLookupKey = buildGlobalVarLookupKey(ctx.packageID, name)
-	return dcl
-}
-
-func transformEnumMemberAsGlobal(ctx *Context, member *ast.BLangEnumMember) BIRGlobalVariableDcl {
-	name := model.Name(member.GetName().GetValue())
-	dcl := BIRGlobalVariableDcl{}
-	dcl.Pos = birLoc(ctx.CompilerContext.DiagnosticEnv(), member.GetPosition())
-	dcl.Name = name
-	dcl.PkgId = ctx.packageID
-	dcl.Type = ctx.CompilerContext.SymbolType(member.Symbol())
-	dcl.Flags = flagSetToInt64(member.GetFlags())
 	dcl.Origin = model.SymbolOrigin_SOURCE
 	dcl.GlobalVarLookupKey = buildGlobalVarLookupKey(ctx.packageID, name)
 	return dcl

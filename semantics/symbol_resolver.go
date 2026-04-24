@@ -242,24 +242,6 @@ func ResolveSymbols(cx *context.CompilerContext, pkg *ast.BLangPackage, imported
 		symRef, _, _ := moduleResolver.GetSymbol(name)
 		moduleResolver.typeDefns[symRef] = typeDef
 	}
-	for i := range pkg.Enums {
-		enumDecl := &pkg.Enums[i]
-		enumName := enumDecl.Name.Value
-		isPublic := enumDecl.FlagSet.Contains(model.Flag_PUBLIC)
-		enumTypeSym := model.NewTypeSymbol(enumName, isPublic)
-		if !addTopLevelSymbol(moduleResolver, enumName, &enumTypeSym, enumDecl.Name.GetPosition()) {
-			return moduleResolver.scope.Exports()
-		}
-		for j := range enumDecl.Members {
-			member := &enumDecl.Members[j]
-			memberName := member.Name.Value
-			memberPublic := member.FlagSet.Contains(model.Flag_PUBLIC)
-			memberSym := model.NewValueSymbol(memberName, memberPublic, true, false)
-			if !addTopLevelSymbol(moduleResolver, memberName, &memberSym, member.Name.GetPosition()) {
-				return moduleResolver.scope.Exports()
-			}
-		}
-	}
 	for i := range pkg.ClassDefinitions {
 		classDef := &pkg.ClassDefinitions[i]
 		name := classDef.Name.Value
@@ -763,24 +745,6 @@ func (ms *moduleSymbolResolver) Visit(node ast.BLangNode) ast.Visitor {
 			internalError(ms, "Module level type symbol not found: "+name, n.Name.GetPosition())
 		}
 		n.SetSymbol(symRef)
-		return ms
-	case *ast.BLangEnumDeclaration:
-		name := n.Name.Value
-		symRef, _, ok := ms.GetSymbol(name)
-		if !ok {
-			internalError(ms, "Module level enum symbol not found: "+name, n.Name.GetPosition())
-		}
-		n.SetSymbol(symRef)
-		for i := range n.Members {
-			member := &n.Members[i]
-			memberName := member.Name.Value
-			memberSymRef, _, exists := ms.GetSymbol(memberName)
-			if !exists {
-				internalError(ms, "Module level enum member symbol not found: "+memberName, member.Name.GetPosition())
-				continue
-			}
-			member.SetSymbol(memberSymRef)
-		}
 		return ms
 	case *ast.BLangClassDefinition:
 		name := n.Name.Value

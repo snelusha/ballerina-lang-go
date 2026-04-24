@@ -316,13 +316,6 @@ func (sa *SemanticAnalyzer) Visit(node ast.BLangNode) ast.Visitor {
 		return nil
 	case *ast.BLangConstant:
 		return createConstantAnalyzer(sa, n)
-	case *ast.BLangEnumDeclaration:
-		for i := range n.Members {
-			if !validateEnumMember(sa, &n.Members[i]) {
-				return nil
-			}
-		}
-		return nil
 	case *ast.BLangSimpleVariable:
 		// Module-level variables don't need constant-expression validation.
 		// Type checking is handled by the type resolver.
@@ -342,22 +335,6 @@ func (sa *SemanticAnalyzer) Visit(node ast.BLangNode) ast.Visitor {
 		// Now delegates function creation to visitInner
 		return visitInner(sa, node)
 	}
-}
-
-func validateEnumMember[A analyzer](a A, member *ast.BLangEnumMember) bool {
-	if member.Expr == nil {
-		a.internalErr("enum member expression is nil", member.GetPosition())
-		return false
-	}
-	hasErrors := false
-	validateConstantExpr(a.ctx(), member.Expr, func(e ast.BLangExpression) {
-		a.semanticErr("expression is not a constant expression", e.GetPosition())
-		hasErrors = true
-	})
-	if hasErrors {
-		return false
-	}
-	return analyzeExpression(a, member.Expr, semtypes.STRING)
 }
 
 func (sa *SemanticAnalyzer) processImport(importNode *ast.BLangImportPackage) {

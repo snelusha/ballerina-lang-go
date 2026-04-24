@@ -95,9 +95,9 @@ type packageTypeResolver struct {
 	// a function boundary during lambda body resolution. nil when not inside a lambda.
 	capturedNarrowedVars map[model.SymbolRef]bool
 
-	// packageVarNodes maps a constant-like symbol ref to its AST node.
-	// While a node is being resolved, its entry is set to nil (cycle detection).
-	packageVarNodes      map[model.SymbolRef]constantLikeNode
+	// packageVarNodes maps a constant's symbol ref to its AST node.
+	// While a constant is being resolved, its entry is set to nil (cycle detection).
+	packageVarNodes      map[model.SymbolRef]*ast.BLangConstant
 	functionNodes        map[model.SymbolRef]*ast.BLangFunction
 	mappingAtomToBType   map[*semtypes.MappingAtomicType]ast.BType
 	typeDefnNodes        map[model.SymbolRef]model.TypeDefinition
@@ -106,11 +106,6 @@ type packageTypeResolver struct {
 	mappingAtomToSymRef  map[*semtypes.MappingAtomicType]model.SymbolRef
 	classAtomSymbols     map[*semtypes.MappingAtomicType]model.SymbolRef
 	classSymbolByType    map[semtypes.SemType]model.SymbolRef
-}
-
-type constantLikeNode interface {
-	ast.BNodeWithSymbol
-	GetPosition() diagnostics.Location
 }
 
 func (t *packageTypeResolver) typeContext() semtypes.Context        { return t.tyCtx }
@@ -388,7 +383,7 @@ func newPackageTypeResolver(ctx *context.CompilerContext, pkg *ast.BLangPackage,
 		importedSymbols:     importedSymbols,
 		pkg:                 pkg,
 		implicitImports:     make(map[string]ast.BLangImportPackage),
-		packageVarNodes:     make(map[model.SymbolRef]constantLikeNode),
+		packageVarNodes:     make(map[model.SymbolRef]*ast.BLangConstant),
 		functionNodes:       make(map[model.SymbolRef]*ast.BLangFunction),
 		mappingAtomToBType:  make(map[*semtypes.MappingAtomicType]ast.BType),
 		typeDefnNodes:       make(map[model.SymbolRef]model.TypeDefinition),
@@ -434,15 +429,7 @@ func (t *packageTypeResolver) ensureResolved(ref model.SymbolRef, depth int) boo
 		}
 		t.packageVarNodes[ref] = nil // mark as in-progress
 		defer delete(t.packageVarNodes, ref)
-		switch n := c.(type) {
-		case *ast.BLangConstant:
-			return resolveConstant(t, n)
-		case *ast.BLangEnumMember:
-			return resolveEnumMember(t, n)
-		default:
-			t.internalError("unexpected constant-like node", c.GetPosition())
-			return false
-		}
+		return resolveConstant(t, c)
 	}
 	if fn, ok := t.functionNodes[ref]; ok {
 		_, ok := resolveFunctionSignature(t, fn)
@@ -600,11 +587,6 @@ func (t *packageTypeResolver) resolveTopLevelTypes(pkg *ast.BLangPackage) {
 	for i := range pkg.Constants {
 		t.packageVarNodes[pkg.Constants[i].Symbol()] = &pkg.Constants[i]
 	}
-	for i := range pkg.Enums {
-		for j := range pkg.Enums[i].Members {
-			t.packageVarNodes[pkg.Enums[i].Members[j].Symbol()] = &pkg.Enums[i].Members[j]
-		}
-	}
 	for i := range pkg.Functions {
 		t.functionNodes[pkg.Functions[i].Symbol()] = &pkg.Functions[i]
 	}
@@ -638,11 +620,6 @@ func (t *packageTypeResolver) resolveTopLevelTypes(pkg *ast.BLangPackage) {
 			return
 		}
 	}
-	for i := range pkg.Enums {
-		if !resolveEnumDeclaration(t, &pkg.Enums[i]) {
-			return
-		}
-	}
 	for i := range pkg.Imports {
 		setOtherNodesAsNever(&pkg.Imports[i])
 	}
@@ -659,10 +636,6 @@ func (t *packageTypeResolver) resolveTopLevelTypes(pkg *ast.BLangPackage) {
 		classDef := &pkg.ClassDefinitions[i]
 		classDef.SetDeterminedType(semtypes.NEVER)
 		classDef.Name.SetDeterminedType(semtypes.NEVER)
-	}
-	for i := range pkg.Enums {
-		pkg.Enums[i].SetDeterminedType(semtypes.NEVER)
-		pkg.Enums[i].Name.SetDeterminedType(semtypes.NEVER)
 	}
 	pkg.SetDeterminedType(semtypes.NEVER)
 	for i := range pkg.CompUnits {
@@ -4007,49 +3980,6 @@ func resolveConstant(t typeResolver, constant *ast.BLangConstant) bool {
 	symbol := constant.Symbol()
 	t.setSymbolType(symbol, expectedType)
 
-	return true
-}
-
-func resolveEnumMember(t typeResolver, member *ast.BLangEnumMember) bool {
-	if t.symbolType(member.Symbol()) != nil {
-		return true
-	}
-	if member.Expr == nil {
-		t.internalError("enum member expression is nil", member.GetPosition())
-		return false
-	}
-	if member.Name != nil {
-		setOtherNodesAsNever(member.Name)
-	}
-	exprTy, _, ok := resolveExpression(t, nil, member.Expr, semtypes.STRING)
-	if !ok {
-		return false
-	}
-	setExpectedType(member, exprTy)
-	t.setSymbolType(member.Symbol(), exprTy)
-	return true
-}
-
-func resolveEnumDeclaration(t typeResolver, enumDecl *ast.BLangEnumDeclaration) bool {
-	if t.symbolType(enumDecl.Symbol()) != nil {
-		return true
-	}
-	if enumDecl.Name != nil {
-		setOtherNodesAsNever(enumDecl.Name)
-	}
-
-	var enumTy semtypes.SemType = semtypes.NEVER
-	for i := range enumDecl.Members {
-		member := &enumDecl.Members[i]
-		if !resolveEnumMember(t, member) {
-			return false
-		}
-		memberTy := member.GetDeterminedType()
-		enumTy = semtypes.Union(enumTy, memberTy)
-	}
-
-	setExpectedType(enumDecl, enumTy)
-	t.setSymbolType(enumDecl.Symbol(), enumTy)
 	return true
 }
 

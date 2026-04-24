@@ -65,9 +65,6 @@ func Walk(v Visitor, node BLangNode) {
 		for i := range node.TypeDefinitions {
 			Walk(v, &node.TypeDefinitions[i])
 		}
-		for i := range node.Enums {
-			Walk(v, &node.Enums[i])
-		}
 		for i := range node.Annotations {
 			Walk(v, &node.Annotations[i])
 		}
@@ -108,9 +105,6 @@ func Walk(v Visitor, node BLangNode) {
 		}
 		for i := range node.TypeDefinitions {
 			Walk(v, &node.TypeDefinitions[i])
-		}
-		for i := range node.Enums {
-			Walk(v, &node.Enums[i])
 		}
 		for i := range node.Annotations {
 			Walk(v, &node.Annotations[i])
@@ -211,28 +205,6 @@ func Walk(v Visitor, node BLangNode) {
 		WalkTypeData(v, &node.typeData)
 		for i := range node.annAttachments {
 			Walk(v, &node.annAttachments[i])
-		}
-
-	case *BLangEnumDeclaration:
-		if node.Name != nil {
-			Walk(v, node.Name)
-		}
-		for i := range node.annAttachments {
-			Walk(v, &node.annAttachments[i])
-		}
-		for i := range node.Members {
-			Walk(v, &node.Members[i])
-		}
-
-	case *BLangEnumMember:
-		if node.Name != nil {
-			Walk(v, node.Name)
-		}
-		for i := range node.annAttachments {
-			Walk(v, &node.annAttachments[i])
-		}
-		if node.Expr != nil {
-			Walk(v, node.Expr.(BLangNode))
 		}
 
 	case *BLangConstant:
