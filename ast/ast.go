@@ -347,6 +347,7 @@ type (
 		Services                []BLangService
 		Functions               []BLangFunction
 		TypeDefinitions         []BLangTypeDefinition
+		Enums                   []BLangEnumDeclaration
 		Annotations             []BLangAnnotation
 		InitFunction            *BLangFunction
 		StartFunction           *BLangFunction
@@ -469,6 +470,26 @@ type (
 		hasCyclicReference              bool
 		referencedFieldsDefined         bool
 	}
+
+	BLangEnumDeclaration struct {
+		bLangNodeBase
+		Name                            *BLangIdentifier
+		symbol                          model.SymbolRef
+		annAttachments                  []BLangAnnotationAttachment
+		markdownDocumentationAttachment *BLangMarkdownDocumentation
+		Members                         []BLangEnumMember
+		FlagSet                         common.UnorderedSet[model.Flag]
+	}
+
+	BLangEnumMember struct {
+		bLangNodeBase
+		Name                            *BLangIdentifier
+		symbol                          model.SymbolRef
+		annAttachments                  []BLangAnnotationAttachment
+		markdownDocumentationAttachment *BLangMarkdownDocumentation
+		Expr                            BLangExpression
+		FlagSet                         common.UnorderedSet[model.Flag]
+	}
 )
 
 func (this *bLangNodeBase) SetDeterminedType(ty semtypes.SemType) {
@@ -543,6 +564,22 @@ func (n *BLangTypeDefinition) SetSymbol(symbolRef model.SymbolRef) {
 	n.symbol = symbolRef
 }
 
+func (n *BLangEnumDeclaration) Symbol() model.SymbolRef {
+	return n.symbol
+}
+
+func (n *BLangEnumDeclaration) SetSymbol(symbolRef model.SymbolRef) {
+	n.symbol = symbolRef
+}
+
+func (n *BLangEnumMember) Symbol() model.SymbolRef {
+	return n.symbol
+}
+
+func (n *BLangEnumMember) SetSymbol(symbolRef model.SymbolRef) {
+	n.symbol = symbolRef
+}
+
 var (
 	_ model.AnnotationAttachmentNode                    = &BLangAnnotationAttachment{}
 	_ model.IdentifierNode                              = &BLangIdentifier{}
@@ -558,6 +595,8 @@ var (
 	_ model.CompilationUnitNode                         = &BLangCompilationUnit{}
 	_ model.ConstantNode                                = &BLangConstant{}
 	_ model.TypeDefinition                              = &BLangTypeDefinition{}
+	_ model.EnumDeclarationNode                         = &BLangEnumDeclaration{}
+	_ model.EnumMemberNode                              = &BLangEnumMember{}
 	_ model.SimpleVariableNode                          = &BLangSimpleVariable{}
 	_ model.MarkdownDocumentationNode                   = &BLangMarkdownDocumentation{}
 	_ model.MarkdownDocumentationReferenceAttributeNode = &BLangMarkdownReferenceDocumentation{}
@@ -587,6 +626,8 @@ var (
 	_ BLangNode = &BLangSimpleVariable{}
 	_ BLangNode = &BLangFunction{}
 	_ BLangNode = &BLangTypeDefinition{}
+	_ BLangNode = &BLangEnumDeclaration{}
+	_ BLangNode = &BLangEnumMember{}
 )
 
 var (
@@ -597,6 +638,8 @@ var (
 	_ BNodeWithSymbol = &BLangSimpleVariable{}
 	_ BNodeWithSymbol = &BLangFunction{}
 	_ BNodeWithSymbol = &BLangTypeDefinition{}
+	_ BNodeWithSymbol = &BLangEnumDeclaration{}
+	_ BNodeWithSymbol = &BLangEnumMember{}
 )
 
 func (this *BLangAnnotationAttachment) GetKind() model.NodeKind {
@@ -1621,6 +1664,138 @@ func (this *BLangTypeDefinition) SetCycleDepth(depth int) {
 	this.CycleDepth = depth
 }
 
+func (this *BLangEnumDeclaration) GetName() model.IdentifierNode {
+	return this.Name
+}
+
+func (this *BLangEnumDeclaration) SetName(name model.IdentifierNode) {
+	if id, ok := name.(*BLangIdentifier); ok {
+		this.Name = id
+	} else {
+		panic("name is not a BLangIdentifier")
+	}
+}
+
+func (this *BLangEnumDeclaration) GetMembers() []model.EnumMemberNode {
+	result := make([]model.EnumMemberNode, len(this.Members))
+	for i := range this.Members {
+		result[i] = &this.Members[i]
+	}
+	return result
+}
+
+func (this *BLangEnumDeclaration) AddMember(member model.EnumMemberNode) {
+	if enumMember, ok := member.(*BLangEnumMember); ok {
+		this.Members = append(this.Members, *enumMember)
+	} else {
+		panic("member is not a BLangEnumMember")
+	}
+}
+
+func (this *BLangEnumDeclaration) GetFlags() common.Set[model.Flag] {
+	return &this.FlagSet
+}
+
+func (this *BLangEnumDeclaration) AddFlag(flag model.Flag) {
+	this.FlagSet.Add(flag)
+}
+
+func (this *BLangEnumDeclaration) GetAnnotationAttachments() []model.AnnotationAttachmentNode {
+	result := make([]model.AnnotationAttachmentNode, len(this.annAttachments))
+	for i := range this.annAttachments {
+		result[i] = &this.annAttachments[i]
+	}
+	return result
+}
+
+func (this *BLangEnumDeclaration) AddAnnotationAttachment(annAttachment model.AnnotationAttachmentNode) {
+	if ann, ok := annAttachment.(*BLangAnnotationAttachment); ok {
+		this.annAttachments = append(this.annAttachments, *ann)
+	} else {
+		panic("annAttachment is not a BLangAnnotationAttachment")
+	}
+}
+
+func (this *BLangEnumDeclaration) GetMarkdownDocumentationAttachment() model.MarkdownDocumentationNode {
+	return this.markdownDocumentationAttachment
+}
+
+func (this *BLangEnumDeclaration) SetMarkdownDocumentationAttachment(documentationNode model.MarkdownDocumentationNode) {
+	if doc, ok := documentationNode.(*BLangMarkdownDocumentation); ok {
+		this.markdownDocumentationAttachment = doc
+	} else {
+		panic("documentationNode is not a BLangMarkdownDocumentation")
+	}
+}
+
+func (this *BLangEnumDeclaration) GetKind() model.NodeKind {
+	return model.NodeKind_ENUM_DECLARATION
+}
+
+func (this *BLangEnumMember) GetName() model.IdentifierNode {
+	return this.Name
+}
+
+func (this *BLangEnumMember) SetName(name model.IdentifierNode) {
+	if id, ok := name.(*BLangIdentifier); ok {
+		this.Name = id
+	} else {
+		panic("name is not a BLangIdentifier")
+	}
+}
+
+func (this *BLangEnumMember) GetExpression() model.ExpressionNode {
+	return this.Expr
+}
+
+func (this *BLangEnumMember) SetExpression(expr model.ExpressionNode) {
+	if bExpr, ok := expr.(BLangExpression); ok {
+		this.Expr = bExpr
+	} else {
+		panic("expr is not a BLangExpression")
+	}
+}
+
+func (this *BLangEnumMember) GetFlags() common.Set[model.Flag] {
+	return &this.FlagSet
+}
+
+func (this *BLangEnumMember) AddFlag(flag model.Flag) {
+	this.FlagSet.Add(flag)
+}
+
+func (this *BLangEnumMember) GetAnnotationAttachments() []model.AnnotationAttachmentNode {
+	result := make([]model.AnnotationAttachmentNode, len(this.annAttachments))
+	for i := range this.annAttachments {
+		result[i] = &this.annAttachments[i]
+	}
+	return result
+}
+
+func (this *BLangEnumMember) AddAnnotationAttachment(annAttachment model.AnnotationAttachmentNode) {
+	if ann, ok := annAttachment.(*BLangAnnotationAttachment); ok {
+		this.annAttachments = append(this.annAttachments, *ann)
+	} else {
+		panic("annAttachment is not a BLangAnnotationAttachment")
+	}
+}
+
+func (this *BLangEnumMember) GetMarkdownDocumentationAttachment() model.MarkdownDocumentationNode {
+	return this.markdownDocumentationAttachment
+}
+
+func (this *BLangEnumMember) SetMarkdownDocumentationAttachment(documentationNode model.MarkdownDocumentationNode) {
+	if doc, ok := documentationNode.(*BLangMarkdownDocumentation); ok {
+		this.markdownDocumentationAttachment = doc
+	} else {
+		panic("documentationNode is not a BLangMarkdownDocumentation")
+	}
+}
+
+func (this *BLangEnumMember) GetKind() model.NodeKind {
+	return model.NodeKind_ENUM_MEMBER
+}
+
 func (this *BLangXMLNS) GetNamespaceURI() model.ExpressionNode {
 	return this.namespaceURI
 }
@@ -1774,6 +1949,11 @@ func (this *BLangPackage) AddTypeDefinition(typeDefinition model.TypeDefinition)
 	}
 }
 
+func (this *BLangPackage) AddEnum(enumDecl *BLangEnumDeclaration) {
+	this.Enums = append(this.Enums, *enumDecl)
+	this.TopLevelNodes = append(this.TopLevelNodes, enumDecl)
+}
+
 func (this *BLangPackage) GetAnnotations() []model.AnnotationNode {
 	result := make([]model.AnnotationNode, len(this.Annotations))
 	for i := range this.Annotations {
@@ -1888,6 +2068,7 @@ func NewBLangPackage(env semtypes.Env) *BLangPackage {
 	this.Services = []BLangService{}
 	this.Functions = []BLangFunction{}
 	this.TypeDefinitions = []BLangTypeDefinition{}
+	this.Enums = []BLangEnumDeclaration{}
 	this.Annotations = []BLangAnnotation{}
 	this.TopLevelNodes = []model.TopLevelNode{}
 	this.TestablePkgs = []*BLangTestablePackage{}
@@ -1976,6 +2157,8 @@ func ToPackage(compilationUnit *BLangCompilationUnit) *BLangPackage {
 			}
 		case *BLangTypeDefinition:
 			p.TypeDefinitions = append(p.TypeDefinitions, *node)
+		case *BLangEnumDeclaration:
+			p.Enums = append(p.Enums, *node)
 		case *BLangAnnotation:
 			p.Annotations = append(p.Annotations, *node)
 		case *BLangClassDefinition:

@@ -3208,11 +3208,67 @@ func (n *NodeBuilder) TransformConditionalExpression(conditionalExpressionNode *
 }
 
 func (n *NodeBuilder) TransformEnumDeclaration(enumDeclarationNode *tree.EnumDeclarationNode) BLangNode {
-	panic("TransformEnumDeclaration unimplemented")
+	enumDecl := &BLangEnumDeclaration{}
+	enumDecl.pos = getPositionWithoutMetadata(n.de(), enumDeclarationNode)
+	enumDecl.FlagSet.Add(model.Flag_ENUM)
+
+	identifierPos := getPosition(n.de(), enumDeclarationNode.Identifier())
+	identifier := createIdentifierFromToken(identifierPos, enumDeclarationNode.Identifier())
+	enumDecl.Name = &identifier
+
+	qualifier := enumDeclarationNode.Qualifier()
+	if qualifier != nil && qualifier.Kind() == common.PUBLIC_KEYWORD {
+		enumDecl.FlagSet.Add(model.Flag_PUBLIC)
+	}
+
+	metadata := enumDeclarationNode.Metadata()
+	if metadata != nil && !metadata.IsMissing() {
+		docString := getDocumentationString(metadata)
+		enumDecl.markdownDocumentationAttachment = n.createMarkdownDocumentationAttachment(docString)
+	}
+
+	memberNodes := enumDeclarationNode.EnumMemberList()
+	for memberNode := range memberNodes.Iterator() {
+		if memberNode.Kind() != common.ENUM_MEMBER {
+			continue
+		}
+		member := n.TransformEnumMember(memberNode.(*tree.EnumMemberNode)).(*BLangEnumMember)
+		if enumDecl.FlagSet.Contains(model.Flag_PUBLIC) {
+			member.FlagSet.Add(model.Flag_PUBLIC)
+		}
+		enumDecl.Members = append(enumDecl.Members, *member)
+	}
+
+	return enumDecl
 }
 
 func (n *NodeBuilder) TransformEnumMember(enumMemberNode *tree.EnumMemberNode) BLangNode {
-	panic("TransformEnumMember unimplemented")
+	member := &BLangEnumMember{}
+	member.pos = getPositionWithoutMetadata(n.de(), enumMemberNode)
+	member.FlagSet.Add(model.Flag_ENUM_MEMBER)
+
+	identifierPos := getPosition(n.de(), enumMemberNode.Identifier())
+	identifier := createIdentifierFromToken(identifierPos, enumMemberNode.Identifier())
+	member.Name = &identifier
+
+	if exprNode := enumMemberNode.ConstExprNode(); exprNode != nil {
+		member.Expr = n.createExpression(exprNode)
+	} else {
+		implicit := &BLangLiteral{}
+		implicit.pos = identifierPos
+		implicit.Value = identifier.Value
+		implicit.OriginalValue = identifier.Value
+		implicit.SetValueType(n.types.getTypeFromTag(model.TypeTags_STRING).(BType))
+		member.Expr = implicit
+	}
+
+	metadata := enumMemberNode.Metadata()
+	if metadata != nil && !metadata.IsMissing() {
+		docString := getDocumentationString(metadata)
+		member.markdownDocumentationAttachment = n.createMarkdownDocumentationAttachment(docString)
+	}
+
+	return member
 }
 
 func (n *NodeBuilder) TransformArrayTypeDescriptor(arrayTypeDescriptorNode *tree.ArrayTypeDescriptorNode) BLangNode {

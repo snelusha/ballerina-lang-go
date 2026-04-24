@@ -312,6 +312,32 @@ func desugarInitFn(pkgCtx *packageContext, compilerCtx *context.CompilerContext,
 		constant.Expr = nil
 	}
 
+	for i := range pkg.Enums {
+		enumDecl := &pkg.Enums[i]
+		for j := range enumDecl.Members {
+			member := &enumDecl.Members[j]
+			if member.Expr == nil {
+				continue
+			}
+			initExpr := member.Expr
+			basePos := initExpr.GetPosition()
+			varRef := &ast.BLangSimpleVarRef{
+				VariableName: member.Name,
+			}
+			varRef.SetSymbol(member.Symbol())
+			varRef.SetDeterminedType(member.GetDeterminedType())
+			assignment := &ast.BLangAssignment{
+				VarRef: varRef,
+				Expr:   initExpr,
+			}
+			assignment.SetDeterminedType(semtypes.NEVER)
+			setPositionIfMissing(assignment, basePos)
+
+			initStmts = append(initStmts, assignment)
+			member.Expr = nil
+		}
+	}
+
 	if len(initStmts) == 0 && pkg.InitFunction == nil {
 		return
 	}

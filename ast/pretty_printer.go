@@ -115,6 +115,10 @@ func (p *PrettyPrinter) PrintInner(node BLangNode) {
 		p.printConstrainedType(t)
 	case *BLangTypeDefinition:
 		p.printTypeDefinition(t)
+	case *BLangEnumDeclaration:
+		p.printEnumDeclaration(t)
+	case *BLangEnumMember:
+		p.printEnumMember(t)
 	case *BLangUserDefinedType:
 		p.printUserDefinedType(t)
 	case *BLangFiniteTypeNode:
@@ -260,6 +264,9 @@ func (p *PrettyPrinter) printPackage(node *BLangPackage) {
 	}
 	for i := range node.TypeDefinitions {
 		p.printTypeDefinition(&node.TypeDefinitions[i])
+	}
+	for i := range node.Enums {
+		p.printEnumDeclaration(&node.Enums[i])
 	}
 	for i := range node.ClassDefinitions {
 		p.printClassDefinition(&node.ClassDefinitions[i])
@@ -1277,6 +1284,35 @@ func (p *PrettyPrinter) printTypeDefinition(node *BLangTypeDefinition) {
 	if node.GetTypeData().TypeDescriptor != nil {
 		p.indentLevel++
 		p.PrintInner(node.GetTypeData().TypeDescriptor.(BLangNode))
+		p.indentLevel--
+	}
+	p.endNode()
+}
+
+func (p *PrettyPrinter) printEnumDeclaration(node *BLangEnumDeclaration) {
+	p.startNode()
+	p.printString("enum-declaration")
+	p.printFlags(node.FlagSet)
+	if node.Name != nil {
+		p.printString(node.Name.Value)
+	}
+	p.indentLevel++
+	for i := range node.Members {
+		p.printEnumMember(&node.Members[i])
+	}
+	p.indentLevel--
+	p.endNode()
+}
+
+func (p *PrettyPrinter) printEnumMember(node *BLangEnumMember) {
+	p.startNode()
+	p.printString("enum-member")
+	if node.Name != nil {
+		p.printString(node.Name.Value)
+	}
+	if node.Expr != nil {
+		p.indentLevel++
+		p.PrintInner(node.Expr.(BLangNode))
 		p.indentLevel--
 	}
 	p.endNode()
