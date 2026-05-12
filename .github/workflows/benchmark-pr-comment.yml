@@ -2,11 +2,8 @@ name: PR Benchmark Comment
 
 on:
   workflow_run:
-    workflows:
-      - PR Benchmark Prepare
-      - PR Benchmark
-    types:
-      - completed
+    workflows: [PR Benchmark Prepare]
+    types: [completed]
 
 permissions:
   actions: read
@@ -14,164 +11,91 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: benchmark-comment-pr-${{ github.event.workflow_run.pull_requests[0].number || github.event.workflow_run.id }}
+  group: benchmark-comment-${{ github.event.workflow_run.id }}
   cancel-in-progress: true
 
 jobs:
   comment:
     name: Post benchmark comment
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: github.event.workflow_run.conclusion == 'success'
 
     steps:
-      - name: Resolve benchmark artifact
-        id: artifact
-        uses: actions/github-script@v7
+      - name: Download benchmark artifact
+        uses: actions/download-artifact@v4
         with:
-          script: |
-            const runId = context.payload.workflow_run.id;
-            const expectedPrefix = "benchmark-pr-";
-            const { owner, repo } = context.repo;
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          pattern: benchmark-pr-*
+          merge-multiple: true
+          path: benchmark-artifact
 
-            const artifacts = await github.paginate(
-              github.rest.actions.listWorkflowRunArtifacts,
-              { owner, repo, run_id: runId, per_page: 100 }
-            );
-
-            const artifact = artifacts.find((a) => !a.expired && a.name.startsWith(expectedPrefix));
-            if (!artifact) {
-              core.setFailed(`No benchmark artifact found for run ${runId}`);
-              return;
-            }
-
-            core.setOutput("artifact_id", String(artifact.id));
-            core.info(`Resolved artifact ${artifact.name} (${artifact.id})`);
-
-      - name: Download benchmark artifact zip
-        env:
-          GH_TOKEN: ${{ github.token }}
-          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact_id }}
-          REPO: ${{ github.repository }}
-        run: |
-          curl -sSL \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${REPO}/actions/artifacts/${ARTIFACT_ID}/zip" \
-            -o benchmark-artifact.zip
-
-      - name: Unpack benchmark artifact
-        run: |
-          mkdir -p benchmark-artifact
-          unzip -q benchmark-artifact.zip -d benchmark-artifact
-
-      - name: Read metadata
-        id: meta
+      - name: Post or update PR comment
         uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require("fs");
-            const metaPath = "benchmark-artifact/benchmark-meta.json";
-            if (!fs.existsSync(metaPath)) {
-              core.setFailed(`Missing metadata file: ${metaPath}`);
-              return;
-            }
-            const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
-            if (!meta.pr_number) {
-              core.setFailed("benchmark-meta.json is missing pr_number");
-              return;
-            }
-            core.setOutput("pr_number", String(meta.pr_number));
-
-      - name: Update benchmark comment
-        uses: actions/github-script@v7
-        env:
-          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
         with:
           script: |
             const fs = require("fs");
 
             const MARKER = "<!-- benchmark-pr-comment -->";
-            const HTML_PATH = "benchmark-artifact/output.html";
-            const issueNumber = Number(process.env.PR_NUMBER);
+            const meta = JSON.parse(fs.readFileSync("benchmark-artifact/benchmark-meta.json", "utf8"));
+            const { pr_number: issueNumber, head_sha: artifactHeadSha } = meta;
 
-            if (!issueNumber) {
-              core.setFailed("Invalid PR number from metadata");
+            if (!issueNumber) core.setFailed("benchmark-meta.json missing pr_number");
+            if (!artifactHeadSha) core.setFailed("benchmark-meta.json missing head_sha");
+
+            // Bail out if a newer push has already superseded this run
+            const { data: pr } = await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: issueNumber,
+            });
+            if (pr.head.sha !== artifactHeadSha) {
+              core.info(`Skipping: artifact SHA ${artifactHeadSha} is not current PR head ${pr.head.sha}`);
               return;
             }
 
-            function extractTable(html) {
-              const match = html.match(/<table\b[\s\S]*?<\/table>/i);
-              if (!match) core.setFailed("No <table>...</table> found in benchmark output");
-              return match?.[0];
-            }
+            // Extract and sanitise the <table> from the benchmark HTML
+            const html = fs.readFileSync("benchmark-artifact/output.html", "utf8");
+            const tableMatch = html.match(/<table\b[\s\S]*?<\/table>/i);
+            if (!tableMatch) { core.setFailed("No <table> found in benchmark output"); return; }
 
-            function processTable(table) {
-              return table
-                .replace(/\sclass="[^"]*"/g, "")
-                .replace(/<\/?span\b[^>]*>/g, "")
-                .split("\n")
-                .map((line) => line.trimStart())
-                .join("\n")
-                .trim()
-                .replace(
-                  /<td>\s*([\d.]+×)\s*±\s*([\d.]+)\s*([^\n<]+?)\s*<\/td>/g,
-                  (_match, ratio, margin, winnerRef) => {
-                    const winner = winnerRef.trim();
-                    const winnerMsg = winner === "tie" ? "Both are equal" : winner;
-                    return `<td>${ratio} ± ${margin}\n\n${winnerMsg}\n</td>`;
-                  }
-                );
-            }
+            const table = tableMatch[0]
+              .replace(/\sclass="[^"]*"/g, "")
+              .replace(/<\/?span\b[^>]*>/g, "")
+              .split("\n").map(l => l.trimStart()).join("\n")
+              .replace(
+                /<td>\s*([\d.]+×)\s*±\s*([\d.]+)\s*([^\n<]+?)\s*<\/td>/g,
+                (_, ratio, margin, winner) =>
+                  `<td>${ratio} ± ${margin}\n\n${winner.trim() === "tie" ? "Both are equal" : winner.trim()}\n</td>`
+              );
 
-            function buildBody(table) {
-              return [
-                MARKER,
-                "## Benchmark Results",
-                "",
-                table,
-                "",
-                "_Generated by benchmark workflow for `origin/main` vs `HEAD`._"
-              ].join("\n");
-            }
+            const body = [
+              MARKER,
+              "## Benchmark Results",
+              "",
+              table,
+              "",
+              "_Generated by benchmark workflow for `origin/main` vs `HEAD`._",
+            ].join("\n");
 
-            async function findExistingComment(number) {
-              const { data: comments } = await github.rest.issues.listComments({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: number,
-                per_page: 100
+            // Upsert: update existing marker comment or create a new one
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...context.repo,
+              issue_number: issueNumber,
+            });
+            const existing = comments.find(c => c.body?.includes(MARKER));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                ...context.repo,
+                comment_id: existing.id,
+                body,
               });
-              return comments.find((c) => c.body?.includes(MARKER));
+              core.info(`Updated comment ${existing.id}`);
+            } else {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: issueNumber,
+                body,
+              });
+              core.info("Created benchmark comment");
             }
-
-            async function upsertComment(number, body) {
-              const existing = await findExistingComment(number);
-              if (existing) {
-                await github.rest.issues.updateComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: existing.id,
-                  body
-                });
-                core.info(`Updated benchmark comment: ${existing.id}`);
-              } else {
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: number,
-                  body
-                });
-                core.info("Created benchmark comment");
-              }
-            }
-
-            if (!fs.existsSync(HTML_PATH)) {
-              core.setFailed(`Missing benchmark HTML output: ${HTML_PATH}`);
-              return;
-            }
-
-            const html = fs.readFileSync(HTML_PATH, "utf8");
-            const table = extractTable(html);
-            if (!table) return;
-            const body = buildBody(processTable(table));
-            await upsertComment(issueNumber, body);
