@@ -22,6 +22,7 @@ package palnative
 
 import (
 	"os"
+	"path/filepath"
 	"time"
 
 	"ballerina-lang-go/platform/pal"
@@ -42,6 +43,10 @@ func NewPlatform() pal.Platform {
 				return os.ReadFile(path)
 			},
 			WriteFile: func(path string, data []byte) error {
+				// Ensure the parent directory exists, since os.WriteFile doesn't do that.
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					return err
+				}
 				return os.WriteFile(path, data, 0o644)
 			},
 			AppendFile: func(path string, data []byte) (err error) {
