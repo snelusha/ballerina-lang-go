@@ -19,6 +19,7 @@ package projects
 import (
 	"sync"
 
+	"ballerina-lang-go/ast"
 	"ballerina-lang-go/context"
 	"ballerina-lang-go/tools/diagnostics"
 )
@@ -217,6 +218,37 @@ func (c *PackageCompilation) DiagnosticResult() DiagnosticResult {
 // DiagnosticEnv returns the diagnostic env for resolving byte offsets to line/column.
 func (c *PackageCompilation) DiagnosticEnv() *diagnostics.DiagnosticEnv {
 	return c.compilerEnv.DiagnosticEnv()
+}
+
+// BLangPackages returns the compiled AST packages for the root package modules.
+func (c *PackageCompilation) BLangPackages() []*ast.BLangPackage {
+	packages := make([]*ast.BLangPackage, 0, len(c.rootPackageContext.moduleIDs))
+	for _, moduleID := range c.rootPackageContext.getModuleIDs() {
+		moduleCtx := c.rootPackageContext.getModuleContext(moduleID)
+		if moduleCtx == nil {
+			continue
+		}
+		pkg := moduleCtx.getBLangPackage()
+		if pkg != nil {
+			packages = append(packages, pkg)
+		}
+	}
+	return packages
+}
+
+// SourcesBeforeDesugar returns source generated from ASTs immediately before desugaring.
+func (c *PackageCompilation) SourcesBeforeDesugar() []string {
+	sources := make([]string, 0, len(c.rootPackageContext.moduleIDs))
+	for _, moduleID := range c.rootPackageContext.getModuleIDs() {
+		moduleCtx := c.rootPackageContext.getModuleContext(moduleID)
+		if moduleCtx == nil {
+			continue
+		}
+		if source := moduleCtx.getSourceBeforeDesugar(); source != "" {
+			sources = append(sources, source)
+		}
+	}
+	return sources
 }
 
 // SemanticModel returns the semantic model for the specified module.

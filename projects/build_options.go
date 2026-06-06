@@ -453,6 +453,13 @@ func (b *BuildOptionsBuilder) WithStats(value bool) *BuildOptionsBuilder {
 	return b
 }
 
+// WithPrintSourceBeforeDesugar sets source capture before desugaring.
+// Delegates to CompilationOptionsBuilder.
+func (b *BuildOptionsBuilder) WithPrintSourceBeforeDesugar(value bool) *BuildOptionsBuilder {
+	b.compilationOptionsBuilder.WithPrintSourceBeforeDesugar(value)
+	return b
+}
+
 // WithConfigSchemaGen sets whether config schema generation is enabled.
 // Delegates to CompilationOptionsBuilder.
 func (b *BuildOptionsBuilder) WithConfigSchemaGen(value bool) *BuildOptionsBuilder {

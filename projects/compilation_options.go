@@ -145,6 +145,7 @@ type CompilationOptions struct {
 	optimizeDependencyCompilation optionalBool
 	traceRecovery                 optionalBool
 	stats                         optionalBool
+	printSourceBeforeDesugar      optionalBool
 	cloud                         *string
 	dumpCFGFormat                 CFGFormat
 	lockingMode                   PackageLockingMode
@@ -286,6 +287,11 @@ func (c CompilationOptions) Stats() bool {
 	return c.stats.valueOr(false)
 }
 
+// PrintSourceBeforeDesugar returns whether source should be captured before desugaring.
+func (c CompilationOptions) PrintSourceBeforeDesugar() bool {
+	return c.printSourceBeforeDesugar.valueOr(false)
+}
+
 // LockingMode returns the package locking mode.
 // Returns PackageLockingModeUnknown if not explicitly set.
 func (c CompilationOptions) LockingMode() PackageLockingMode {
@@ -326,6 +332,7 @@ func (c CompilationOptions) AcceptTheirs(theirs CompilationOptions) CompilationO
 		optimizeDependencyCompilation: acceptOptionalBool(c.optimizeDependencyCompilation, theirs.optimizeDependencyCompilation),
 		traceRecovery:                 acceptOptionalBool(c.traceRecovery, theirs.traceRecovery),
 		stats:                         acceptOptionalBool(c.stats, theirs.stats),
+		printSourceBeforeDesugar:      acceptOptionalBool(c.printSourceBeforeDesugar, theirs.printSourceBeforeDesugar),
 	}
 
 	// Cloud (*string)
@@ -515,6 +522,12 @@ func (b *CompilationOptionsBuilder) WithTraceRecovery(value bool) *CompilationOp
 // WithStats sets compilation stats collection flag.
 func (b *CompilationOptionsBuilder) WithStats(value bool) *CompilationOptionsBuilder {
 	b.options.stats = optionalBoolOf(value)
+	return b
+}
+
+// WithPrintSourceBeforeDesugar sets source capture before desugaring.
+func (b *CompilationOptionsBuilder) WithPrintSourceBeforeDesugar(value bool) *CompilationOptionsBuilder {
+	b.options.printSourceBeforeDesugar = optionalBoolOf(value)
 	return b
 }
 

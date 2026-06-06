@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"ballerina-lang-go/ast"
 	"ballerina-lang-go/bir"
 	debugcommon "ballerina-lang-go/common"
 	_ "ballerina-lang-go/lib/rt"
@@ -35,16 +36,18 @@ import (
 )
 
 var runOpts struct {
-	dumpTokens    bool
-	dumpST        bool
-	dumpAST       bool
-	dumpCFG       bool
-	dumpBIR       bool
-	traceRecovery bool
-	stats         bool
-	statsOneline  bool
-	logFile       string
-	format        string // Output format (dot, etc.)
+	dumpTokens               bool
+	dumpST                   bool
+	dumpAST                  bool
+	dumpCFG                  bool
+	dumpBIR                  bool
+	printSource              bool
+	printSourceBeforeDesugar bool
+	traceRecovery            bool
+	stats                    bool
+	statsOneline             bool
+	logFile                  string
+	format                   string // Output format (dot, etc.)
 }
 
 var runCmd = &cobra.Command{
@@ -85,6 +88,8 @@ func init() {
 	runCmd.Flags().BoolVar(&runOpts.dumpAST, "dump-ast", false, "Dump abstract syntax tree")
 	runCmd.Flags().BoolVar(&runOpts.dumpCFG, "dump-cfg", false, "Dump control flow graph")
 	runCmd.Flags().BoolVar(&runOpts.dumpBIR, "dump-bir", false, "Dump Ballerina Intermediate Representation")
+	runCmd.Flags().BoolVar(&runOpts.printSource, "print-source", false, "Print source generated from the compiled AST and exit")
+	runCmd.Flags().BoolVar(&runOpts.printSourceBeforeDesugar, "print-source-before-desugar", false, "Print source generated from the AST before desugaring and exit")
 	runCmd.Flags().BoolVar(&runOpts.traceRecovery, "trace-recovery", false, "Enable error recovery tracing")
 	runCmd.Flags().BoolVar(&runOpts.stats, "stats", false, "Print per-stage compilation timing statistics")
 	runCmd.Flags().BoolVar(&runOpts.statsOneline, "stats-oneline", false, "Print per-stage compilation timing totals only")
@@ -103,6 +108,7 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 		WithDumpCFGFormat(projects.ParseCFGFormat(runOpts.format)).
 		WithDumpTokens(runOpts.dumpTokens).
 		WithDumpST(runOpts.dumpST).
+		WithPrintSourceBeforeDesugar(runOpts.printSourceBeforeDesugar).
 		WithTraceRecovery(runOpts.traceRecovery).
 		WithStats(runOpts.stats || runOpts.statsOneline).
 		Build()
@@ -152,6 +158,7 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 	info, err := os.Stat(path)
 	if err != nil {
 		printRunError(err)
+		return err
 	}
 
 	baseDir := path
@@ -242,6 +249,32 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("compilation failed with errors")
 	}
 
+	if runOpts.statsOneline {
+		fmt.Fprint(os.Stderr, compilation.StatsReportOneline())
+	} else if buildOpts.Stats() {
+		fmt.Fprint(os.Stderr, compilation.StatsReport())
+	}
+
+	if runOpts.printSourceBeforeDesugar {
+		for i, source := range compilation.SourcesBeforeDesugar() {
+			if i > 0 {
+				fmt.Fprintln(os.Stdout)
+			}
+			fmt.Fprintln(os.Stdout, source)
+		}
+		return nil
+	}
+
+	if runOpts.printSource {
+		for i, bLangPkg := range compilation.BLangPackages() {
+			if i > 0 {
+				fmt.Fprintln(os.Stdout)
+			}
+			fmt.Fprintln(os.Stdout, ast.ToSource(bLangPkg))
+		}
+		return nil
+	}
+
 	// Create backend and generate BIR
 	backend := projects.NewBallerinaBackend(compilation)
 	birPkgs := backend.BIRPackages()
@@ -250,12 +283,6 @@ func runBallerina(cmd *cobra.Command, args []string) error {
 		err := fmt.Errorf("BIR generation failed: no BIR package produced")
 		printError(err, "", false)
 		return err
-	}
-
-	if runOpts.statsOneline {
-		fmt.Fprint(os.Stderr, compilation.StatsReportOneline())
-	} else if buildOpts.Stats() {
-		fmt.Fprint(os.Stderr, compilation.StatsReport())
 	}
 
 	// Dump BIR if requested — only include packages belonging to the root package

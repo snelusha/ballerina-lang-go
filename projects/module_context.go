@@ -54,11 +54,12 @@ type moduleContext struct {
 	moduleDiagnostics []diagnostics.Diagnostic
 
 	// Compilation artifacts.
-	bLangPkg        *ast.BLangPackage
-	bPackageSymbol  any // TODO(S3): BPackageSymbol once compiler symbol types are migrated
-	compilerCtx     *context.CompilerContext
-	importedSymbols map[string]model.ExportedSymbolSpace
-	birPkg          *bir.BIRPackage
+	bLangPkg            *ast.BLangPackage
+	sourceBeforeDesugar string
+	bPackageSymbol      any // TODO(S3): BPackageSymbol once compiler symbol types are migrated
+	compilerCtx         *context.CompilerContext
+	importedSymbols     map[string]model.ExportedSymbolSpace
+	birPkg              *bir.BIRPackage
 }
 
 // newModuleContext creates a moduleContext from ModuleConfig.
@@ -352,6 +353,10 @@ func analyzeAndDesugar(moduleCtx *moduleContext) {
 		return
 	}
 
+	if compilationOptions.PrintSourceBeforeDesugar() {
+		moduleCtx.sourceBeforeDesugar = ast.ToSource(pkgNode)
+	}
+
 	// Desugar package "lowering" AST to an AST that BIR gen can handle.
 	compilerCtx.StartStage(context.StageDesugaring)
 	moduleCtx.bLangPkg = desugar.DesugarPackage(moduleCtx.compilerCtx, moduleCtx.bLangPkg, moduleCtx.importedSymbols)
@@ -507,6 +512,10 @@ func generateCodeInternal(moduleCtx *moduleContext) {
 // getBLangPackage returns the compiled BLangPackage.
 func (m *moduleContext) getBLangPackage() *ast.BLangPackage {
 	return m.bLangPkg
+}
+
+func (m *moduleContext) getSourceBeforeDesugar() string {
+	return m.sourceBeforeDesugar
 }
 
 // getBIRPackage returns the generated BIR package.
